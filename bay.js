@@ -261,7 +261,7 @@ const bay = () => {
           if (script_type === 'update') {
             script_html = script_html
               .replace('<script>', '${/*update*/\n(() => { setTimeout(() => {')
-              .replace('</script>', '},100); return ""})()}');
+              .replace('</script>', '}, 0); return ""})()}');
           } else if (script_type === 'render') {
             script_html = script_html
               .replace('<script>', '${/*render*/\n(() => {')
