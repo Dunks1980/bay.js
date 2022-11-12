@@ -1,0 +1,24 @@
+{
+  "name": "@dunks1980/bay.js",
+  "version": "1.0.2",
+  "description": "Frontend Framework",
+  "main": "bay.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Dunks1980/bay.js.git"
+  },
+  "keywords": [
+    "Bay.js",
+    "Frontend",
+    "Framework"
+  ],
+  "author": "Ian Dunkerley",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Dunks1980/bay.js/issues"
+  },
+  "homepage": "https://bayjs.org"
+}
