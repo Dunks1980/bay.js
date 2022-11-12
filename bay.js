@@ -649,8 +649,8 @@ const bay = () => {
               }
             }
             if (e.violatedDirective.indexOf('style-src') > -1) {
-              if (e.blockedURI === 'data') {
-                console.warn('data: not found in your CSP style-src whitelist, this is needed for browsers that dont support adoptedStyleSheets.');
+              if (e.blockedURI === 'blob') {
+                console.warn('You need to allow blob: in your script-src CSP, this is needed for browsers that dont support adoptedStyleSheets.');
                 this.CSP_errors = true;
               }
             }
