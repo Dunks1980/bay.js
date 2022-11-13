@@ -1,6 +1,6 @@
 {
   "name": "@dunks1980/bay.js",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Frontend Framework",
   "main": "bay.js",
   "scripts": {
@@ -16,7 +16,7 @@
     "Framework"
   ],
   "author": "Ian Dunkerley",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/Dunks1980/bay.js/issues"
   },
