@@ -1,4 +1,4 @@
-const bay = () => {
+let bay = () => {
   "use strict";
 
   window.bay = {};
