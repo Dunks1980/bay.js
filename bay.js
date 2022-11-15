@@ -2,7 +2,7 @@ let bay = () => {
   "use strict";
 
   window.bay = {};
-  let store_name = 'global';
+  let store_name = '$global';
   let file_name = '';
   let to_fetch = [];
   let already_fetched = [];
@@ -529,7 +529,7 @@ let bay = () => {
       }
 
       add_JS_Blob_event(text) {
-        let blob_text = `{"use strict";const d=window.bay['${this.uniqid}'];${text}};`;
+        let blob_text = `{"use strict";const d=window.bay['${this.uniqid}'];const dp = window.bay.global;${text}};`;
         var blob = new Blob([blob_text], {
           type: 'text/javascript'
         });
