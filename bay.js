@@ -584,16 +584,13 @@ let bay = () => {
             .replaceAll(`${store_name}.`, `dp.`)
             .replaceAll('document.', `d.`)
             .replaceAll('this[', `d.proxy[`)
-            .replaceAll('this.', `d.proxy.`)
-            .replaceAll(`  `, ` `);
+            .replaceAll('this.', `d.proxy.`);
           let proxy_html =
             this.decodeHtml(this.original_template)
             .replaceAll(`${store_name}.`, `dp.`)
             .replaceAll('document.', `d.`)
             .replaceAll('this[', `d.proxy[`)
-            .replaceAll('this.', `d.proxy.`)
-            .replaceAll(`  `, ``)
-            .replaceAll('\n', ``);
+            .replaceAll('this.', `d.proxy.`);
           let proxy_css = '';
           if (styles_text) {
             proxy_css =
