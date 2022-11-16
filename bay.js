@@ -2,6 +2,7 @@ let bay = () => {
   "use strict";
 
   window.bay = {};
+  let local_name = '$bay';
   let store_name = '$global';
   let file_name = '';
   let to_fetch = [];
@@ -145,7 +146,7 @@ let bay = () => {
       // html ====================================================
       compontent_html = html.body;
       compontent_tagname = element_tagname;
-      let update_el = document.createElement('up-date');
+      let update_el = document.createElement(`${element_tagname}-update`);
       compontent_html.appendChild(update_el);
 
       // maps ====================================================
@@ -439,15 +440,17 @@ let bay = () => {
                 let style_vals = attr.value.split(';') || [attr.value];
                 style_vals.map((style) => {
                   let style_val = style.split(':');
-                  style_obj[style_val[0].trim()] = style_val[1].trim();
+                  if (style_val[0] && style_val[1]) {
+                    style_obj[style_val[0].trim()] = style_val[1].trim();
+                  }
                 });
                 Object.assign(el.style, style_obj);
               } else {
-                let attr_data = attr.value.replaceAll('window.bay', 'd');
-                if (this_newEvents.indexOf(`d['${i}'] = {};`) === -1) {
-                  this_newEvents += `d['${i}'] = {};`;
+                let attr_data = attr.value.replaceAll('window.bay', `${local_name}`);
+                if (this_newEvents.indexOf(`${local_name}['${i}'] = {};`) === -1) {
+                  this_newEvents += `${local_name}['${i}'] = {};`;
                 }
-                this_newEvents += `d['${i}']['${attr.name}'] = function(e) {${attr_data}};`;
+                this_newEvents += `${local_name}['${i}']['${attr.name}'] = function(e) {${attr_data}};`;
                 el[`on${attr.name.split(':')[1]}`] = (e) => {
                   if (
                     window.bay[this.uniqid][`${i}`] &&
@@ -529,7 +532,7 @@ let bay = () => {
       }
 
       add_JS_Blob_event(text) {
-        let blob_text = `{"use strict";const d=window.bay['${this.uniqid}'];const dp = window.bay.global;${text}};`;
+        let blob_text = `{"use strict";const ${local_name} = window.bay['${this.uniqid}'];const ${store_name} = window.bay.global;${text}};`;
         var blob = new Blob([blob_text], {
           type: 'text/javascript'
         });
@@ -579,18 +582,18 @@ let bay = () => {
 
         try {
           let proxy_script =
-            `const d = window.bay['${this.uniqid}'];\nconst dp = window.bay.global;` +
+            `const ${local_name} = window.bay['${this.uniqid}'];\nconst ${store_name} = window.bay.global;` +
             this.decodeHtml(script)
-            .replaceAll(`${store_name}.`, `dp.`)
-            .replaceAll('document.', `d.`)
-            .replaceAll('this[', `d.proxy[`)
-            .replaceAll('this.', `d.proxy.`);
+            .replaceAll(`${store_name}.`, `${store_name}.`)
+            .replaceAll('document.', `${local_name}.`)
+            .replaceAll('this[', `${local_name}.proxy[`)
+            .replaceAll('this.', `${local_name}.proxy.`);
           let proxy_html =
             this.decodeHtml(this.original_template)
-            .replaceAll(`${store_name}.`, `dp.`)
-            .replaceAll('document.', `d.`)
-            .replaceAll('this[', `d.proxy[`)
-            .replaceAll('this.', `d.proxy.`);
+            .replaceAll(`${store_name}.`, `${store_name}.`)
+            .replaceAll('document.', `${local_name}.`)
+            .replaceAll('this[', `${local_name}.proxy[`)
+            .replaceAll('this.', `${local_name}.proxy.`);
           let proxy_css = '';
           if (styles_text) {
             proxy_css =
@@ -599,16 +602,16 @@ let bay = () => {
               .replaceAll("'${", '${')
               .replaceAll(`}"`, `}`)
               .replaceAll(`}'`, `}`)
-              .replaceAll(`${store_name}.`, `dp.`)
-              .replaceAll('document.', `d.`)
-              .replaceAll('this[', `d.proxy[`)
-              .replaceAll('this.', `d.proxy.`)
+              .replaceAll(`${store_name}.`, `${store_name}.`)
+              .replaceAll('document.', `${local_name}.`)
+              .replaceAll('this[', `${local_name}.proxy[`)
+              .replaceAll('this.', `${local_name}.proxy.`)
               .replaceAll(`  `, ``)
               .replaceAll('\n', ``);
           }
 
           this.add_JS_BlobFileToHead(
-            `{"use strict";\n${proxy_script}\nd.template = () => { return \`${proxy_html}\`;};\nd.styles = () => { return \`${proxy_css}\`;};\n};`
+            `{"use strict";\n${proxy_script}\n${local_name}.template = () => { return \`${proxy_html}\`;};\n${local_name}.styles = () => { return \`${proxy_css}\`;};\n};`
           );
 
           this.hasAdoptedStyleSheets = false;
