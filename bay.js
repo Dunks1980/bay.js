@@ -678,6 +678,10 @@ let bay = () => {
   window.onload = () => {
     get_all_bays(document);
   };
+
+  bay.refresh = () => {
+    get_all_bays(document);
+  };
 };
 
 if (typeof exports != "undefined") {
