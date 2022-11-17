@@ -415,16 +415,17 @@ let bay = () => {
         });
       }
 
+      // ===================================================
+
       copyAttributes(source, target) {
         return [...source.attributes].forEach(attribute => {
           if (attribute.nodeName === 'value') {
             target.value = attribute.value;
-          } else {
-            target.setAttribute(
-              attribute.nodeName,
-              attribute.nodeValue
-            );
           }
+          target.setAttribute(
+            attribute.nodeName,
+            attribute.nodeValue
+          );
         });
       }
 
