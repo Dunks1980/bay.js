@@ -1,6 +1,6 @@
 # <img src="https://unpkg.com/@dunks1980/bay.js/bayjswide.svg?v=1" width="40"> bay.js
 
-An easy to use, lightweight framework for web-components. It doesn't need a build step but can be included in a build step if you want to. It's a great way to create reusable components for your projects. It's available as a NPM package and doesn't use any dependencies and is 11kb minified. It also doesn't use eval or new Function so can be used in strict CSP polices without a build step. For documentation and demos go to [Bayjs.org](https://bayjs.org/examples/index.html).
+An easy to use, lightweight library for web-components. It doesn't need a build step but can be included in a build step if you want to. It's a great way to create reusable components for your projects. It's available as a NPM package and doesn't use any dependencies and is 11kb minified. It also doesn't use eval or new Function so can be used in strict CSP polices without a build step. For documentation and demos go to [Bayjs.org](https://bayjs.org/examples/index.html).
 <br />
 
 If you wish to support this project please [buy me a coffee.](https://www.buymeacoffee.com/dunks1980) ☕
@@ -9,7 +9,7 @@ If you wish to support this project please [buy me a coffee.](https://www.buymea
 
 ## Installation
 
-Bay.js can be installed 2 ways - via CDN or via NPM.
+Bay.js can be used via CDN or via NPM.
 
 #### CDN
 ```html

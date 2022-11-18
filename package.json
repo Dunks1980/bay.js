@@ -1,7 +1,7 @@
 {
   "name": "@dunks1980/bay.js",
-  "version": "1.0.14",
-  "description": "Frontend Framework",
+  "version": "1.0.15",
+  "description": "Web component library",
   "main": "bay.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -13,12 +13,15 @@
   "keywords": [
     "Bay.js",
     "Frontend",
-    "Framework"
+    "Library",
+    "Bay",
+    "Web",
+    "Component"
   ],
   "author": "Ian Dunkerley",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/Dunks1980/bay.js/issues"
   },
-  "homepage": "https://bayjs.org"
+  "homepage": "https://bayjs.org/examples/index.html"
 }
