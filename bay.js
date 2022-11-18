@@ -586,13 +586,11 @@ let bay = () => {
             `const ${local_name} = window.bay['${this.uniqid}'];\nconst ${store_name} = window.bay.global;` +
             this.decodeHtml(script)
             .replaceAll(`${store_name}.`, `${store_name}.`)
-            .replaceAll('document.', `${local_name}.`)
             .replaceAll('this[', `${local_name}.proxy[`)
             .replaceAll('this.', `${local_name}.proxy.`);
           let proxy_html =
             this.decodeHtml(this.original_template)
             .replaceAll(`${store_name}.`, `${store_name}.`)
-            .replaceAll('document.', `${local_name}.`)
             .replaceAll('this[', `${local_name}.proxy[`)
             .replaceAll('this.', `${local_name}.proxy.`);
           let proxy_css = '';
@@ -604,7 +602,6 @@ let bay = () => {
               .replaceAll(`}"`, `}`)
               .replaceAll(`}'`, `}`)
               .replaceAll(`${store_name}.`, `${store_name}.`)
-              .replaceAll('document.', `${local_name}.`)
               .replaceAll('this[', `${local_name}.proxy[`)
               .replaceAll('this.', `${local_name}.proxy.`)
               .replaceAll(`  `, ``)
