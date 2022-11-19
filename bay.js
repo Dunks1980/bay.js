@@ -351,6 +351,62 @@ let bay = () => {
         this.shadowRoot.querySelector("#bay").style.display = 'none';
 
         this.oldEvents = ``;
+
+        if (!script) {
+          script = "/* No script tag found */";
+        }
+        let proxy_script =
+          `const ${local_name} = window.bay['${this.uniqid}'];\nconst ${store_name} = window.bay.global;` +
+          this.decodeHtml(script)
+          .replaceAll('this[', `${local_name}.proxy[`)
+          .replaceAll('this.', `${local_name}.proxy.`);
+        let proxy_html =
+          this.decodeHtml(this.original_template)
+          .replaceAll('this[', `${local_name}.proxy[`)
+          .replaceAll('this.', `${local_name}.proxy.`);
+        let proxy_css = '';
+        if (styles_text) {
+          proxy_css =
+            this.decodeHtml(styles_text)
+            .replaceAll('"${', '${')
+            .replaceAll("'${", '${')
+            .replaceAll(`}"`, `}`)
+            .replaceAll(`}'`, `}`)
+            .replaceAll('this[', `${local_name}.proxy[`)
+            .replaceAll('this.', `${local_name}.proxy.`)
+            .replaceAll(`  `, ``)
+            .replaceAll('\n', ``);
+        }
+
+        this.add_JS_BlobFileToHead(
+          `{"use strict";\n${proxy_script}\n${local_name}.template = () => { return \`${proxy_html}\`;};\n${local_name}.styles = () => { return \`${proxy_css}\`;};\n};`
+        );
+
+        this.hasAdoptedStyleSheets = false;
+        if ('adoptedStyleSheets' in document) {
+          this.hasAdoptedStyleSheets = true;
+        }
+        if (this.hasAdoptedStyleSheets) {
+          this.sheet = new CSSStyleSheet();
+          this.sheet.replaceSync(proxy_css);
+          this.shadowRoot.adoptedStyleSheets = [this.sheet];
+        } else {
+          var blob = new Blob([proxy_css], {
+            type: 'text/css'
+          });
+          var blobUrl = URL.createObjectURL(blob);
+          var styleLink = document.createElement('link');
+          styleLink.rel = 'stylesheet';
+          styleLink.href = blobUrl;
+          this.shadowRoot.appendChild(styleLink);
+          styleLink.id = 'bay-style';
+          var styleLinkUpdate = document.createElement('link');
+          styleLinkUpdate.id = 'bay-style-update';
+          styleLinkUpdate.href = blobUrl;
+          styleLinkUpdate.rel = 'stylesheet';
+          this.shadowRoot.appendChild(styleLinkUpdate);
+          this.styleLinkUpdate = styleLinkUpdate;
+        }
       }
 
       /**
@@ -576,68 +632,7 @@ let bay = () => {
       }
 
       connectedCallback() {
-
-        if (!script) {
-          script = "/* No script tag found */";
-        }
-
         try {
-          let proxy_script =
-            `const ${local_name} = window.bay['${this.uniqid}'];\nconst ${store_name} = window.bay.global;` +
-            this.decodeHtml(script)
-            .replaceAll(`${store_name}.`, `${store_name}.`)
-            .replaceAll('this[', `${local_name}.proxy[`)
-            .replaceAll('this.', `${local_name}.proxy.`);
-          let proxy_html =
-            this.decodeHtml(this.original_template)
-            .replaceAll(`${store_name}.`, `${store_name}.`)
-            .replaceAll('this[', `${local_name}.proxy[`)
-            .replaceAll('this.', `${local_name}.proxy.`);
-          let proxy_css = '';
-          if (styles_text) {
-            proxy_css =
-              this.decodeHtml(styles_text)
-              .replaceAll('"${', '${')
-              .replaceAll("'${", '${')
-              .replaceAll(`}"`, `}`)
-              .replaceAll(`}'`, `}`)
-              .replaceAll(`${store_name}.`, `${store_name}.`)
-              .replaceAll('this[', `${local_name}.proxy[`)
-              .replaceAll('this.', `${local_name}.proxy.`)
-              .replaceAll(`  `, ``)
-              .replaceAll('\n', ``);
-          }
-
-          this.add_JS_BlobFileToHead(
-            `{"use strict";\n${proxy_script}\n${local_name}.template = () => { return \`${proxy_html}\`;};\n${local_name}.styles = () => { return \`${proxy_css}\`;};\n};`
-          );
-
-          this.hasAdoptedStyleSheets = false;
-          if ('adoptedStyleSheets' in document) {
-            this.hasAdoptedStyleSheets = true;
-          }
-          if (this.hasAdoptedStyleSheets) {
-            this.sheet = new CSSStyleSheet();
-            this.sheet.replaceSync(proxy_css);
-            this.shadowRoot.adoptedStyleSheets = [this.sheet];
-          } else {
-            var blob = new Blob([proxy_css], {
-              type: 'text/css'
-            });
-            var blobUrl = URL.createObjectURL(blob);
-            var styleLink = document.createElement('link');
-            styleLink.rel = 'stylesheet';
-            styleLink.href = blobUrl;
-            this.shadowRoot.appendChild(styleLink);
-            styleLink.id = 'bay-style';
-            var styleLinkUpdate = document.createElement('link');
-            styleLinkUpdate.id = 'bay-style-update';
-            styleLinkUpdate.href = blobUrl;
-            styleLinkUpdate.rel = 'stylesheet';
-            this.shadowRoot.appendChild(styleLinkUpdate);
-            this.styleLinkUpdate = styleLinkUpdate;
-          }
-
           document.addEventListener("securitypolicyviolation", (e) => {
             e.preventDefault();
             if (e.violatedDirective.indexOf('script-src') > -1) {
