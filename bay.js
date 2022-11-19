@@ -609,13 +609,13 @@ let bay = () => {
           e.preventDefault();
           if (e.violatedDirective.indexOf('script-src') > -1) {
             if (e.blockedURI === 'blob') {
-              console.warn('You need to allow blob: in your script-src CSP');
+              console.warn('blob: needed in script-src CSP');
               this.CSP_errors = true;
             }
           }
           if (e.violatedDirective.indexOf('style-src') > -1) {
             if (e.blockedURI === 'blob') {
-              console.warn('You need to allow blob: in your script-src CSP, this is needed for browsers that dont support adoptedStyleSheets.');
+              console.warn('blob: needed in style-src CSP');
               this.CSP_errors = true;
             }
           }
