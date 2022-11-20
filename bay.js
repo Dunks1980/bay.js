@@ -9,12 +9,7 @@ let bay = () => {
   let already_fetched = [];
 
   function dispatch_global_event(key, value) {
-    let evt = new CustomEvent("bay_global_event", {
-      detail: {
-        'key': key,
-        'value': value,
-      }
-    });
+    let evt = new CustomEvent("bay_global_event");
     window.dispatchEvent(evt);
   }
 
