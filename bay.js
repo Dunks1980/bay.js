@@ -4,6 +4,7 @@ let bay = () => {
   window.bay = {};
   let local_name = '$bay';
   let store_name = '$global';
+  let element_name = '$el';
   let file_name = '';
   let to_fetch = [];
   let already_fetched = [];
@@ -339,6 +340,8 @@ let bay = () => {
           this.shadowRoot.proxy[attr.att] = attr.value;
         });
 
+        window.bay[this.uniqid][element_name] = this;
+
         this.original_template = `${compontent_html.innerHTML}`;
         this.template.innerHTML = /*HTML*/ `<div id="bay"></div>`;
         // ------------------------------------------------------------------------
@@ -351,7 +354,7 @@ let bay = () => {
           script = "/* No script tag found */";
         }
         let proxy_script =
-          `const ${local_name} = window.bay['${this.uniqid}'];\nconst ${store_name} = window.bay.global;` +
+          `const ${local_name} = window.bay['${this.uniqid}'];\nconst ${store_name} = window.bay.global;\nconst ${element_name} = ${local_name}['${element_name}'];` +
           this.decodeHtml(script)
           .replaceAll('this[', `${local_name}.proxy[`)
           .replaceAll('this.', `${local_name}.proxy.`);
