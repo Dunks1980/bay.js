@@ -177,7 +177,7 @@ let bay = () => {
         .replaceAll('<noscript>', '')
         .replaceAll('</noscript>', '');
 
-      // noscripts ====================================================
+      // dsds ====================================================
       while ([...compontent_html.querySelectorAll('dsd')].length > 0) {
         let dsds = [...compontent_html.querySelectorAll('dsd')];
         dsds.forEach(dsd_el => {
@@ -499,10 +499,7 @@ let bay = () => {
           }
           if (this.getNodeType(template_node) !== this.getNodeType(domNodes[index])) {
             try {
-              
-          
               domNodes[index].parentNode.replaceChild(template_node.cloneNode(true), domNodes[index]);
-              
             } catch (error) {}
             return;
           }
