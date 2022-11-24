@@ -1,6 +1,16 @@
 let bay = () => {
   "use strict";
 
+  (function attachShadowRoots(root) {
+    root.querySelectorAll("template[shadowroot]").forEach(template => {
+      const mode = template.getAttribute("shadowroot");
+      const shadowRoot = template.parentNode.attachShadow({ mode });
+      shadowRoot.appendChild(template.content);
+      template.remove();
+      attachShadowRoots(shadowRoot);
+    });
+  })(document);
+
   window.bay = {};
   let local_name = '$bay';
   let store_name = '$global';
@@ -52,9 +62,18 @@ let bay = () => {
     return result;
   }
 
+  function decodeHtml(html) {
+    var txt = document.createElement("textarea");
+    txt.innerHTML = html;
+    return txt.value;
+  }
+
   function get_all_bays(element) {
     let bays = [...element.querySelectorAll('[bay]')];
-    bays.forEach((el) => {
+    bays.forEach((el, i) => {
+      if (el.getAttribute('bay') === 'dsd') {
+        el.setAttribute('bay', `dsd-${i}`);
+      }
       let attr = el.getAttribute('bay');
       if (to_fetch.indexOf(attr) === -1) {
         to_fetch.push(el);
@@ -91,6 +110,15 @@ let bay = () => {
     try {
       let location = bay.getAttribute('bay');
       if (
+        location.substring(0, 4) === 'dsd-'
+      ) {
+        file_name = location;
+        if (!bay.shadowRoot) {
+          modify_template(decodeHtml(bay.querySelector('template').innerHTML), bay);
+        } else {
+          modify_template(decodeHtml(bay.shadowRoot.innerHTML), bay);
+        }
+      } else if (
         location.substring(0, 1) === '#'
       ) {
         file_name = location;
@@ -144,6 +172,18 @@ let bay = () => {
       compontent_tagname = element_tagname;
       let update_el = document.createElement(`${element_tagname}-update`);
       compontent_html.appendChild(update_el);
+
+      compontent_html.innerHTML = compontent_html.innerHTML
+        .replaceAll('<noscript>', '')
+        .replaceAll('</noscript>', '');
+
+      // noscripts ====================================================
+      while ([...compontent_html.querySelectorAll('dsd')].length > 0) {
+        let dsds = [...compontent_html.querySelectorAll('dsd')];
+        dsds.forEach(dsd_el => {
+          dsd_el.remove();
+        });
+      }
 
       // maps ====================================================
       while ([...compontent_html.querySelectorAll('map')].length > 0) {
@@ -277,7 +317,7 @@ let bay = () => {
           script_text += compontent_html.querySelector("script").innerText;
           script.remove();
         } else if (script.attributes[0].name.indexOf('mount') > -1) {
-          script_text += `setTimeout(() => {${script.innerText}}, 0);`;
+          script_text += `$bay['$mounted'] = () => {${script.innerText}};`;
           script.remove();
         }
       });
@@ -301,13 +341,30 @@ let bay = () => {
     customElements.define(compontent_tagname, class extends HTMLElement {
       constructor() {
         super();
-        this.attachShadow({
-          mode: 'open'
-        });
+        this.mounted = false;
         this.template = document.createElement('template');
         this.original_template = '';
         this.uniqid = makeid(8);
         this.CSP_errors = false;
+        this.original_template = `${compontent_html.innerHTML}`;
+        this.dsd = false;
+
+        if (this.shadowRoot) {
+          const nodes = [...this.shadowRoot.children];
+          const wrapper = document.createElement('div');
+          wrapper.id = 'bay';
+          nodes.map(node => wrapper.appendChild(node));
+          this.shadowRoot.appendChild(wrapper);
+          this.dsd = true;
+        } else {
+          this.attachShadow({
+            mode: 'open'
+          });
+          this.template.innerHTML = /*HTML*/ `<div id="bay"></div>`;
+          this.shadowRoot.appendChild(this.template.content.cloneNode(true));
+          this.shadowRoot.querySelector("#bay").style.display = 'none';
+        }
+
         // proxy setup
         var handler = {
           get(target, key) {
@@ -342,30 +399,27 @@ let bay = () => {
 
         window.bay[this.uniqid][element_name] = this;
 
-        this.original_template = `${compontent_html.innerHTML}`;
-        this.template.innerHTML = /*HTML*/ `<div id="bay"></div>`;
         // ------------------------------------------------------------------------
-        this.shadowRoot.appendChild(this.template.content.cloneNode(true));
-        this.shadowRoot.querySelector("#bay").style.display = 'none';
 
         this.oldEvents = ``;
 
         if (!script) {
           script = "/* No script tag found */";
         }
+
         let proxy_script =
           `const ${local_name} = window.bay['${this.uniqid}'];\nconst ${store_name} = window.bay.global;\nconst ${element_name} = ${local_name}['${element_name}'];` +
-          this.decodeHtml(script)
+          decodeHtml(script)
           .replaceAll('this[', `${local_name}.proxy[`)
           .replaceAll('this.', `${local_name}.proxy.`);
         let proxy_html =
-          this.decodeHtml(this.original_template)
+          decodeHtml(this.original_template)
           .replaceAll('this[', `${local_name}.proxy[`)
           .replaceAll('this.', `${local_name}.proxy.`);
         let proxy_css = '';
         if (styles_text) {
           proxy_css =
-            this.decodeHtml(styles_text)
+            decodeHtml(styles_text)
             .replaceAll('"${', '${')
             .replaceAll("'${", '${')
             .replaceAll(`}"`, `}`)
@@ -445,7 +499,10 @@ let bay = () => {
           }
           if (this.getNodeType(template_node) !== this.getNodeType(domNodes[index])) {
             try {
+              
+          
               domNodes[index].parentNode.replaceChild(template_node.cloneNode(true), domNodes[index]);
+              
             } catch (error) {}
             return;
           }
@@ -552,7 +609,13 @@ let bay = () => {
           this.shadowRoot.innerHTML = '';
           return;
         }
-        if (!this.original_template || !this.shadowRoot.querySelector("#bay").innerHTML) {
+        if (
+          !this.original_template ||
+          !this.shadowRoot.querySelector("#bay").innerHTML
+        ) {
+          return;
+        }
+        if (typeof window.bay[this.uniqid].template !== "function") { 
           return;
         }
         try {
@@ -572,18 +635,21 @@ let bay = () => {
           });
           this.add_events_and_styles(shadowHTML);
           this.set_styles();
+          if (
+            this.mounted === false &&
+            window.bay[this.uniqid]['$mounted']
+          ) {
+            this.mounted = true;
+            setTimeout(() => {
+              window.bay[this.uniqid]['$mounted']();
+            }, 14);
+          }
           if (this.shadowRoot.querySelector('[bay]')) {
             get_all_bays(this.shadowRoot);
           }
         } catch (error) {
           console.error(error);
         }
-      }
-
-      decodeHtml(html) {
-        var txt = document.createElement("textarea");
-        txt.innerHTML = html;
-        return txt.value;
       }
 
       add_JS_Blob_event(text) {
@@ -628,8 +694,10 @@ let bay = () => {
         this.shadowRoot.appendChild(newScript);
         newScript.onload = () => {
           URL.revokeObjectURL(blobUrl);
-          this.original_template = window.bay[this.uniqid].template();
-          this.shadowRoot.getElementById('bay').innerHTML = this.original_template;
+          if(!this.dsd){
+            this.original_template = window.bay[this.uniqid].template();
+            this.shadowRoot.getElementById('bay').innerHTML = this.original_template;
+          }
           this.render();
           newScript.remove();
           if (this.CSP_errors) {
