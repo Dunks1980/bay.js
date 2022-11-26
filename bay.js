@@ -524,16 +524,19 @@ let bay = () => {
       }
 
       // ===================================================
-
       copyAttributes(source, target) {
         return [...source.attributes].forEach(attribute => {
           if (attribute.nodeName === 'value') {
-            target.value = attribute.value;
+            if (target.value !== attribute.value) {
+              target.value = attribute.value;
+            }
           }
-          target.setAttribute(
-            attribute.nodeName,
-            attribute.nodeValue
-          );
+          if (
+            !target.getAttribute(attribute.nodeName) ||
+            target.getAttribute(attribute.nodeName) !== attribute.value
+          ) {
+            target.setAttribute(attribute.nodeName, attribute.value);
+          }
         });
       }
 
