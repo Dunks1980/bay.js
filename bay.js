@@ -1,15 +1,15 @@
 let bay = () => {
   "use strict";
 
-  (function attachShadowRoots(root) {
-    root.querySelectorAll("template[shadowroot]").forEach(template => {
-      const mode = template.getAttribute("shadowroot");
-      const shadowRoot = template.parentNode.attachShadow({ mode });
-      shadowRoot.appendChild(template.content);
-      template.remove();
-      attachShadowRoots(shadowRoot);
+  [...document.querySelectorAll("template[shadowroot]")].forEach(template => {
+    const mode = template.getAttribute("shadowroot");
+    const shadowRoot = template.parentNode.attachShadow({
+      mode
     });
-  })(document);
+    shadowRoot.appendChild(template.content);
+    template.remove();
+    attachShadowRoots(shadowRoot);
+  });
 
   window.bay = {};
   let local_name = '$bay';
@@ -349,6 +349,7 @@ let bay = () => {
         this.CSP_errors = false;
         this.original_template = `${compontent_html.innerHTML}`;
         this.dsd = false;
+        this.debouncer = false;
 
         if (this.shadowRoot) {
           const nodes = [...this.shadowRoot.children];
@@ -386,7 +387,7 @@ let bay = () => {
           },
           set: (target, key, value) => {
             target[key] = value;
-            this.render();
+            this.render_debouncer();
             return true;
           }
         };
@@ -605,6 +606,15 @@ let bay = () => {
        * Renders the component from proxy data changes
        */
 
+      render_debouncer() {
+        if (this.debouncer) {
+          window.cancelAnimationFrame(this.debouncer);
+        }
+        this.debouncer = window.requestAnimationFrame(() => {
+          this.render();
+        });
+      }
+
       render() {
         if (this.CSP_errors) {
           this.shadowRoot.innerHTML = '';
@@ -616,7 +626,7 @@ let bay = () => {
         ) {
           return;
         }
-        if (typeof window.bay[this.uniqid].template !== "function") { 
+        if (typeof window.bay[this.uniqid].template !== "function") {
           return;
         }
         try {
@@ -695,11 +705,11 @@ let bay = () => {
         this.shadowRoot.appendChild(newScript);
         newScript.onload = () => {
           URL.revokeObjectURL(blobUrl);
-          if(!this.dsd){
+          if (!this.dsd) {
             this.original_template = window.bay[this.uniqid].template();
             this.shadowRoot.getElementById('bay').innerHTML = this.original_template;
           }
-          this.render();
+          this.render_debouncer();
           newScript.remove();
           if (this.CSP_errors) {
             this.shadowRoot.innerHTML = 'CSP issue, add blob: to script-src & style-src whitelist.';
@@ -716,7 +726,7 @@ let bay = () => {
       connectedCallback() {
         try {
           window.addEventListener('bay_global_event', (e) => {
-            this.render();
+            this.render_debouncer();
           });
 
         } catch (error) {
