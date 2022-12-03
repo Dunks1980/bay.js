@@ -532,8 +532,7 @@ let bay = () => {
             if (target.value !== attribute.value) {
               target.value = attribute.value;
             }
-          }
-          if (
+          } else if (
             !target.getAttribute(attribute.nodeName) ||
             target.getAttribute(attribute.nodeName) !== attribute.value
           ) {
