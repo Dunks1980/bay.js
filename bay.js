@@ -211,14 +211,15 @@ let bay = () => {
         fors.forEach(for_el => {
           let has_children = for_el.querySelector('for');
           if (!has_children) {
+            let this_for = `bay_for_${makeid(8)}`;
             let for_array = for_el.getAttribute('array') || [];
             let for_params = for_el.getAttribute('params') || 'element, index, array';
             while (for_el.attributes.length > 0)
               for_el.removeAttribute(for_el.attributes[0].name);
             let for_html = for_el.outerHTML;
             for_html = for_html
-              .replace('<for>', `\${(() => { let f = ''; ${for_array}.forEach((${for_params}) => { f += \``)
-              .replace('</for>', `\`}); return f; })() }`);
+              .replace('<for>', `\${(() => { let ${this_for} = ''; ${for_array}.forEach((${for_params}) => { ${this_for} += \``)
+              .replace('</for>', `\`}); return ${this_for}; })() }`);
             for_el.outerHTML = for_html;
           }
         });
