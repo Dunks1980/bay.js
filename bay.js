@@ -227,21 +227,21 @@ let bay = () => {
 
       // if's ====================================================
       while ([...compontent_html.querySelectorAll('if')].length > 0) {
-        let if_statments = [...compontent_html.querySelectorAll('if')];
-        if_statments.forEach(if_statment_el => {
+        let if_statements = [...compontent_html.querySelectorAll('if')];
+        if_statements.forEach(if_statement_el => {
           // check if children
-          let has_children = [...if_statment_el.querySelectorAll('if')];
+          let has_children = [...if_statement_el.querySelectorAll('if')];
           if (!has_children.length > 0) {
-            let statement = [...if_statment_el.attributes][0] ? [...if_statment_el.attributes][0].nodeValue : '';
-            let next_el = if_statment_el.nextElementSibling ? if_statment_el.nextElementSibling.tagName.toLowerCase() : '';
-            while (if_statment_el.attributes.length > 0)
-              if_statment_el.removeAttribute(if_statment_el.attributes[0].name);
-            let if_html = if_statment_el.outerHTML;
+            let statement = [...if_statement_el.attributes][0] ? [...if_statement_el.attributes][0].nodeValue : '';
+            let next_el = if_statement_el.nextElementSibling ? if_statement_el.nextElementSibling.tagName.toLowerCase() : '';
+            while (if_statement_el.attributes.length > 0)
+              if_statement_el.removeAttribute(if_statement_el.attributes[0].name);
+            let if_html = if_statement_el.outerHTML;
             let close_func = `\` } return '' })() }`;
             if (next_el === 'else-if' || next_el === 'else') {
               close_func = `\` }`;
             }
-            if_statment_el.outerHTML = if_html
+            if_statement_el.outerHTML = if_html
               .replace('<if>', `\${(() => { if (${statement}) { return \``)
               .replace('</if>', close_func);
           }
@@ -250,21 +250,21 @@ let bay = () => {
 
       // else-if's ====================================================
       while ([...compontent_html.querySelectorAll('else-if')].length > 0) {
-        let if_statments = [...compontent_html.querySelectorAll('else-if')];
-        if_statments.forEach(if_statment_el => {
+        let if_statements = [...compontent_html.querySelectorAll('else-if')];
+        if_statements.forEach(if_statement_el => {
           // check if children
-          let has_children = [...if_statment_el.querySelectorAll('else-if')];
+          let has_children = [...if_statement_el.querySelectorAll('else-if')];
           if (!has_children.length > 0) {
-            let statement = [...if_statment_el.attributes][0] ? [...if_statment_el.attributes][0].nodeValue : '';
-            let next_el = if_statment_el.nextElementSibling ? if_statment_el.nextElementSibling.tagName.toLowerCase() : '';
-            while (if_statment_el.attributes.length > 0)
-              if_statment_el.removeAttribute(if_statment_el.attributes[0].name);
-            let if_html = if_statment_el.outerHTML;
+            let statement = [...if_statement_el.attributes][0] ? [...if_statement_el.attributes][0].nodeValue : '';
+            let next_el = if_statement_el.nextElementSibling ? if_statement_el.nextElementSibling.tagName.toLowerCase() : '';
+            while (if_statement_el.attributes.length > 0)
+              if_statement_el.removeAttribute(if_statement_el.attributes[0].name);
+            let if_html = if_statement_el.outerHTML;
             let close_func = `\` } return '' })() }`;
             if (next_el === 'else-if' || next_el === 'else') {
               close_func = `\` }`;
             }
-            if_statment_el.outerHTML = if_html
+            if_statement_el.outerHTML = if_html
               .replace('<else-if>', `\ else if (${statement}) { return \``)
               .replace('</else-if>', close_func);
           }
@@ -273,15 +273,15 @@ let bay = () => {
 
       // else's ====================================================
       while ([...compontent_html.querySelectorAll('else')].length > 0) {
-        let if_statments = [...compontent_html.querySelectorAll('else')];
-        if_statments.forEach(if_statment_el => {
+        let if_statements = [...compontent_html.querySelectorAll('else')];
+        if_statements.forEach(if_statement_el => {
           // check if children
-          let has_children = [...if_statment_el.querySelectorAll('else')];
+          let has_children = [...if_statement_el.querySelectorAll('else')];
           if (!has_children.length > 0) {
-            while (if_statment_el.attributes.length > 0)
-              if_statment_el.removeAttribute(if_statment_el.attributes[0].name);
-            let if_html = if_statment_el.outerHTML;
-            if_statment_el.outerHTML = if_html
+            while (if_statement_el.attributes.length > 0)
+              if_statement_el.removeAttribute(if_statement_el.attributes[0].name);
+            let if_html = if_statement_el.outerHTML;
+            if_statement_el.outerHTML = if_html
               .replace('<else>', `\ else { return \``)
               .replace('</else>', `\` } return '' })() }`);
           }
