@@ -24,6 +24,13 @@ let bay = () => {
     window.dispatchEvent(evt);
   }
 
+  function sanitizer(input) {
+    if (typeof input === 'string') {
+      input = input.replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+    }
+    return input;
+  }
+
   if (!window.bay.global) {
     var global_data = {};
     var global_handler = {
@@ -44,7 +51,7 @@ let bay = () => {
         return target[key];
       },
       set: (target, key, value) => {
-        target[key] = value;
+        target[key] = sanitizer(value);
         dispatch_global_event();
         return true;
       }
@@ -344,10 +351,9 @@ let bay = () => {
         super();
         this.mounted = false;
         this.template = document.createElement('template');
-        this.original_template = '';
+        this.original_template = `${compontent_html.innerHTML}`;
         this.uniqid = makeid(8);
         this.CSP_errors = false;
-        this.original_template = `${compontent_html.innerHTML}`;
         this.dsd = false;
         this.debouncer = false;
 
@@ -386,7 +392,7 @@ let bay = () => {
             return target[key];
           },
           set: (target, key, value) => {
-            target[key] = value;
+            target[key] = sanitizer(value);
             this.render_debouncer();
             return true;
           }
