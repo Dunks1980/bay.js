@@ -1,6 +1,6 @@
 {
   "name": "@dunks1980/bay.js",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "description": "Web component library",
   "main": "bay.js",
   "scripts": {

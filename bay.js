@@ -1,4 +1,4 @@
-let bay = () => {
+const bay = () => {
   "use strict";
 
   (function attachShadowRoots(root) {
@@ -12,15 +12,15 @@ let bay = () => {
   })(document);
 
   window.bay = {};
-  let local_name = '$bay';
-  let store_name = '$global';
-  let element_name = '$el';
+  const local_name = '$bay';
+  const store_name = '$global';
+  const element_name = '$el';
   let file_name = '';
   let to_fetch = [];
   let already_fetched = [];
 
   function dispatch_global_event() {
-    let evt = new CustomEvent("bay_global_event");
+    const evt = new CustomEvent("bay_global_event");
     window.dispatchEvent(evt);
   }
 
@@ -37,8 +37,8 @@ let bay = () => {
   }
 
   if (!window.bay.global) {
-    var global_data = {};
-    var global_handler = {
+    const global_data = {};
+    const global_handler = {
       get(target, key) {
         if (key == 'isProxy') {
           return true;
@@ -65,23 +65,23 @@ let bay = () => {
   }
 
   function makeid(length) {
-    var result = '';
-    var characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    var charactersLength = characters.length;
-    for (var i = 0; i < length; i++) {
+    let result = '';
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const charactersLength = characters.length;
+    for (let i = 0; i < length; i++) {
       result += characters.charAt(Math.floor(Math.random() * charactersLength));
     }
     return result;
   }
 
   function decodeHtml(html) {
-    var txt = document.createElement("textarea");
+    const txt = document.createElement("textarea");
     txt.innerHTML = html;
     return txt.value;
   }
 
   function get_all_bays(element) {
-    let bays = [...element.querySelectorAll('[bay]')];
+    const bays = [...element.querySelectorAll('[bay]')];
     bays.forEach((el, i) => {
       if (el.getAttribute('bay') === 'dsd') {
         el.setAttribute('bay', `dsd-${i}`);
@@ -100,7 +100,8 @@ let bay = () => {
   }
 
   function modify_template(template_el, bay) {
-    var html;
+    const doc = new DOMParser();
+    let html;
     let styles_text;
     if (template_el.indexOf('<style>') > -1) {
       styles_text = template_el.split('<style>')[1].split('</style>')[0];
@@ -108,8 +109,6 @@ let bay = () => {
     template_el = template_el
       .replaceAll(/<!--[\s\S]*?-->/g, '')
       .replaceAll(`<style>${styles_text}</style>`, '');
-
-    var doc = new DOMParser();
     html = doc.parseFromString(template_el, "text/html");
     if (html) {
       if (!customElements.get(bay.tagName.toLowerCase())) {
@@ -118,9 +117,28 @@ let bay = () => {
     }
   }
 
+  function create_template_fn(element_tagname, template_string, attributes_array) {
+    const doc = new DOMParser();
+    let html;
+    let styles_text;
+    let passed_attributes = attributes_array || [];
+    if (template_string.indexOf('<style>') > -1) {
+      styles_text = template_el.split('<style>')[1].split('</style>')[0];
+    }
+    template_string = template_string
+      .replaceAll(/<!--[\s\S]*?-->/g, '')
+      .replaceAll(`<style>${styles_text}</style>`, '');
+    html = doc.parseFromString(template_string, "text/html");
+    if (html) {
+      if (!customElements.get(element_tagname.toLowerCase())) {
+        create_component(html, element_tagname.toLowerCase(), passed_attributes, styles_text);
+      }
+    }
+  }
+
   function fetch_component(bay) {
     try {
-      let location = bay.getAttribute('bay');
+      const location = bay.getAttribute('bay');
       if (
         location.substring(0, 4) === 'dsd-'
       ) {
@@ -134,14 +152,14 @@ let bay = () => {
         location.substring(0, 1) === '#'
       ) {
         file_name = location;
-        let template_el = document.querySelector(location);
+        const template_el = document.querySelector(location);
         if (!template_el) {
           console.error(`bay: "${location}" no element found with this selector.`);
           return;
         }
         modify_template(template_el.innerHTML, bay);
       } else {
-        var request = new XMLHttpRequest();
+        const request = new XMLHttpRequest();
         request.open("GET", location);
         request.setRequestHeader("Content-Type", "text/plain");
         request.addEventListener("load", (event) => {
@@ -160,7 +178,7 @@ let bay = () => {
 
   function getAttributes(bay) {
     let all_attrs = [];
-    let this_attrs = [...bay.attributes];
+    const this_attrs = [...bay.attributes];
     this_attrs.forEach(attr => {
       if (
         attr.name !== 'bay' &&
@@ -173,39 +191,48 @@ let bay = () => {
   }
 
   function create_component(html, element_tagname, attrs, styles_text) {
-    let compontent_tagname = '';
-    let compontent_html = '';
+    let component_tagname = '';
+    let component_html = '';
     let script;
     let observedAttributes_from_element;
+    let has_globals = false;
     try {
 
       // html ====================================================
-      compontent_html = html.body;
-      compontent_tagname = element_tagname;
-      let update_el = document.createElement(`${element_tagname}-update`);
-      compontent_html.appendChild(update_el);
+      component_html = html.body;
+      component_tagname = element_tagname;
+      const update_el = document.createElement(`${element_tagname}-update`);
+      component_html.appendChild(update_el);
 
-      compontent_html.innerHTML = compontent_html.innerHTML
+      // detect if has globals ===================================
+      if (
+        component_html.innerHTML.indexOf('$global.') > -1 ||
+        component_html.innerHTML.indexOf('$global[') > -1
+        ) {
+        has_globals = true;
+      }
+
+      component_html.innerHTML = component_html.innerHTML
         .replaceAll('<noscript>', '')
         .replaceAll('</noscript>', '');
 
       // dsds ====================================================
-      while ([...compontent_html.querySelectorAll('dsd')].length > 0) {
-        let dsds = [...compontent_html.querySelectorAll('dsd')];
+      while ([...component_html.querySelectorAll('dsd')].length > 0) {
+        const dsds = [...component_html.querySelectorAll('dsd')];
         dsds.forEach(dsd_el => {
           dsd_el.remove();
         });
       }
 
       // maps ====================================================
-      while ([...compontent_html.querySelectorAll('map')].length > 0) {
-        let maps = [...compontent_html.querySelectorAll('map')];
+      while ([...component_html.querySelectorAll('map')].length > 0) {
+        const maps = [...component_html.querySelectorAll('map')];
         maps.forEach(map_el => {
-          let has_children = map_el.querySelector('map');
+          const has_children = map_el.querySelector('map');
           if (!has_children) {
-            let map_array = map_el.getAttribute('array') || [];
-            let map_params = map_el.getAttribute('params') || 'element, index, array';
-            let map_join = map_el.getAttribute('join') || '';
+            const map_array = map_el.getAttribute('array') || [];
+            const map_params = map_el.getAttribute('params') || 'element, index, array';
+            const map_join = map_el.getAttribute('join') || '';
             while (map_el.attributes.length > 0)
               map_el.removeAttribute(map_el.attributes[0].name);
             let map_html = map_el.outerHTML;
@@ -218,14 +245,14 @@ let bay = () => {
       }
 
       // fors ====================================================
-      while ([...compontent_html.querySelectorAll('for')].length > 0) {
-        let fors = [...compontent_html.querySelectorAll('for')];
+      while ([...component_html.querySelectorAll('for')].length > 0) {
+        const fors = [...component_html.querySelectorAll('for')];
         fors.forEach(for_el => {
-          let has_children = for_el.querySelector('for');
+          const has_children = for_el.querySelector('for');
           if (!has_children) {
-            let this_for = `bay_for_${makeid(8)}`;
-            let for_array = for_el.getAttribute('array') || [];
-            let for_params = for_el.getAttribute('params') || 'element, index, array';
+            const this_for = `bay_for_${makeid(8)}`;
+            const for_array = for_el.getAttribute('array') || [];
+            const for_params = for_el.getAttribute('params') || 'element, index, array';
             while (for_el.attributes.length > 0)
               for_el.removeAttribute(for_el.attributes[0].name);
             let for_html = for_el.outerHTML;
@@ -238,14 +265,13 @@ let bay = () => {
       }
 
       // if's ====================================================
-      while ([...compontent_html.querySelectorAll('if')].length > 0) {
-        let if_statements = [...compontent_html.querySelectorAll('if')];
+      while ([...component_html.querySelectorAll('if')].length > 0) {
+        const if_statements = [...component_html.querySelectorAll('if')];
         if_statements.forEach(if_statement_el => {
-          // check if children
-          let has_children = [...if_statement_el.querySelectorAll('if')];
+          const has_children = [...if_statement_el.querySelectorAll('if')];
           if (!has_children.length > 0) {
-            let statement = [...if_statement_el.attributes][0] ? [...if_statement_el.attributes][0].nodeValue : '';
-            let next_el = if_statement_el.nextElementSibling ? if_statement_el.nextElementSibling.tagName.toLowerCase() : '';
+            const statement = [...if_statement_el.attributes][0] ? [...if_statement_el.attributes][0].nodeValue : '';
+            const next_el = if_statement_el.nextElementSibling ? if_statement_el.nextElementSibling.tagName.toLowerCase() : '';
             while (if_statement_el.attributes.length > 0)
               if_statement_el.removeAttribute(if_statement_el.attributes[0].name);
             let if_html = if_statement_el.outerHTML;
@@ -261,14 +287,13 @@ let bay = () => {
       }
 
       // else-if's ====================================================
-      while ([...compontent_html.querySelectorAll('else-if')].length > 0) {
-        let if_statements = [...compontent_html.querySelectorAll('else-if')];
+      while ([...component_html.querySelectorAll('else-if')].length > 0) {
+        const if_statements = [...component_html.querySelectorAll('else-if')];
         if_statements.forEach(if_statement_el => {
-          // check if children
-          let has_children = [...if_statement_el.querySelectorAll('else-if')];
+          const has_children = [...if_statement_el.querySelectorAll('else-if')];
           if (!has_children.length > 0) {
-            let statement = [...if_statement_el.attributes][0] ? [...if_statement_el.attributes][0].nodeValue : '';
-            let next_el = if_statement_el.nextElementSibling ? if_statement_el.nextElementSibling.tagName.toLowerCase() : '';
+            const statement = [...if_statement_el.attributes][0] ? [...if_statement_el.attributes][0].nodeValue : '';
+            const next_el = if_statement_el.nextElementSibling ? if_statement_el.nextElementSibling.tagName.toLowerCase() : '';
             while (if_statement_el.attributes.length > 0)
               if_statement_el.removeAttribute(if_statement_el.attributes[0].name);
             let if_html = if_statement_el.outerHTML;
@@ -284,11 +309,10 @@ let bay = () => {
       }
 
       // else's ====================================================
-      while ([...compontent_html.querySelectorAll('else')].length > 0) {
-        let if_statements = [...compontent_html.querySelectorAll('else')];
+      while ([...component_html.querySelectorAll('else')].length > 0) {
+        const if_statements = [...component_html.querySelectorAll('else')];
         if_statements.forEach(if_statement_el => {
-          // check if children
-          let has_children = [...if_statement_el.querySelectorAll('else')];
+          const has_children = [...if_statement_el.querySelectorAll('else')];
           if (!has_children.length > 0) {
             while (if_statement_el.attributes.length > 0)
               if_statement_el.removeAttribute(if_statement_el.attributes[0].name);
@@ -301,10 +325,10 @@ let bay = () => {
       }
 
       // lifecycle scripts ================================================
-      while ([...compontent_html.querySelectorAll('script[update], script[render]')].length > 0) {
-        let scripts = [...compontent_html.querySelectorAll('script[update], script[render]')];
+      while ([...component_html.querySelectorAll('script[update], script[render]')].length > 0) {
+        const scripts = [...component_html.querySelectorAll('script[update], script[render]')];
         scripts.forEach(script => {
-          let script_type = script.attributes[0].name;
+          const script_type = script.attributes[0].name;
           while (script.attributes.length > 0)
             script.removeAttribute(script.attributes[0].name);
           let script_html = script.outerHTML;
@@ -324,10 +348,10 @@ let bay = () => {
 
       // main & mount scripts ============================================
       let script_text = '';
-      let scripts = [...compontent_html.querySelectorAll("script")];
-      scripts.forEach(script => {
+      const main_mount_scripts = [...component_html.querySelectorAll("script")];
+      main_mount_scripts.forEach(script => {
         if (!script.attributes[0]) {
-          script_text += compontent_html.querySelector("script").innerText;
+          script_text += component_html.querySelector("script").innerText;
           script.remove();
         } else if (script.attributes[0].name.indexOf('mount') > -1) {
           script_text += `$bay['$mounted'] = () => {${script.innerText}};`;
@@ -342,7 +366,7 @@ let bay = () => {
     } catch (error) {
       console.error(error);
     }
-    if (!compontent_tagname) {
+    if (!component_tagname) {
       window.top.document.title =
         '🔴' + file_name;
       console.error(
@@ -351,12 +375,12 @@ let bay = () => {
     }
 
     // create the component
-    customElements.define(compontent_tagname, class extends HTMLElement {
+    customElements.define(component_tagname, class extends HTMLElement {
       constructor() {
         super();
         this.mounted = false;
         this.template = document.createElement('template');
-        this.original_template = `${compontent_html.innerHTML}`;
+        this.original_template = `${component_html.innerHTML}`;
         this.uniqid = makeid(8);
         this.CSP_errors = false;
         this.dsd = false;
@@ -456,16 +480,16 @@ let bay = () => {
           this.sheet.replaceSync(proxy_css);
           this.shadowRoot.adoptedStyleSheets = [this.sheet];
         } else {
-          var blob = new Blob([proxy_css], {
+          const blob = new Blob([proxy_css], {
             type: 'text/css'
           });
-          var blobUrl = URL.createObjectURL(blob);
-          var styleLink = document.createElement('link');
+          let blobUrl = URL.createObjectURL(blob);
+          let styleLink = document.createElement('link');
           styleLink.rel = 'stylesheet';
           styleLink.href = blobUrl;
           this.shadowRoot.appendChild(styleLink);
           styleLink.id = 'bay-style';
-          var styleLinkUpdate = document.createElement('link');
+          let styleLinkUpdate = document.createElement('link');
           styleLinkUpdate.id = 'bay-style-update';
           styleLinkUpdate.href = blobUrl;
           styleLinkUpdate.rel = 'stylesheet';
@@ -480,8 +504,8 @@ let bay = () => {
        */
 
       stringToHTML(str) {
-        var parser = new DOMParser();
-        var doc = parser.parseFromString(str, 'text/html');
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(str, 'text/html');
         return doc.body;
       }
 
@@ -497,9 +521,9 @@ let bay = () => {
       }
 
       dom_diff(template, elem) {
-        var domNodes = Array.prototype.slice.call(elem.childNodes);
-        var templateNodes = Array.prototype.slice.call(template.childNodes);
-        var count = domNodes.length - templateNodes.length;
+        const domNodes = Array.prototype.slice.call(elem.childNodes);
+        const templateNodes = Array.prototype.slice.call(template.childNodes);
+        let count = domNodes.length - templateNodes.length;
         if (count > 0) {
           for (; count > 0; count--) {
             domNodes[domNodes.length - count].parentNode.removeChild(domNodes[domNodes.length - count]);
@@ -516,7 +540,7 @@ let bay = () => {
             } catch (error) {}
             return;
           }
-          var templateContent = this.getNodeContent(template_node);
+          const templateContent = this.getNodeContent(template_node);
           if (templateContent && templateContent !== this.getNodeContent(domNodes[index])) {
             domNodes[index].textContent = templateContent;
           }
@@ -525,7 +549,7 @@ let bay = () => {
             return;
           }
           if (domNodes[index].childNodes.length < 1 && template_node.childNodes.length > 0) {
-            var fragment = document.createDocumentFragment();
+            const fragment = document.createDocumentFragment();
             this.dom_diff(template_node, fragment);
             domNodes[index].appendChild(fragment);
             return;
@@ -555,7 +579,7 @@ let bay = () => {
       add_events_and_styles(element) {
         let this_newEvents = ``;
         [...element.querySelectorAll("*")].forEach((el, i) => {
-          let attrs = el.attributes;
+          const attrs = el.attributes;
           [...attrs].forEach(attr => {
             let event = (attr.name.substring(0, 1) === ':');
             if (event) {
@@ -595,7 +619,7 @@ let bay = () => {
 
       // constructed styles
       set_styles() {
-        let new_styles = window.bay[this.uniqid][`styles`]();
+        const new_styles = window.bay[this.uniqid][`styles`]();
         if (this.oldStyles !== new_styles) {
           this.oldStyles = new_styles;
           if (this.hasAdoptedStyleSheets) {
@@ -641,13 +665,13 @@ let bay = () => {
         }
         try {
           // Diff the DOM and template
-          var templateHTML = this.stringToHTML(window.bay[this.uniqid].template());
-          var shadowHTML = this.shadowRoot.querySelector("#bay");
+          const templateHTML = this.stringToHTML(window.bay[this.uniqid].template());
+          const shadowHTML = this.shadowRoot.querySelector("#bay");
           this.dom_diff(templateHTML, shadowHTML);
-          let all_template_elements = [...templateHTML.querySelectorAll("*")];
-          let all_shadow_elements = [...shadowHTML.querySelectorAll("*")];
+          const all_template_elements = [...templateHTML.querySelectorAll("*")];
+          const all_shadow_elements = [...shadowHTML.querySelectorAll("*")];
           all_template_elements.forEach((el, i) => {
-            let is_equal = all_shadow_elements[i].isEqualNode(el);
+            const is_equal = all_shadow_elements[i].isEqualNode(el);
             if (!is_equal) {
               if (all_shadow_elements[i]) {
                 this.copyAttributes(el, all_shadow_elements[i]);
@@ -674,12 +698,12 @@ let bay = () => {
       }
 
       add_JS_Blob_event(text) {
-        let blob_text = `{"use strict";const ${local_name} = window.bay['${this.uniqid}'];const ${store_name} = window.bay.global;${text}};`;
-        var blob = new Blob([blob_text], {
+        const blob_text = `{"use strict";const ${local_name} = window.bay['${this.uniqid}'];const ${store_name} = window.bay.global;${text}};`;
+        const blob = new Blob([blob_text], {
           type: 'text/javascript'
         });
-        var blobUrl = URL.createObjectURL(blob);
-        var newScript = document.createElement('script');
+        const blobUrl = URL.createObjectURL(blob);
+        const newScript = document.createElement('script');
         newScript.type = 'text/javascript';
         newScript.src = blobUrl;
         this.shadowRoot.appendChild(newScript);
@@ -705,11 +729,11 @@ let bay = () => {
             }
           }
         });
-        var blob = new Blob([text], {
+        const blob = new Blob([text], {
           type: 'text/javascript'
         });
-        var blobUrl = URL.createObjectURL(blob);
-        var newScript = document.createElement('script');
+        const blobUrl = URL.createObjectURL(blob);
+        const newScript = document.createElement('script');
         newScript.type = 'text/javascript';
         newScript.src = blobUrl;
         this.shadowRoot.appendChild(newScript);
@@ -735,10 +759,11 @@ let bay = () => {
 
       connectedCallback() {
         try {
-          window.addEventListener('bay_global_event', (e) => {
-            this.render_debouncer();
-          });
-
+          if(has_globals) {
+            window.addEventListener('bay_global_event', (e) => {
+              this.render_debouncer();
+            });
+          }
         } catch (error) {
           console.error(error);
         }
@@ -760,6 +785,8 @@ let bay = () => {
   bay.refresh = () => {
     get_all_bays(document);
   };
+
+  bay.create = create_template_fn;
 };
 
 if (typeof exports != "undefined") {
@@ -767,3 +794,6 @@ if (typeof exports != "undefined") {
 } else {
   bay();
 }
+
+// todo .mjs
+//export default bay;
