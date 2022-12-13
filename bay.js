@@ -24,9 +24,14 @@ let bay = () => {
     window.dispatchEvent(evt);
   }
 
-  function sanitizer(input) {
+  function escapeHTML(input) {
     if (typeof input === 'string') {
-      input = input.replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+      return input
+        .replaceAll(`&`, `&amp;`)
+        .replaceAll(`<`, `&lt;`)
+        .replaceAll(`>`, `&gt;`)
+        .replaceAll(`"`, `&quot;`)
+        .replaceAll(`'`, `&#39;`);
     }
     return input;
   }
@@ -51,7 +56,7 @@ let bay = () => {
         return target[key];
       },
       set: (target, key, value) => {
-        target[key] = sanitizer(value);
+        target[key] = escapeHTML(value);
         dispatch_global_event();
         return true;
       }
@@ -392,7 +397,7 @@ let bay = () => {
             return target[key];
           },
           set: (target, key, value) => {
-            target[key] = sanitizer(value);
+            target[key] = escapeHTML(value);
             this.render_debouncer();
             return true;
           }
