@@ -27,7 +27,6 @@ const bay = () => {
   function escapeHTML(input) {
     if (typeof input === 'string') {
       return input
-        .replaceAll(`&`, `&amp;`)
         .replaceAll(`<`, `&lt;`)
         .replaceAll(`>`, `&gt;`)
         .replaceAll(`"`, `&quot;`)
