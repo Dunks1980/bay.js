@@ -348,6 +348,9 @@ const bay = () => {
           const has_children = [...case_statement_el.querySelectorAll('case')];
           if (!has_children.length > 0) {
             const break_prop = case_statement_el.hasAttribute('break') ? 'break;' : '';
+            if (break_prop) {
+              case_statement_el.removeAttribute('break');
+            }
             const shared_case = case_statement_el.innerHTML;
             const statement = [...case_statement_el.attributes][0] ? [...case_statement_el.attributes][0].nodeValue : '';
             while (case_statement_el.attributes.length > 0)
