@@ -323,6 +323,65 @@ const bay = () => {
         });
       }
 
+
+      // switch ====================================================
+      while ([...component_html.querySelectorAll('switch')].length > 0) {
+        const switch_statements = [...component_html.querySelectorAll('switch')];
+        switch_statements.forEach(switch_statement_el => {
+          const has_children = [...switch_statement_el.querySelectorAll('switch')];
+          if (!has_children.length > 0) {
+            const statement = [...switch_statement_el.attributes][0] ? [...switch_statement_el.attributes][0].nodeValue : '';
+            while (switch_statement_el.attributes.length > 0)
+              switch_statement_el.removeAttribute(switch_statement_el.attributes[0].name);
+            let switch_html = switch_statement_el.outerHTML;
+            switch_statement_el.outerHTML = switch_html
+              .replace('<switch>', `\${(() => { switch (${statement}) { `)
+              .replace('</switch>', ` }; return '' })() }`);
+          }
+        });
+      }
+
+      // case ====================================================
+      while ([...component_html.querySelectorAll('case')].length > 0) {
+        const case_statements = [...component_html.querySelectorAll('case')];
+        case_statements.forEach(case_statement_el => {
+          const has_children = [...case_statement_el.querySelectorAll('case')];
+          if (!has_children.length > 0) {
+            const break_prop = case_statement_el.hasAttribute('break') ? 'break;' : '';
+            const shared_case = case_statement_el.innerHTML;
+            const statement = [...case_statement_el.attributes][0] ? [...case_statement_el.attributes][0].nodeValue : '';
+            while (case_statement_el.attributes.length > 0)
+              case_statement_el.removeAttribute(case_statement_el.attributes[0].name);
+            let case_html = case_statement_el.outerHTML;
+            if (shared_case.length === 0) {
+              case_statement_el.outerHTML = case_html
+              .replace('<case>', `case ${statement}:`)
+              .replace('</case>', ` ` + break_prop);
+            } else {
+              case_statement_el.outerHTML = case_html
+              .replace('<case>', `case ${statement}: return \``)
+              .replace('</case>', `\`; ` + break_prop);
+            }
+          }
+        });
+      }
+
+      // default ====================================================
+      while ([...component_html.querySelectorAll('default')].length > 0) {
+        const default_statements = [...component_html.querySelectorAll('default')];
+        default_statements.forEach(default_statement_el => {
+          const has_children = [...default_statement_el.querySelectorAll('default')];
+          if (!has_children.length > 0) {
+            while (default_statement_el.attributes.length > 0)
+            default_statement_el.removeAttribute(default_statement_el.attributes[0].name);
+            let default_html = default_statement_el.outerHTML;
+            default_statement_el.outerHTML = default_html
+              .replace('<default>', `default: return \``)
+              .replace('</default>', `\`;`);
+          }
+        });
+      }
+
       // lifecycle scripts ================================================
       while ([...component_html.querySelectorAll('script[update], script[render]')].length > 0) {
         const scripts = [...component_html.querySelectorAll('script[update], script[render]')];
