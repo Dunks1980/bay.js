@@ -50,15 +50,15 @@ There are 3 ways to define a component in bay.js: <br>
 
 3. Pass bay.js the template<br>
 ```js
-import header_el from "./../component_imports/header.html?raw";
+import my_component from "./../component_imports/my_component.html?raw";
 import bay from "@dunks1980/bay.js";
 bay.default();
-bay.default.create("header-component", header_el, ["logotext", "maxwidth"]);
+bay.default.create("my-component", my_component, ["message"]);
 ```
 
 ```html
 <!-- Anywhere in the HTML including other components -->
-<my-element color="green" font-size="3rem"></my-element>
+<my-component message="Hello world!"></my-component>
 ```
 
 A component can be used anywhere in the HTML but inline templates must be in the body of the document. "my-component" can be anything you like but it must have a dash in the name per the custom element spec.<br>
