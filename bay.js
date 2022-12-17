@@ -122,7 +122,7 @@ const bay = () => {
     let styles_text;
     let passed_attributes = attributes_array || [];
     if (template_string.indexOf('<style>') > -1) {
-      styles_text = template_el.split('<style>')[1].split('</style>')[0];
+      styles_text = template_string.split('<style>')[1].split('</style>')[0];
     }
     template_string = template_string
       .replaceAll(/<!--[\s\S]*?-->/g, '')
