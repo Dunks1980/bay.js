@@ -622,17 +622,21 @@ const bay = () => {
       }
 
       // ===================================================
-      copyAttributes(source, target) {
-        return [...source.attributes].forEach(attribute => {
+      copyAttributes(template, shadow) {
+        if ([...template.attributes].length === 0) {
+          while (shadow.attributes.length > 0)
+            shadow.removeAttribute(shadow.attributes[0].name);
+        }
+        return [...template.attributes].forEach(attribute => {
           if (attribute.nodeName === 'value') {
-            if (target.value !== attribute.value) {
-              target.value = attribute.value;
+            if (shadow.value !== attribute.value) {
+              shadow.value = attribute.value;
             }
           } else if (
-            !target.getAttribute(attribute.nodeName) ||
-            target.getAttribute(attribute.nodeName) !== attribute.value
+            !shadow.getAttribute(attribute.nodeName) ||
+            shadow.getAttribute(attribute.nodeName) !== attribute.value
           ) {
-            target.setAttribute(attribute.nodeName, attribute.value);
+            shadow.setAttribute(attribute.nodeName, attribute.value);
           }
         });
       }
