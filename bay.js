@@ -623,11 +623,12 @@ const bay = () => {
 
       // ===================================================
       copyAttributes(template, shadow) {
-        if ([...template.attributes].length === 0) {
-          while (shadow.attributes.length > 0)
-            shadow.removeAttribute(shadow.attributes[0].name);
-        }
-        return [...template.attributes].forEach(attribute => {
+        [...shadow.attributes].forEach(attribute => {
+          if (!template.getAttribute(attribute.nodeName)) {
+            shadow.removeAttribute(attribute.nodeName);
+          }
+        });
+        [...template.attributes].forEach(attribute => {
           if (attribute.nodeName === 'value') {
             if (shadow.value !== attribute.value) {
               shadow.value = attribute.value;
