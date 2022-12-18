@@ -24,11 +24,11 @@ const bay = () => {
     window.dispatchEvent(evt);
   }
 
+  const escape = document.createElement('textarea');
   function escapeHTML(input) {
     if (typeof input === 'string') {
-      return input
-        .replaceAll(`<`, `&lt;`)
-        .replaceAll(`>`, `&gt;`)
+      escape.textContent = input;
+      return escape.innerHTML
         .replaceAll(`"`, `&quot;`)
         .replaceAll(`'`, `&#39;`);
     }
