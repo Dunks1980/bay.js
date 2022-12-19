@@ -363,16 +363,22 @@ const bay = () => {
    */
   function copyAttributes(template, shadow) {
     [...shadow.attributes].forEach((attribute) => {
+      if (attribute.nodeName === "value") {
+        if (!template.value) {
+          shadow.value = "";
+        }
+      }
       if (!template.getAttribute(attribute.nodeName)) {
         shadow.removeAttribute(attribute.nodeName);
       }
     });
     [...template.attributes].forEach((attribute) => {
       if (attribute.nodeName === "value") {
-        if (shadow.value !== attribute.value) {
-          shadow.value = attribute.value;
+        if (shadow.value !== template.value) {
+          shadow.value = template.value;
         }
-      } else if (
+      }
+      if (
         !shadow.getAttribute(attribute.nodeName) ||
         shadow.getAttribute(attribute.nodeName) !== attribute.value
       ) {
