@@ -814,7 +814,7 @@ const bay = () => {
             script = "/* No script tag found */";
           }
           let proxy_script =
-            `const ${local_name} = window.bay['${this.uniqid}'];\nconst ${store_name} = window.bay.global;\nconst ${element_name} = ${local_name}['${element_name}'];` +
+            `const ${local_name} = window.bay['${this.uniqid}'];\nconst ${store_name} = window.bay.global;\nconst ${element_name} = ${local_name}['${element_name}'];\n$bay.decode = (html) => { const txt = document.createElement("textarea"); txt.innerHTML = html; return txt.value; };` +
             decodeHtml(script)
               .replaceAll("this[", `${local_name}.proxy[`)
               .replaceAll("this.", `${local_name}.proxy.`);
