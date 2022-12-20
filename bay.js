@@ -363,20 +363,34 @@ const bay = () => {
    */
   function copyAttributes(template, shadow) {
     [...shadow.attributes].forEach((attribute) => {
-      if (attribute.nodeName === "value") {
-        if (!template.value) {
-          shadow.value = "";
-        }
+      if (!template.value) {
+        shadow.value = "";
+      }
+      if (!template.checked) {
+        shadow.checked = false;
+      }
+      if (!template.selected) {
+        shadow.selected = false;
+      }
+      if (!template.disabled) {
+        shadow.disabled = false;
       }
       if (!template.getAttribute(attribute.nodeName)) {
         shadow.removeAttribute(attribute.nodeName);
       }
     });
     [...template.attributes].forEach((attribute) => {
-      if (attribute.nodeName === "value") {
-        if (shadow.value !== template.value) {
-          shadow.value = template.value;
-        }
+      if (shadow.value !== template.value) {
+        shadow.value = template.value;
+      }
+      if (shadow.checked !== template.checked) {
+        shadow.checked = template.checked;
+      }
+      if (shadow.selected !== template.selected) {
+        shadow.selected = template.selected;
+      }
+      if (shadow.disabled !== template.disabled) {
+        shadow.disabled = template.disabled;
       }
       if (
         !shadow.getAttribute(attribute.nodeName) ||
