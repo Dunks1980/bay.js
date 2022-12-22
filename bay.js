@@ -793,6 +793,9 @@ const bay = () => {
               return target[key];
             },
             set: (target, key, value) => {
+              if (value === undefined) {
+                return true;
+              }
               target[key] = escapeHTML(value);
               this.render_debouncer();
               return true;
@@ -813,8 +816,18 @@ const bay = () => {
           if (!script) {
             script = "/* No script tag found */";
           }
+
+          // for getting the component's root element ======================
+          this.shadowRoot.uniqid = this.uniqid;
+
+          let rootNode = this.getRootNode();
+          let parent_script = ``;
+          if (rootNode.host) {
+            parent_script = `\nconst $parent = window.bay['${rootNode.host.uniqid}']['proxy'];`;
+          }
+
           let proxy_script =
-            `const ${local_name} = window.bay['${this.uniqid}'];\nconst ${store_name} = window.bay.global;\nconst ${element_name} = ${local_name}['${element_name}'];\n$bay.decode = (html) => { const txt = document.createElement("textarea"); txt.innerHTML = html; return txt.value; };` +
+            `const ${local_name} = window.bay['${this.uniqid}'];\nconst ${store_name} = window.bay.global;\nconst ${element_name} = ${local_name}['${element_name}'];${parent_script}\n$bay.decode = (html) => { const txt = document.createElement("textarea"); txt.innerHTML = html; return txt.value;};` +
             decodeHtml(script)
               .replaceAll("this[", `${local_name}.proxy[`)
               .replaceAll("this.", `${local_name}.proxy.`);
