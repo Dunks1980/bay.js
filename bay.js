@@ -86,7 +86,7 @@ const bay = () => {
    * @param {number} length length of the string to be generated
    */
   function makeid(length) {
-    return crypto.randomUUID().replaceAll('-', '').substring(0, length);
+    return crypto.randomUUID().replaceAll("-", "").substring(0, length);
   }
   // ------------------------------
 
@@ -678,11 +678,16 @@ const bay = () => {
        * script tags with render attribute will be wrapped in a function iife
        */
       while (
-        [...component_html.querySelectorAll("script[update], script[render]")]
-          .length > 0
+        [
+          ...component_html.querySelectorAll(
+            "script[update], script[render], script[props]"
+          ),
+        ].length > 0
       ) {
         const scripts = [
-          ...component_html.querySelectorAll("script[update], script[render]"),
+          ...component_html.querySelectorAll(
+            "script[update], script[render], script[props]"
+          ),
         ];
         scripts.forEach((script) => {
           const script_type = script.attributes[0].name;
@@ -693,6 +698,13 @@ const bay = () => {
             script_html = script_html
               .replace("<script>", "${/*update*/\n(() => { setTimeout(() => {")
               .replace("</script>", '}, 0); return ""})()}');
+          } else if (script_type === "props") {
+            script_html = script_html
+              .replace(
+                "<script>",
+                "${/*props updates*/\n(() => { $update = () => { "
+              )
+              .replace("</script>", '}; return ""})()}');
           } else if (script_type === "render") {
             script_html = script_html
               .replace("<script>", "${/*render*/\n(() => {")
@@ -749,6 +761,8 @@ const bay = () => {
           this.CSP_errors = false;
           this.dsd = false;
           this.debouncer = false;
+          this.blob_prefixes = "";
+          this.blob_event_prefixes = "";
 
           // shadow dom setup ===============================================
           if (this.shadowRoot) {
@@ -812,21 +826,46 @@ const bay = () => {
 
           // for getting the component's root element ======================
           this.shadowRoot.uniqid = this.uniqid;
-
           let rootNode = this.getRootNode();
-          let parent_script = ``;
+          let parent_var = ``;
           if (rootNode.host) {
-            parent_script = `\nconst $parent = window.bay['${rootNode.host.uniqid}']['proxy'];`;
+            parent_var = `const $parent = window.bay['${rootNode.host.uniqid}']['proxy'];\n`;
           }
 
+          const local_var = `const ${local_name} = window.bay['${this.uniqid}'];\n`;
+          const global_var = `const ${store_name} = window.bay.global;\n`;
+          const element_var = `const ${element_name} = ${local_name}['${element_name}'];\n`;
+
+          // add update function ===========================================
+          this.local_update_evt = new CustomEvent(
+            `bay_local_update_event_${this.uniqid}`
+          );
+          let update_func = ``;
+          if (this.original_template.indexOf(`/*props updates*/`) > -1) {
+            update_func = `let $update = () => {};\nwindow.addEventListener(\`bay_local_update_event_${this.uniqid}\`, () => $update());`;
+          }
+
+          // add decode function ===========================================
+          window.bay.decode = (html) => {
+            const txt = document.createElement("textarea");
+            txt.innerHTML = html;
+            return txt.value;
+          };
+          const decode_var = `$bay.decode = window.bay.decode;\n`;
+
+          this.blob_prefixes = `${local_var}${global_var}${element_var}${parent_var}${decode_var}${update_func}`;
+          this.blob_event_prefixes = `${local_var}${global_var}${element_var}${parent_var}${decode_var}`;
+
           let proxy_script =
-            `const ${local_name} = window.bay['${this.uniqid}'];\nconst ${store_name} = window.bay.global;\nconst ${element_name} = ${local_name}['${element_name}'];${parent_script}\n$bay.decode = (html) => { const txt = document.createElement("textarea"); txt.innerHTML = html; return txt.value;};` +
+            `${this.blob_prefixes}` +
             decodeHtml(script)
               .replaceAll("this[", `${local_name}.proxy[`)
-              .replaceAll("this.", `${local_name}.proxy.`);
+              .replaceAll("this.", `${local_name}.proxy.`)
+              .replace(/(^[ \t]*\n)/gm, "");
           let proxy_html = decodeHtml(this.original_template)
             .replaceAll("this[", `${local_name}.proxy[`)
-            .replaceAll("this.", `${local_name}.proxy.`);
+            .replaceAll("this.", `${local_name}.proxy.`)
+            .replace(/(^[ \t]*\n)/gm, "");
           let proxy_css = "";
           if (styles_text) {
             proxy_css = decodeHtml(styles_text)
@@ -898,7 +937,7 @@ const bay = () => {
                   ) {
                     this_newEvents += `${local_name}['${i}'] = {};`;
                   }
-                  this_newEvents += `${local_name}['${i}']['${attr.name}'] = function(e) {${attr_data}};`;
+                  this_newEvents += `${local_name}['${i}']['${attr.name}'] = function(e) {${attr_data}};\n`;
                   el[`on${attr.name.split(":")[1]}`] = (e) => {
                     if (
                       window.bay[this.uniqid][`${i}`] &&
@@ -1003,7 +1042,7 @@ const bay = () => {
          * and add and is used to add the js in the attribute to memory
          */
         add_JS_Blob_event(text) {
-          const blob_text = `{"use strict";const ${local_name} = window.bay['${this.uniqid}'];const ${store_name} = window.bay.global;${text}};`;
+          const blob_text = `{"use strict";\n${this.blob_event_prefixes}${text}};`;
           const blob = new Blob([blob_text], {
             type: "text/javascript",
           });
@@ -1087,6 +1126,8 @@ const bay = () => {
         attributeChangedCallback(name, oldValue, newValue) {
           if (oldValue !== newValue) {
             this.shadowRoot.proxy[name] = newValue;
+            // trigger an event for the bay with uniqid
+            window.dispatchEvent(this.local_update_evt);
           }
         }
       }
