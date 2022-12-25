@@ -696,19 +696,19 @@ const bay = () => {
           let script_html = script.outerHTML;
           if (script_type === "update") {
             script_html = script_html
-              .replace("<script>", "${/*update*/\n(() => { setTimeout(() => {")
-              .replace("</script>", '}, 0); return ""})()}');
+              .replace("<script>", "${/*update*/ (() => {setTimeout(() => {")
+              .replace("</script>", '}, 0); return ``})()}');
           } else if (script_type === "props") {
             script_html = script_html
               .replace(
                 "<script>",
-                "${/*props updates*/\n(() => { $update = () => { "
+                "${ /*props updates*/ (() => {$props = () => {"
               )
-              .replace("</script>", '}; return ""})()}');
+              .replace("</script>", '};return ``})()}');
           } else if (script_type === "render") {
             script_html = script_html
-              .replace("<script>", "${/*render*/\n(() => {")
-              .replace("</script>", "})()}");
+              .replace("<script>", "${ /*render*/ (() => {")
+              .replace("</script>", " return ``})()}");
           }
           script.outerHTML = script_html;
           script.remove();
@@ -842,7 +842,7 @@ const bay = () => {
           );
           let update_func = ``;
           if (this.original_template.indexOf(`/*props updates*/`) > -1) {
-            update_func = `let $update = () => {};\nwindow.addEventListener(\`bay_local_update_event_${this.uniqid}\`, () => $update());`;
+            update_func = `let $props;\nwindow.addEventListener(\`bay_local_update_event_${this.uniqid}\`, () => $props());\n`;
           }
 
           // add decode function ===========================================
