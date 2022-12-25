@@ -1,8 +1,9 @@
 {
   "name": "@dunks1980/bay.js",
-  "version": "1.3.12",
+  "version": "2.0.0",
   "description": "Web component library",
   "main": "bay.js",
+  "module": "bay.mjs",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

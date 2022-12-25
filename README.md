@@ -9,18 +9,33 @@ If you wish to support this project please [buy me a coffee.](https://www.buymea
 
 ## Installation
 
-Bay.js can be used via CDN or via NPM.
+Bay.js can be used via a script tag or importing as a module.
 
-#### CDN
+#### Script tag:
 ```html
 <script src="//unpkg.com/@dunks1980/bay.js/bay.min.js"></script>
 ```
-#### NPM
+<hr />
+
+#### Module Script tag:
+```html
+<script type="module" src="main.js"></script>
+```
+```javascript
+// In main.js
+import bay from '//unpkg.com/@dunks1980/bay.js/bay.mjs';
+bay();
+```
+You may want to add a version number like this to prevent breaking changes: '//unpkg.com/@dunks1980/bay.js@2.0.0/bay.mjs' the version number is optional and can be acquired from going to the npm package page. Or if using node_modules: './node_modules/@dunks1980/bay.js/bay.mjs';
+<hr />
+
+#### Module NPM:
 ```javascript
 npm i @dunks1980/bay.js
 import bay from '@dunks1980/bay.js';
-bay.default();
+bay();
 ```
+<hr />
 
 ## Usage
 
@@ -52,8 +67,8 @@ There are 3 ways to define a component in bay.js: <br>
 ```js
 import my_component from "./../component_imports/my_component.html?raw";
 import bay from "@dunks1980/bay.js";
-bay.default();
-bay.default.create("my-component", my_component, ["message"]);
+bay();
+bay.create("my-component", my_component, ["message"]);
 ```
 
 ```html

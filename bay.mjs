@@ -1146,7 +1146,4 @@ const bay = () => {
   bay.create = create_template_fn;
 };
 
-bay();
-
-// todo .mjs
-//export default bay;
+export default bay;
