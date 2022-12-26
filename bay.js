@@ -50,6 +50,17 @@ const bay = () => {
   // ------------------------------
 
   /**
+   * Decodes HTML entities in a string.
+   * @param {string} html string to be decoded
+   */
+  function decodeHtml(html) {
+    const txt = document.createElement("textarea");
+    txt.innerHTML = html;
+    return txt.value;
+  }
+  // ------------------------------
+
+  /**
    * Global data object that can be accessed by all components.
    */
   if (!window.bay.global) {
@@ -87,17 +98,6 @@ const bay = () => {
    */
   function makeid(length) {
     return crypto.randomUUID().replaceAll("-", "").substring(0, length);
-  }
-  // ------------------------------
-
-  /**
-   * Decodes HTML entities in a string.
-   * @param {string} html string to be decoded
-   */
-  function decodeHtml(html) {
-    const txt = document.createElement("textarea");
-    txt.innerHTML = html;
-    return txt.value;
   }
   // ------------------------------
 
@@ -697,14 +697,14 @@ const bay = () => {
           if (script_type === "update") {
             script_html = script_html
               .replace("<script>", "${/*update*/ (() => {setTimeout(() => {")
-              .replace("</script>", '}, 0); return ``})()}');
+              .replace("</script>", "}, 0); return ``})()}");
           } else if (script_type === "props") {
             script_html = script_html
               .replace(
                 "<script>",
                 "${ /*props updates*/ (() => {$props = () => {"
               )
-              .replace("</script>", '};return ``})()}');
+              .replace("</script>", "};return ``})()}");
           } else if (script_type === "render") {
             script_html = script_html
               .replace("<script>", "${ /*render*/ (() => {")
@@ -845,16 +845,15 @@ const bay = () => {
             update_func = `let $props;\nwindow.addEventListener(\`bay_local_update_event_${this.uniqid}\`, () => $props());\n`;
           }
 
-          // add decode function ===========================================
-          window.bay.decode = (html) => {
-            const txt = document.createElement("textarea");
-            txt.innerHTML = html;
-            return txt.value;
-          };
-          const decode_var = `$bay.decode = window.bay.decode;\n`;
+          // add decode & encode functions =================================
+          bay.decode = decodeHtml;
+          const decode_var = `$bay.decode = bay.decode;\n`;
 
-          this.blob_prefixes = `${local_var}${global_var}${element_var}${parent_var}${decode_var}${update_func}`;
-          this.blob_event_prefixes = `${local_var}${global_var}${element_var}${parent_var}${decode_var}`;
+          bay.encode = escapeHTML;
+          const encode_var = `$bay.encode = bay.encode;\n`;
+
+          this.blob_prefixes = `${local_var}${global_var}${element_var}${parent_var}${encode_var}${decode_var}${update_func}`;
+          this.blob_event_prefixes = `${local_var}${global_var}${element_var}${parent_var}${encode_var}${decode_var}`;
 
           let proxy_script =
             `${this.blob_prefixes}` +
@@ -1147,6 +1146,4 @@ const bay = () => {
 };
 
 bay();
-
-// todo .mjs
 //export default bay;
