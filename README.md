@@ -26,7 +26,7 @@ Bay.js can be used via a script tag or importing as a module.
 import bay from '//unpkg.com/@dunks1980/bay.js/bay.mjs';
 bay();
 ```
-You may want to add a version number like this to prevent breaking changes: '//unpkg.com/@dunks1980/bay.js@<VERSION>/bay.mjs' the version number is optional and can be acquired from going to the npm package page. Or if using node_modules: './node_modules/@dunks1980/bay.js/bay.mjs';
+You may want to add a version number like this to prevent breaking changes: '//unpkg.com/@dunks1980/bay.js@< VERSION >/bay.mjs' the version number is optional and can be acquired from going to the npm package page. Or if using node_modules: './node_modules/@dunks1980/bay.js/bay.mjs';
 <hr />
 
 #### Module NPM:
