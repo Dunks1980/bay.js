@@ -1,6 +1,14 @@
 const bay = () => {
   "use strict";
 
+  const local_name = "$bay";
+  const store_name = "$global";
+  const element_name = "$el";
+  window.bay = {};
+  let file_name = "";
+  let to_fetch = [];
+  let already_fetched = [];
+
   /**
    * Used to attach shadow roots to templates with the shadowroot attribute
    * @param {HTMLElement} root
@@ -15,14 +23,6 @@ const bay = () => {
     });
   })(document);
   // ------------------------------
-
-  window.bay = {};
-  const local_name = "$bay";
-  const store_name = "$global";
-  const element_name = "$el";
-  let file_name = "";
-  let to_fetch = [];
-  let already_fetched = [];
 
   /**
    * Tells other components using $global that the global data has changed.
@@ -680,13 +680,13 @@ const bay = () => {
       while (
         [
           ...component_html.querySelectorAll(
-            "script[update], script[render], script[props]"
+            "script[update], script[render], script[props], script[slotchange]"
           ),
         ].length > 0
       ) {
         const scripts = [
           ...component_html.querySelectorAll(
-            "script[update], script[render], script[props]"
+            "script[update], script[render], script[props], script[slotchange]"
           ),
         ];
         scripts.forEach((script) => {
@@ -694,22 +694,35 @@ const bay = () => {
           while (script.attributes.length > 0)
             script.removeAttribute(script.attributes[0].name);
           let script_html = script.outerHTML;
-          if (script_type === "update") {
-            script_html = script_html
-              .replace("<script>", "${/*update*/ (() => {setTimeout(() => {")
-              .replace("</script>", "}, 0); return ``})()}");
-          } else if (script_type === "props") {
-            script_html = script_html
-              .replace(
-                "<script>",
-                "${ /*props updates*/ (() => {$props = () => {"
-              )
-              .replace("</script>", "};return ``})()}");
-          } else if (script_type === "render") {
-            script_html = script_html
-              .replace("<script>", "${ /*render*/ (() => {")
-              .replace("</script>", " return ``})()}");
+          switch (script_type) {
+            case "update":
+              script_html = script_html
+                .replace("<script>", "${/*update*/ (() => {setTimeout(() => {")
+                .replace("</script>", "}, 0); return ``})()}");
+              break;
+            case "props":
+              script_html = script_html
+                .replace(
+                  "<script>",
+                  "${ /*props updates*/ (() => {$props = () => {"
+                )
+                .replace("</script>", "};return ``})()}");
+              break;
+            case "render":
+              script_html = script_html
+                .replace("<script>", "${ /*render*/ (() => {")
+                .replace("</script>", " return ``})()}");
+              break;
+            case "slotchange":
+              script_html = script_html
+                .replace(
+                  "<script>",
+                  "${ /*slotchange updates*/ (() => {$slotchange = (e) => { $details = e.detail;\n"
+                )
+                .replace("</script>", "};return ``})()}");
+              break;
           }
+
           script.outerHTML = script_html;
           script.remove();
         });
@@ -845,6 +858,12 @@ const bay = () => {
             update_func = `let $props;\nwindow.addEventListener(\`bay_local_update_event_${this.uniqid}\`, () => $props());\n`;
           }
 
+          // add slotchange function =======================================
+          let slotchange_func = ``;
+          if (this.original_template.indexOf(`/*slotchange updates*/`) > -1) {
+            update_func = `let $slotchange = () => {};\nlet $details = {'element': '', 'changed': ''};\nwindow.addEventListener(\`bay_slotchange_event_${this.uniqid}\`, (e) => $slotchange(e));\n`;
+          }
+
           // add decode & encode functions =================================
           bay.decode = decodeHtml;
           const decode_var = `$bay.decode = bay.decode;\n`;
@@ -852,7 +871,37 @@ const bay = () => {
           bay.encode = escapeHTML;
           const encode_var = `$bay.encode = bay.encode;\n`;
 
-          this.blob_prefixes = `${local_var}${global_var}${element_var}${parent_var}${encode_var}${decode_var}${update_func}`;
+          // add slotchange event ==========================================
+          window.bay[this.uniqid].addEventListener("slotchange", (e) => {
+            this.local_slotchange_evt = new CustomEvent(
+              `bay_slotchange_event_${this.uniqid}`,
+              { detail: { element: e.target, changed: "slotchange" } }
+            );
+            window.dispatchEvent(this.local_slotchange_evt);
+          });
+          let bay_slots = this.querySelectorAll("*");
+          bay_slots.forEach((slot) => {
+            const slot_observer = new MutationObserver((mutations) => {
+              mutations.forEach((mutation) => {
+                if (mutation.type === "attributes") {
+                  this.local_slotchange_evt = new CustomEvent(
+                    `bay_slotchange_event_${this.uniqid}`,
+                    { detail: { element: slot, changed: "attributes" } }
+                  );
+                  window.dispatchEvent(this.local_slotchange_evt);
+                } else if (mutation.type === "childList") {
+                  this.local_slotchange_evt = new CustomEvent(
+                    `bay_slotchange_event_${this.uniqid}`,
+                    { detail: { element: slot, changed: "childList" } }
+                  );
+                  window.dispatchEvent(this.local_slotchange_evt);
+                }
+              });
+            });
+            slot_observer.observe(slot, { attributes: true, childList: true });
+          });
+
+          this.blob_prefixes = `${local_var}${global_var}${element_var}${parent_var}${encode_var}${decode_var}${update_func}${slotchange_func}`;
           this.blob_event_prefixes = `${local_var}${global_var}${element_var}${parent_var}${encode_var}${decode_var}`;
 
           let proxy_script =
