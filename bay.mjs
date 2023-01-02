@@ -1176,7 +1176,7 @@ const bay = () => {
     get_all_bays(document);
   };
 
-  window.bay.create = create_template_fn;
+  bay.create = create_template_fn;
 };
 
 //bay();
