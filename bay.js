@@ -135,6 +135,12 @@ const bay = () => {
     const doc = new DOMParser();
     let html;
     let styles_text;
+    if (template_el.substring(0, 16) === "export default `") {
+      template_el = template_el.trim();
+      template_el = template_el.split("export default `")[1];
+      template_el = template_el.substring(0, template_el.length - 2);
+      template_el = template_el.replaceAll('\\${', '${').replaceAll('\\`', '`');
+    }
     if (template_el.indexOf("<style>") > -1) {
       styles_text = template_el.split("<style>")[1].split("</style>")[0];
     }
@@ -355,38 +361,17 @@ const bay = () => {
    * @param {HTMLElement} shadow
    */
   function copyAttributes(template, shadow) {
+    if (!template.value) {
+      shadow.value = "";
+    }
     [...shadow.attributes].forEach((attribute) => {
-      if (!template.value) {
-        shadow.value = "";
-      }
-      if (!template.checked) {
-        shadow.checked = false;
-      }
-      if (!template.selected) {
-        shadow.selected = false;
-      }
-      if (!template.disabled) {
-        shadow.disabled = false;
-      }
-      if (!template.getAttribute(attribute.nodeName)) {
+      if (!template.hasAttribute(attribute.name)) {
         shadow.removeAttribute(attribute.nodeName);
       }
     });
     [...template.attributes].forEach((attribute) => {
-      if (shadow.value !== template.value) {
-        shadow.value = template.value;
-      }
-      if (shadow.checked !== template.checked) {
-        shadow.checked = template.checked;
-      }
-      if (shadow.selected !== template.selected) {
-        shadow.selected = template.selected;
-      }
-      if (shadow.disabled !== template.disabled) {
-        shadow.disabled = template.disabled;
-      }
       if (
-        !shadow.getAttribute(attribute.nodeName) ||
+        !shadow.hasAttribute(attribute.nodeName) ||
         shadow.getAttribute(attribute.nodeName) !== attribute.value
       ) {
         shadow.setAttribute(attribute.nodeName, attribute.value);
