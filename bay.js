@@ -1172,7 +1172,7 @@ const bay = () => {
     get_all_bays(document);
   };
 
-  window.bay.refresh = () => {
+  bay.refresh = () => {
     get_all_bays(document);
   };
 
