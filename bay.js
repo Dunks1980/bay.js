@@ -850,10 +850,10 @@ const bay = () => {
           }
 
           // add decode & encode functions =================================
-          bay.decode = decodeHtml;
+          window.bay.decode = decodeHtml;
           const decode_var = `$bay.decode = bay.decode;\n`;
 
-          bay.encode = escapeHTML;
+          window.bay.encode = escapeHTML;
           const encode_var = `$bay.encode = bay.encode;\n`;
 
           // add slotchange event ==========================================
@@ -1172,11 +1172,11 @@ const bay = () => {
     get_all_bays(document);
   };
 
-  bay.refresh = () => {
+  window.bay.refresh = () => {
     get_all_bays(document);
   };
 
-  bay.create = create_template_fn;
+  window.bay.create = create_template_fn;
 };
 
 bay();
