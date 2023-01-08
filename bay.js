@@ -139,7 +139,7 @@ const bay = () => {
       template_el = template_el.trim();
       template_el = template_el.split("export default `")[1];
       template_el = template_el.substring(0, template_el.length - 2);
-      template_el = template_el.replaceAll('\\${', '${').replaceAll('\\`', '`');
+      template_el = template_el.replaceAll("\\${", "${").replaceAll("\\`", "`");
     }
     if (template_el.indexOf("<style>") > -1) {
       styles_text = template_el.split("<style>")[1].split("</style>")[0];
@@ -762,6 +762,22 @@ const bay = () => {
           this.blob_prefixes = "";
           this.blob_event_prefixes = "";
 
+          document.addEventListener("securitypolicyviolation", (e) => {
+            e.preventDefault();
+            if (e.violatedDirective.indexOf("script-src") > -1) {
+              if (e.blockedURI === "blob") {
+                console.warn("blob: needed in script-src CSP");
+                this.CSP_errors = true;
+              }
+            }
+            if (e.violatedDirective.indexOf("style-src") > -1) {
+              if (e.blockedURI === "blob") {
+                console.warn("blob: needed in style-src CSP");
+                this.CSP_errors = true;
+              }
+            }
+          });
+
           // shadow dom setup ===============================================
           if (this.shadowRoot) {
             const nodes = [...this.shadowRoot.children];
@@ -913,7 +929,7 @@ const bay = () => {
           }
 
           this.add_JS_BlobFileToHead(
-            `{"use strict";\n${proxy_script}\n${local_name}.template = () => { return \`${proxy_html}\`;};\n${local_name}.styles = () => { return \`${proxy_css}\`;};\n};`
+            `${proxy_script}\n${local_name}.template = () => { return \`${proxy_html}\`;};\n${local_name}.styles = () => { return \`${proxy_css}\`;};`
           );
 
           this.hasAdoptedStyleSheets = false;
@@ -1074,20 +1090,19 @@ const bay = () => {
          * this will create a blob file with all the events on the html (:click)
          * and add and is used to add the js in the attribute to memory
          */
-        add_JS_Blob_event(text) {
-          const blob_text = `{"use strict";\n${this.blob_event_prefixes}${text}};`;
-          const blob = new Blob([blob_text], {
-            type: "text/javascript",
-          });
+        async add_JS_Blob_event(text) {
+          const blob = new Blob(
+            [
+              `export default () => {"use strict";\n${this.blob_event_prefixes}${text}};`,
+            ],
+            {
+              type: "text/javascript",
+            }
+          );
           const blobUrl = URL.createObjectURL(blob);
-          const newScript = document.createElement("script");
-          newScript.type = "text/javascript";
-          newScript.src = blobUrl;
-          this.shadowRoot.appendChild(newScript);
-          newScript.onload = () => {
-            URL.revokeObjectURL(blobUrl);
-            newScript.remove();
-          };
+          const code = await import(blobUrl);
+          code.default();
+          URL.revokeObjectURL(blobUrl);
         }
 
         /**
@@ -1096,50 +1111,33 @@ const bay = () => {
          * the template function will return the html and the styles function will return the styles
          * this is used by the diff function to compare the old and new html and styles with updated data
          */
-        add_JS_BlobFileToHead(text) {
-          document.addEventListener("securitypolicyviolation", (e) => {
-            e.preventDefault();
-            if (e.violatedDirective.indexOf("script-src") > -1) {
-              if (e.blockedURI === "blob") {
-                console.warn("blob: needed in script-src CSP");
-                this.CSP_errors = true;
-              }
+        async add_JS_BlobFileToHead(text) {
+          const blob = new Blob(
+            [`export default () => {"use strict";\n${text}};`],
+            {
+              type: "text/javascript",
             }
-            if (e.violatedDirective.indexOf("style-src") > -1) {
-              if (e.blockedURI === "blob") {
-                console.warn("blob: needed in style-src CSP");
-                this.CSP_errors = true;
-              }
-            }
-          });
-          const blob = new Blob([text], {
-            type: "text/javascript",
-          });
+          );
           const blobUrl = URL.createObjectURL(blob);
-          const newScript = document.createElement("script");
-          newScript.type = "text/javascript";
-          newScript.src = blobUrl;
-          this.shadowRoot.appendChild(newScript);
-          newScript.onload = () => {
-            URL.revokeObjectURL(blobUrl);
-            if (!this.dsd) {
-              this.original_template = window.bay[this.uniqid].template();
-              this.shadowRoot.getElementById("bay").innerHTML =
-                this.original_template;
+          const code = await import(blobUrl);
+          code.default();
+          URL.revokeObjectURL(blobUrl);
+          if (!this.dsd) {
+            this.original_template = window.bay[this.uniqid].template();
+            this.shadowRoot.getElementById("bay").innerHTML =
+              this.original_template;
+          }
+          this.render_debouncer();
+          if (this.CSP_errors) {
+            this.shadowRoot.innerHTML =
+              "CSP issue, add blob: to script-src & style-src whitelist.";
+            return;
+          } else {
+            this.shadowRoot.getElementById("bay").style.display = "";
+            if (this.shadowRoot.querySelector("[bay]")) {
+              get_all_bays(this.shadowRoot);
             }
-            this.render_debouncer();
-            newScript.remove();
-            if (this.CSP_errors) {
-              this.shadowRoot.innerHTML =
-                "CSP issue, add blob: to script-src & style-src whitelist.";
-              return;
-            } else {
-              this.shadowRoot.getElementById("bay").style.display = "";
-              if (this.shadowRoot.querySelector("[bay]")) {
-                get_all_bays(this.shadowRoot);
-              }
-            }
-          };
+          }
         }
 
         connectedCallback() {
