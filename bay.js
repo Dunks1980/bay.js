@@ -131,10 +131,11 @@ const bay = () => {
    * @param {HTMLElement} template_el template element
    * @param {HTMLElement} bay bay custom element tag
    */
-  function modify_template(template_el, bay) {
+  function modify_template(template_el, bay, dsd) {
     const doc = new DOMParser();
     let html;
     let styles_text;
+    let tagname = bay.tagName.toLowerCase();
     if (template_el.substring(0, 16) === "export default `") {
       template_el = template_el.trim();
       template_el = template_el.split("export default `")[1];
@@ -149,10 +150,15 @@ const bay = () => {
       .replaceAll(`<style>${styles_text}</style>`, "");
     html = doc.parseFromString(template_el, "text/html");
     if (html) {
-      if (!customElements.get(bay.tagName.toLowerCase())) {
+      if (!customElements.get(tagname)) {
+        if (!dsd) {
+          [...document.querySelectorAll(tagname)].forEach((el) => {
+            el.style.display = "none";
+          });
+        }
         create_component(
           html,
-          bay.tagName.toLowerCase(),
+          tagname,
           getAttributes(bay),
           styles_text
         );
@@ -212,10 +218,11 @@ const bay = () => {
         if (!bay.shadowRoot) {
           modify_template(
             decodeHtml(bay.querySelector("template").innerHTML),
-            bay
+            bay,
+            true
           );
         } else {
-          modify_template(decodeHtml(bay.shadowRoot.innerHTML), bay);
+          modify_template(decodeHtml(bay.shadowRoot.innerHTML), bay, true);
         }
       } else if (location.substring(0, 1) === "#") {
         file_name = location;
@@ -226,13 +233,13 @@ const bay = () => {
           );
           return;
         }
-        modify_template(template_el.innerHTML, bay);
+        modify_template(template_el.innerHTML, bay, false);
       } else {
         const request = new XMLHttpRequest();
         request.open("GET", location);
         request.setRequestHeader("Content-Type", "text/plain");
         request.addEventListener("load", (event) => {
-          modify_template(event.target.responseText, bay);
+          modify_template(event.target.responseText, bay, false);
         });
         request.addEventListener("error", () => {
           console.error(
@@ -792,7 +799,6 @@ const bay = () => {
             });
             this.template.innerHTML = /*HTML*/ `<div id="bay"></div>`;
             this.shadowRoot.appendChild(this.template.content.cloneNode(true));
-            this.shadowRoot.querySelector("#bay").style.display = "none";
           }
 
           // local proxy setup =============================================
@@ -1133,10 +1139,10 @@ const bay = () => {
               "CSP issue, add blob: to script-src & style-src whitelist.";
             return;
           } else {
-            this.shadowRoot.getElementById("bay").style.display = "";
             if (this.shadowRoot.querySelector("[bay]")) {
               get_all_bays(this.shadowRoot);
             }
+            this.style.display = "";
           }
         }
 
