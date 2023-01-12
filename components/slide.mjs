@@ -1,4 +1,4 @@
-export default `
+export default /*HTML*/`
 <div 
   id="container-content"
   :style="\${this.slide_style()}"

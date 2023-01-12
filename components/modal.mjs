@@ -1,8 +1,8 @@
-export default `
+export default /*HTML*/`
 <div class="container-background \${this.bg}" :click="$el.setAttribute('open', 'false');" :style="
     display: \${this.display};
-    transition: all \${this['bg-transition']};
-  ">
+    transition: all \${this.duration} ease;
+  " :transitionend="this.transition_end()">
   <div id="container-content" :click="e.stopPropagation();" :style="
       overflow: hidden;
       left: \${this.left};
@@ -10,8 +10,8 @@ export default `
       transform: translate(\${this.translateX}, \${this.translateY}) scale(\${this.scale});
       opacity: \${this.opacity};
       display: \${this.display};
-      transition: all \${this.transition};
-    " :transitionend="this.transition_end()">
+      transition: all \${this.duration} \${this.curve};
+    ">
     <div id="content-wrap">
       <slot></slot>
     </div>
@@ -29,8 +29,8 @@ export default `
   this.top = pos_fn().top || '0%';
   this.display = 'none';
   this.displaybg = 'none';
-  this['bg-transition'] = this['bg-transition'] || '.25s ease';
-  this.transition = this.transition || '.25s ease';
+  this.duration = this.duration || '.25s';
+  this.curve = this.curve || 'ease';
   function pos_fn() {
     let pos_obj = {};
     switch (this.position) {
