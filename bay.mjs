@@ -136,9 +136,10 @@ const bay = () => {
     let html;
     let styles_text;
     let tagname = bay.tagName.toLowerCase();
-    if (template_el.substring(0, 16) === "export default `") {
+    let start_split = 'export default /*HTML*/`';
+    if (template_el.startsWith(start_split)) {
       template_el = template_el.trim();
-      template_el = template_el.split("export default `")[1];
+      template_el = template_el.split(start_split)[1];
       template_el = template_el.substring(0, template_el.length - 2);
       template_el = template_el.replaceAll("\\${", "${").replaceAll("\\`", "`");
     }
@@ -151,11 +152,6 @@ const bay = () => {
     html = doc.parseFromString(template_el, "text/html");
     if (html) {
       if (!customElements.get(tagname)) {
-        if (!dsd) {
-          [...document.querySelectorAll(tagname)].forEach((el) => {
-            el.style.display = "none";
-          });
-        }
         create_component(html, tagname, getAttributes(bay), styles_text);
       }
     }
@@ -358,7 +354,7 @@ const bay = () => {
   /** ============================= */
 
   /**
-   * copy attributes from template to shadow
+   * check if the attribute can be set via javascript
    * @param {HTMLElement} element
    * @param {string} attribute
    */
@@ -368,9 +364,8 @@ const bay = () => {
       typeof element[attribute] !== "object"
     ) {
       return true;
-    } else {
-      return false;
-    }
+    } 
+    return false;
   }
 
   /**
@@ -379,14 +374,11 @@ const bay = () => {
    * @param {HTMLElement} shadow
    */
   function copyAttributes(template, shadow) {
-    if (!template.value) {
-      shadow.value = "";
-    }
     [...shadow.attributes].forEach((attribute) => {
       if (!template.hasAttribute(attribute.name)) {
         shadow.removeAttribute(attribute.nodeName);
         if (canSetAttribute(shadow, attribute.nodeName)) {
-          shadow[attribute.nodeName] = "";
+          delete shadow[attribute.nodeName];
         }
       }
     });
@@ -1161,7 +1153,6 @@ const bay = () => {
             if (this.shadowRoot.querySelector("[bay]")) {
               get_all_bays(this.shadowRoot);
             }
-            this.style.display = "";
           }
         }
 
