@@ -156,12 +156,7 @@ const bay = () => {
             el.style.display = "none";
           });
         }
-        create_component(
-          html,
-          tagname,
-          getAttributes(bay),
-          styles_text
-        );
+        create_component(html, tagname, getAttributes(bay), styles_text);
       }
     }
   }
@@ -364,6 +359,22 @@ const bay = () => {
 
   /**
    * copy attributes from template to shadow
+   * @param {HTMLElement} element
+   * @param {string} attribute
+   */
+  function canSetAttribute(element, attribute) {
+    if (
+      typeof element[attribute] !== "undefined" &&
+      typeof element[attribute] !== "object"
+    ) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  /**
+   * copy attributes from template to shadow
    * @param {HTMLElement} template
    * @param {HTMLElement} shadow
    */
@@ -374,6 +385,9 @@ const bay = () => {
     [...shadow.attributes].forEach((attribute) => {
       if (!template.hasAttribute(attribute.name)) {
         shadow.removeAttribute(attribute.nodeName);
+        if (canSetAttribute(shadow, attribute.nodeName)) {
+          shadow[attribute.nodeName] = "";
+        }
       }
     });
     [...template.attributes].forEach((attribute) => {
@@ -382,6 +396,11 @@ const bay = () => {
         shadow.getAttribute(attribute.nodeName) !== attribute.value
       ) {
         shadow.setAttribute(attribute.nodeName, attribute.value);
+      }
+      if (canSetAttribute(shadow, attribute.nodeName)) {
+        if (shadow[attribute.nodeName] !== attribute.value) {
+          shadow[attribute.nodeName] = attribute.value;
+        }
       }
     });
   }
