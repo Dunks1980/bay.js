@@ -131,7 +131,7 @@ const bay = () => {
    * @param {HTMLElement} template_el template element
    * @param {HTMLElement} bay bay custom element tag
    */
-  function modify_template(template_el, bay, dsd) {
+  function modify_template(template_el, bay) {
     const doc = new DOMParser();
     let html;
     let styles_text;
@@ -209,11 +209,10 @@ const bay = () => {
         if (!bay.shadowRoot) {
           modify_template(
             decodeHtml(bay.querySelector("template").innerHTML),
-            bay,
-            true
+            bay
           );
         } else {
-          modify_template(decodeHtml(bay.shadowRoot.innerHTML), bay, true);
+          modify_template(decodeHtml(bay.shadowRoot.innerHTML), bay);
         }
       } else if (location.substring(0, 1) === "#") {
         file_name = location;
@@ -224,13 +223,13 @@ const bay = () => {
           );
           return;
         }
-        modify_template(template_el.innerHTML, bay, false);
+        modify_template(template_el.innerHTML, bay);
       } else {
         const request = new XMLHttpRequest();
         request.open("GET", location);
         request.setRequestHeader("Content-Type", "text/plain");
         request.addEventListener("load", (event) => {
-          modify_template(event.target.responseText, bay, false);
+          modify_template(event.target.responseText, bay);
         });
         request.addEventListener("error", () => {
           console.error(
