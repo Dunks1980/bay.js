@@ -676,7 +676,7 @@ const bay = () => {
 
       /**
        * inner-html
-       * replace case tags with the equivalent javascript code
+       * replace inner-html tags with the equivalent javascript code
        * inserts the innerHTML of the tag into the parent element 
        * within the bay element's tag, will replace any HTML already present
        */
