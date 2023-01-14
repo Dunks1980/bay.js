@@ -409,6 +409,7 @@ const bay = () => {
     let script;
     let observedAttributes_from_element;
     let has_globals = false;
+    let has_inner_html = false; 
     try {
       // html ====================================================
       component_html = html.body;
@@ -674,6 +675,28 @@ const bay = () => {
       }
 
       /**
+       * inner-html
+       * replace case tags with the equivalent javascript code
+       * inserts the innerHTML of the tag into the parent element 
+       * within the bay element's tag, will replace any HTML already present
+       */
+      while ([...component_html.querySelectorAll("inner-html")].length > 0) {
+        has_inner_html = true;
+        const inner_htmls = [...component_html.querySelectorAll("inner-html")];
+        inner_htmls.forEach((inner_html_el) => {
+          while (inner_html_el.attributes.length > 0) {
+            inner_html_el.removeAttribute(inner_html_el.attributes[0].name);
+          }
+          let inner_html_el_html = inner_html_el.outerHTML;
+          inner_html_el_html = inner_html_el_html
+            .replace("<inner-html>", "${ (() => { $el.innerHTML += `")
+            .replace("</inner-html>", "`; return ''} )()}");
+          inner_html_el.outerHTML = inner_html_el_html;
+          inner_html_el.remove();
+        });
+      }
+
+      /**
        * lifecycle scripts
        * replace script tags with the equivalent javascript code
        * script tags with update attribute will be wrapped in a setTimeout iife
@@ -918,6 +941,12 @@ const bay = () => {
             slot_observer.observe(slot, { attributes: true, childList: true });
           });
 
+          // add inner-html vars ==========================================
+          let inner_html_start = '';
+          if (has_inner_html) {
+            inner_html_start = ` $el.innerHTML = ''; `;
+          }
+
           this.blob_prefixes = `${local_var}${global_var}${element_var}${parent_var}${encode_var}${decode_var}${update_func}${slotchange_func}`;
           this.blob_event_prefixes = `${local_var}${global_var}${element_var}${parent_var}${encode_var}${decode_var}`;
 
@@ -945,7 +974,7 @@ const bay = () => {
           }
 
           this.add_JS_BlobFileToHead(
-            `${proxy_script}\n${local_name}.template = () => { return \`${proxy_html}\`;};\n${local_name}.styles = () => { return \`${proxy_css}\`;};`
+            `${proxy_script}\n${local_name}.template = () => {${inner_html_start}return \`${proxy_html}\`;};\n${local_name}.styles = () => { return \`${proxy_css}\`;};`
           );
 
           this.hasAdoptedStyleSheets = false;
