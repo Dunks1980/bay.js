@@ -101,10 +101,13 @@ const bay = () => {
       return crypto.randomUUID().replaceAll("-", "").substring(0, length);
     } else {
       let uuidv4 = () => {
-        return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
-          (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+        return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, (c) =>
+          (
+            c ^
+            (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))
+          ).toString(16)
         );
-      }
+      };
       return uuidv4().replaceAll("-", "").substring(0, length);
     }
   }
@@ -228,7 +231,7 @@ const bay = () => {
         const template_el = document.querySelector(location);
         if (!template_el) {
           console.error(
-            `bay: "${location}" no element found with this selector.`
+            `Bay cannot find "${location}" selector.`
           );
           return;
         }
@@ -240,10 +243,8 @@ const bay = () => {
         request.addEventListener("load", (event) => {
           modify_template(event.target.responseText, bay);
         });
-        request.addEventListener("error", () => {
-          console.error(
-            "For CORS policy errors try this: https://stackoverflow.com/questions/10752055/cross-origin-requests-are-only-supported-for-http-error-when-loading-a-local"
-          );
+        request.addEventListener("error", (error) => {
+          console.error(error);
         });
         request.send();
       }
@@ -790,7 +791,7 @@ const bay = () => {
     if (!component_tagname) {
       window.top.document.title = "🔴" + file_name;
       console.error(
-        "Somthing went wrong with loading the file " + file_name + "."
+        "Something went wrong loading file " + file_name + "."
       );
       return;
     }
@@ -1089,10 +1090,13 @@ const bay = () => {
 
         render_innerHTML() {
           if (typeof window.bay[this.uniqid].inner_html === "function") {
-            const new_inner_html = stringToHTML(window.bay[this.uniqid].inner_html());
+            const new_inner_html = stringToHTML(
+              window.bay[this.uniqid].inner_html()
+            );
             dom_diff(new_inner_html, this);
             const inner_html_elements = this.querySelectorAll("*");
-            const inner_html_template_elements = new_inner_html.querySelectorAll("*");
+            const inner_html_template_elements =
+              new_inner_html.querySelectorAll("*");
             inner_html_template_elements.forEach((el, i) => {
               const is_equal = inner_html_elements[i].isEqualNode(el);
               if (!is_equal) {
@@ -1128,7 +1132,6 @@ const bay = () => {
             return;
           }
           try {
-
             // Diff the DOM and template
             if (has_inner_html) {
               window.bay[this.uniqid].template();
@@ -1159,8 +1162,6 @@ const bay = () => {
             this.add_events_and_styles(shadowHTML);
             this.set_styles();
 
-            
-
             if (this.mounted === false && window.bay[this.uniqid]["$mounted"]) {
               this.mounted = true;
               setTimeout(() => {
@@ -1171,7 +1172,6 @@ const bay = () => {
             if (this.shadowRoot.querySelector("[bay]")) {
               get_all_bays(this.shadowRoot);
             }
-
           } catch (error) {
             console.error(error);
           }
