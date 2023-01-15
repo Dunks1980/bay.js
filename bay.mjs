@@ -1122,11 +1122,7 @@ const bay = () => {
 
             // Diff the DOM and template
             if (has_inner_html) {
-              const templateHTML = stringToHTML(
-                window.bay[this.uniqid].template()
-              );
-              const shadowHTML = this.shadowRoot.querySelector("#bay");
-              dom_diff(templateHTML, shadowHTML);
+              window.bay[this.uniqid].template();
               this.render_innerHTML();
             }
 
