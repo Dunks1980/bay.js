@@ -1102,6 +1102,7 @@ const bay = () => {
             return;
           }
           try {
+
             // Diff the DOM and template
             const templateHTML = stringToHTML(
               window.bay[this.uniqid].template()
@@ -1120,9 +1121,8 @@ const bay = () => {
                 }
               }
             });
-            this.add_events_and_styles(shadowHTML);
-            this.set_styles();
 
+            // diff innerHTML
             if (typeof window.bay[this.uniqid].inner_html === "function") {
               const new_inner_html = stringToHTML(window.bay[this.uniqid].inner_html());
               dom_diff(new_inner_html, this);
@@ -1137,6 +1137,9 @@ const bay = () => {
                 }
               });
             }
+
+            this.add_events_and_styles(shadowHTML);
+            this.set_styles();
 
             if (this.mounted === false && window.bay[this.uniqid]["$mounted"]) {
               this.mounted = true;
