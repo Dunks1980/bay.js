@@ -1078,6 +1078,23 @@ const bay = () => {
          * Renders the component from proxy data changes
          */
 
+        render_innerHTML() {
+          if (typeof window.bay[this.uniqid].inner_html === "function") {
+            const new_inner_html = stringToHTML(window.bay[this.uniqid].inner_html());
+            dom_diff(new_inner_html, this);
+            const inner_html_elements = this.querySelectorAll("*");
+            const inner_html_template_elements = new_inner_html.querySelectorAll("*");
+            inner_html_template_elements.forEach((el, i) => {
+              const is_equal = inner_html_elements[i].isEqualNode(el);
+              if (!is_equal) {
+                if (inner_html_elements[i]) {
+                  copyAttributes(el, inner_html_elements[i]);
+                }
+              }
+            });
+          }
+        }
+
         render_debouncer() {
           if (this.debouncer) {
             window.cancelAnimationFrame(this.debouncer);
@@ -1123,23 +1140,17 @@ const bay = () => {
             });
 
             // diff innerHTML
-            if (typeof window.bay[this.uniqid].inner_html === "function") {
-              const new_inner_html = stringToHTML(window.bay[this.uniqid].inner_html());
-              dom_diff(new_inner_html, this);
-              const inner_html_elements = this.querySelectorAll("*");
-              const inner_html_template_elements = new_inner_html.querySelectorAll("*");
-              inner_html_template_elements.forEach((el, i) => {
-                const is_equal = inner_html_elements[i].isEqualNode(el);
-                if (!is_equal) {
-                  if (inner_html_elements[i]) {
-                    copyAttributes(el, inner_html_elements[i]);
-                  }
-                }
-              });
-            }
-
             this.add_events_and_styles(shadowHTML);
             this.set_styles();
+
+            if (has_inner_html) {
+              if (!this.innerHTML.length > 0 && window.bay[this.uniqid].inner_html() > 0) {
+                setTimeout(() => {
+                  this.render_debouncer();
+                }, 14);
+              }
+              this.render_innerHTML();
+            }
 
             if (this.mounted === false && window.bay[this.uniqid]["$mounted"]) {
               this.mounted = true;
