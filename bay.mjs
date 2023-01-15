@@ -1121,11 +1121,21 @@ const bay = () => {
           try {
 
             // Diff the DOM and template
+            if (has_inner_html) {
+              const templateHTML = stringToHTML(
+                window.bay[this.uniqid].template()
+              );
+              const shadowHTML = this.shadowRoot.querySelector("#bay");
+              dom_diff(templateHTML, shadowHTML);
+              this.render_innerHTML();
+            }
+
             const templateHTML = stringToHTML(
               window.bay[this.uniqid].template()
             );
             const shadowHTML = this.shadowRoot.querySelector("#bay");
             dom_diff(templateHTML, shadowHTML);
+
             const all_template_elements = [
               ...templateHTML.querySelectorAll("*"),
             ];
@@ -1143,9 +1153,7 @@ const bay = () => {
             this.add_events_and_styles(shadowHTML);
             this.set_styles();
 
-            if (has_inner_html) {
-              this.render_innerHTML();
-            }
+            
 
             if (this.mounted === false && window.bay[this.uniqid]["$mounted"]) {
               this.mounted = true;
