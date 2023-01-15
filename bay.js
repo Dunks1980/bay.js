@@ -689,7 +689,7 @@ const bay = () => {
           }
           let inner_html_el_html = inner_html_el.outerHTML;
           inner_html_el_html = inner_html_el_html
-            .replace("<inner-html>", "${ (() => { $el.innerHTML += `")
+            .replace("<inner-html>", "${ (() => { $bay_inner_html += `")
             .replace("</inner-html>", "`; return ''} )()}");
           inner_html_el.outerHTML = inner_html_el_html;
           inner_html_el.remove();
@@ -942,12 +942,17 @@ const bay = () => {
           });
 
           // add inner-html vars ==========================================
-          let inner_html_start = '';
+          let inner_html_var = '';
+          let inner_html_reset = '';
+          let inner_html_fn = '';
           if (has_inner_html) {
-            inner_html_start = ` $el.innerHTML = ''; `;
+            inner_html_var = `let $bay_inner_html = '';\n`;
+            inner_html_reset = ` $bay_inner_html = ''; `;
+            inner_html_fn = `\n$bay.inner_html = () => { return $bay_inner_html; };`;
           }
 
-          this.blob_prefixes = `${local_var}${global_var}${element_var}${parent_var}${encode_var}${decode_var}${update_func}${slotchange_func}`;
+          this.blob_prefixes = `${local_var}${global_var}${element_var}${parent_var}${inner_html_var}${encode_var}${decode_var}${update_func}${slotchange_func}`;
+
           this.blob_event_prefixes = `${local_var}${global_var}${element_var}${parent_var}${encode_var}${decode_var}`;
 
           let proxy_script =
@@ -974,7 +979,7 @@ const bay = () => {
           }
 
           this.add_JS_BlobFileToHead(
-            `${proxy_script}\n${local_name}.template = () => {${inner_html_start}return \`${proxy_html}\`;};\n${local_name}.styles = () => { return \`${proxy_css}\`;};`
+            `${proxy_script}\n${local_name}.template = () => {${inner_html_reset}return \`${proxy_html}\`;};\n${local_name}.styles = () => { return \`${proxy_css}\`;};${inner_html_fn}`
           );
 
           this.hasAdoptedStyleSheets = false;
@@ -1122,6 +1127,9 @@ const bay = () => {
               setTimeout(() => {
                 window.bay[this.uniqid]["$mounted"]();
               }, 14);
+            }
+            if (typeof window.bay[this.uniqid].inner_html === "function") {
+              dom_diff(stringToHTML(window.bay[this.uniqid].inner_html()), this);
             }
             if (this.shadowRoot.querySelector("[bay]")) {
               get_all_bays(this.shadowRoot);
