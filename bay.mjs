@@ -1124,6 +1124,7 @@ const bay = () => {
             if (has_inner_html) {
               window.bay[this.uniqid].template();
               this.render_innerHTML();
+              this.add_events_and_styles(this);
             }
 
             const templateHTML = stringToHTML(
