@@ -1144,11 +1144,6 @@ const bay = () => {
             this.set_styles();
 
             if (has_inner_html) {
-              if (!this.innerHTML.length > 0 && window.bay[this.uniqid].inner_html() > 0) {
-                setTimeout(() => {
-                  this.render_debouncer();
-                }, 14);
-              }
               this.render_innerHTML();
             }
 
