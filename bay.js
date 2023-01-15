@@ -136,7 +136,7 @@ const bay = () => {
     let html;
     let styles_text;
     let tagname = bay.tagName.toLowerCase();
-    let start_split = 'export default /*HTML*/`';
+    let start_split = "export default /*HTML*/`";
     if (template_el.startsWith(start_split)) {
       template_el = template_el.trim();
       template_el = template_el.split(start_split)[1];
@@ -363,7 +363,7 @@ const bay = () => {
       typeof element[attribute] !== "object"
     ) {
       return true;
-    } 
+    }
     return false;
   }
 
@@ -409,7 +409,7 @@ const bay = () => {
     let script;
     let observedAttributes_from_element;
     let has_globals = false;
-    let has_inner_html = false; 
+    let has_inner_html = false;
     try {
       // html ====================================================
       component_html = html.body;
@@ -677,7 +677,7 @@ const bay = () => {
       /**
        * inner-html
        * replace inner-html tags with the equivalent javascript code
-       * inserts the innerHTML of the tag into the parent element 
+       * inserts the innerHTML of the tag into the parent element
        * within the bay element's tag, will replace any HTML already present
        */
       while ([...component_html.querySelectorAll("inner-html")].length > 0) {
@@ -942,9 +942,9 @@ const bay = () => {
           });
 
           // add inner-html vars ==========================================
-          let inner_html_var = '';
-          let inner_html_reset = '';
-          let inner_html_fn = '';
+          let inner_html_var = "";
+          let inner_html_reset = "";
+          let inner_html_fn = "";
           if (has_inner_html) {
             inner_html_var = `let $bay_inner_html = '';\n`;
             inner_html_reset = ` $bay_inner_html = ''; `;
@@ -1122,18 +1122,33 @@ const bay = () => {
             });
             this.add_events_and_styles(shadowHTML);
             this.set_styles();
+
+            if (typeof window.bay[this.uniqid].inner_html === "function") {
+              const new_inner_html = stringToHTML(window.bay[this.uniqid].inner_html());
+              dom_diff(new_inner_html, this);
+              const inner_html_elements = this.querySelectorAll("*");
+              const inner_html_template_elements = new_inner_html.querySelectorAll("*");
+              inner_html_template_elements.forEach((el, i) => {
+                const is_equal = inner_html_elements[i].isEqualNode(el);
+                if (!is_equal) {
+                  if (inner_html_elements[i]) {
+                    copyAttributes(el, inner_html_elements[i]);
+                  }
+                }
+              });
+            }
+
             if (this.mounted === false && window.bay[this.uniqid]["$mounted"]) {
               this.mounted = true;
               setTimeout(() => {
                 window.bay[this.uniqid]["$mounted"]();
               }, 14);
             }
-            if (typeof window.bay[this.uniqid].inner_html === "function") {
-              dom_diff(stringToHTML(window.bay[this.uniqid].inner_html()), this);
-            }
+
             if (this.shadowRoot.querySelector("[bay]")) {
               get_all_bays(this.shadowRoot);
             }
+
           } catch (error) {
             console.error(error);
           }
