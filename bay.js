@@ -230,9 +230,7 @@ const bay = () => {
         file_name = location;
         const template_el = document.querySelector(location);
         if (!template_el) {
-          console.error(
-            `Bay cannot find "${location}" selector.`
-          );
+          console.error(`Bay cannot find "${location}" selector.`);
           return;
         }
         modify_template(template_el.innerHTML, bay);
@@ -262,7 +260,11 @@ const bay = () => {
     let all_attrs = [];
     const this_attrs = [...bay.attributes];
     this_attrs.forEach((attr) => {
-      if (attr.name !== "bay" && all_attrs.indexOf(attr.name) === -1) {
+      if (
+        attr.name !== "bay" &&
+        attr.name !== "inner-html" &&
+        all_attrs.indexOf(attr.name) === -1
+      ) {
         all_attrs.push(attr.name);
       }
     });
@@ -790,9 +792,7 @@ const bay = () => {
     }
     if (!component_tagname) {
       window.top.document.title = "🔴" + file_name;
-      console.error(
-        "Something went wrong loading file " + file_name + "."
-      );
+      console.error("Something went wrong loading file " + file_name + ".");
       return;
     }
 
@@ -811,6 +811,19 @@ const bay = () => {
           this.debouncer = false;
           this.blob_prefixes = "";
           this.blob_event_prefixes = "";
+
+          const inner_html_target = this.getAttribute("inner-html");
+          if (inner_html_target) {
+            if (document.querySelector(inner_html_target)) {
+              this.inner_html_target = document.querySelector(inner_html_target);
+            } else {
+              console.error(
+                "inner-html target " + inner_html_target + " not found."
+              );
+            }
+          } else {
+            this.inner_html_target = this;
+          }
 
           document.addEventListener("securitypolicyviolation", (e) => {
             e.preventDefault();
@@ -1020,6 +1033,7 @@ const bay = () => {
         }
 
         add_events_and_styles(element) {
+          if (!element) return;
           let this_newEvents = ``;
           [...element.querySelectorAll("*")].forEach((el, i) => {
             const attrs = el.attributes;
@@ -1088,13 +1102,13 @@ const bay = () => {
          * Renders the component from proxy data changes
          */
 
-        render_innerHTML() {
-          if (typeof window.bay[this.uniqid].inner_html === "function") {
+        render_innerHTML(html_target) {
+          if (html_target && typeof window.bay[this.uniqid].inner_html === "function") {
             const new_inner_html = stringToHTML(
               window.bay[this.uniqid].inner_html()
             );
-            dom_diff(new_inner_html, this);
-            const inner_html_elements = this.querySelectorAll("*");
+            dom_diff(new_inner_html, html_target);
+            const inner_html_elements = html_target.querySelectorAll("*");
             const inner_html_template_elements =
               new_inner_html.querySelectorAll("*");
             inner_html_template_elements.forEach((el, i) => {
@@ -1135,8 +1149,8 @@ const bay = () => {
             // Diff the DOM and template
             if (has_inner_html) {
               window.bay[this.uniqid].template();
-              this.render_innerHTML();
-              this.add_events_and_styles(this);
+              this.render_innerHTML(this.inner_html_target);
+              this.add_events_and_styles(this.inner_html_target);
             }
 
             const templateHTML = stringToHTML(
