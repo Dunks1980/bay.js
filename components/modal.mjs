@@ -133,6 +133,7 @@ export default /*HTML*/`
     z-index: 1;
     background: transparent;
     pointer-events: none;
+    user-select: none;
   }
   .container-background.open {
     opacity: 1;
@@ -146,6 +147,7 @@ export default /*HTML*/`
   }
   #container-content>* {
     pointer-events: all;
+    user-select: all;
   }
   #content-wrap {
     max-width: 100vw;
