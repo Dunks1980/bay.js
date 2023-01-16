@@ -147,7 +147,7 @@ export default /*HTML*/`
   }
   #container-content>* {
     pointer-events: all;
-    user-select: all;
+    user-select: auto;
   }
   #content-wrap {
     max-width: 100vw;
