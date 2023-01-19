@@ -894,6 +894,7 @@ const bay = () => {
 
           window.bay[this.uniqid][element_name] = this;
           this.oldEvents = ``;
+          this.oldEvents_inner_html = ``;
 
           // blob strings setup ============================================
           if (!script) {
@@ -1032,7 +1033,7 @@ const bay = () => {
           }
         }
 
-        add_events_and_styles(element) {
+        add_events_and_styles(element, inner_html) {
           if (!element) return;
           let this_newEvents = ``;
           [...element.querySelectorAll("*")].forEach((el, i) => {
@@ -1073,9 +1074,16 @@ const bay = () => {
               }
             });
           });
-          if (this_newEvents && this.oldEvents !== this_newEvents) {
-            this.oldEvents = this_newEvents;
-            this.add_JS_Blob_event(this_newEvents);
+          if (inner_html) {
+            if (this_newEvents && this.oldEvents_inner_html !== this_newEvents) {
+              this.oldEvents_inner_html = this_newEvents;
+              this.add_JS_Blob_event(this_newEvents);
+            }
+          } else {
+            if (this_newEvents && this.oldEvents !== this_newEvents) {
+              this.oldEvents = this_newEvents;
+              this.add_JS_Blob_event(this_newEvents);
+            }
           }
         }
 
@@ -1150,7 +1158,7 @@ const bay = () => {
             if (has_inner_html) {
               window.bay[this.uniqid].template();
               this.render_innerHTML(this.inner_html_target);
-              this.add_events_and_styles(this.inner_html_target);
+              this.add_events_and_styles(this.inner_html_target, true);
             }
 
             const templateHTML = stringToHTML(
@@ -1173,7 +1181,7 @@ const bay = () => {
             });
 
             // diff innerHTML
-            this.add_events_and_styles(shadowHTML);
+            this.add_events_and_styles(shadowHTML, false);
             this.set_styles();
 
             if (this.mounted === false && window.bay[this.uniqid]["$mounted"]) {
