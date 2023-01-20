@@ -815,7 +815,8 @@ const bay = () => {
           const inner_html_target = this.getAttribute("inner-html");
           if (inner_html_target) {
             if (document.querySelector(inner_html_target)) {
-              this.inner_html_target = document.querySelector(inner_html_target);
+              this.inner_html_target =
+                document.querySelector(inner_html_target);
             } else {
               console.error(
                 "inner-html target " + inner_html_target + " not found."
@@ -894,7 +895,6 @@ const bay = () => {
 
           window.bay[this.uniqid][element_name] = this;
           this.oldEvents = ``;
-          this.oldEvents_inner_html = ``;
 
           // blob strings setup ============================================
           if (!script) {
@@ -1033,10 +1033,10 @@ const bay = () => {
           }
         }
 
-        add_events_and_styles(element, inner_html) {
-          if (!element) return;
+        add_events_and_styles(elements, inner_html) {
+          if (!elements) return;
           let this_newEvents = ``;
-          [...element.querySelectorAll("*")].forEach((el, i) => {
+          elements.forEach((el, i) => {
             const attrs = el.attributes;
             [...attrs].forEach((attr) => {
               let event = attr.name.substring(0, 1) === ":";
@@ -1074,16 +1074,9 @@ const bay = () => {
               }
             });
           });
-          if (inner_html) {
-            if (this_newEvents && this.oldEvents_inner_html !== this_newEvents) {
-              this.oldEvents_inner_html = this_newEvents;
-              this.add_JS_Blob_event(this_newEvents);
-            }
-          } else {
-            if (this_newEvents && this.oldEvents !== this_newEvents) {
-              this.oldEvents = this_newEvents;
-              this.add_JS_Blob_event(this_newEvents);
-            }
+          if (this_newEvents && this.oldEvents !== this_newEvents) {
+            this.oldEvents = this_newEvents;
+            this.add_JS_Blob_event(this_newEvents);
           }
         }
 
@@ -1111,7 +1104,11 @@ const bay = () => {
          */
 
         render_innerHTML(html_target) {
-          if (html_target && typeof window.bay[this.uniqid].inner_html === "function") {
+          if (
+            html_target &&
+            typeof window.bay[this.uniqid].inner_html === "function"
+          ) {
+            window.bay[this.uniqid].template();
             const new_inner_html = stringToHTML(
               window.bay[this.uniqid].inner_html()
             );
@@ -1155,12 +1152,6 @@ const bay = () => {
           }
           try {
             // Diff the DOM and template
-            if (has_inner_html) {
-              window.bay[this.uniqid].template();
-              this.render_innerHTML(this.inner_html_target);
-              this.add_events_and_styles(this.inner_html_target, true);
-            }
-
             const templateHTML = stringToHTML(
               window.bay[this.uniqid].template()
             );
@@ -1181,7 +1172,16 @@ const bay = () => {
             });
 
             // diff innerHTML
-            this.add_events_and_styles(shadowHTML, false);
+            if (has_inner_html) {
+              this.render_innerHTML(this.inner_html_target);
+              this.add_events_and_styles([
+                ...this.inner_html_target.querySelectorAll("*"),
+                ...shadowHTML.querySelectorAll("*"),
+              ]);
+            } else {
+              this.add_events_and_styles([...shadowHTML.querySelectorAll("*")]);
+            }
+
             this.set_styles();
 
             if (this.mounted === false && window.bay[this.uniqid]["$mounted"]) {
