@@ -1152,6 +1152,10 @@ const bay = () => {
           }
           try {
             // Diff the DOM and template
+            if (has_inner_html) {
+              this.render_innerHTML(this.inner_html_target);
+            }
+
             const templateHTML = stringToHTML(
               window.bay[this.uniqid].template()
             );
@@ -1171,9 +1175,8 @@ const bay = () => {
               }
             });
 
-            // diff innerHTML
+            // Events and Styles
             if (has_inner_html) {
-              this.render_innerHTML(this.inner_html_target);
               this.add_events_and_styles([
                 ...this.inner_html_target.querySelectorAll("*"),
                 ...shadowHTML.querySelectorAll("*"),
