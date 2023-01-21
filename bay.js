@@ -887,6 +887,7 @@ const bay = () => {
           };
           var default_data = {};
           this.shadowRoot.proxy = new Proxy(default_data, handler);
+          this.shadowRootHTML = this.shadowRoot.querySelector("#bay");
 
           window.bay[this.uniqid] = this.shadowRoot;
           [...attrs].forEach((attr) => {
@@ -1103,28 +1104,38 @@ const bay = () => {
          * Renders the component from proxy data changes
          */
 
+        isEqual_fn(template_els, current_els) {
+          template_els.forEach((el, i) => {
+            const is_equal = current_els[i].isEqualNode(el);
+            if (!is_equal && current_els[i]) {
+              copyAttributes(el, current_els[i]);
+            }
+          });
+        }
+
         render_innerHTML(html_target) {
-          if (
-            html_target &&
-            typeof window.bay[this.uniqid].inner_html === "function"
-          ) {
-            window.bay[this.uniqid].template();
-            const new_inner_html = stringToHTML(
-              window.bay[this.uniqid].inner_html()
-            );
-            dom_diff(new_inner_html, html_target);
-            const inner_html_elements = html_target.querySelectorAll("*");
-            const inner_html_template_elements =
-              new_inner_html.querySelectorAll("*");
-            inner_html_template_elements.forEach((el, i) => {
-              const is_equal = inner_html_elements[i].isEqualNode(el);
-              if (!is_equal) {
-                if (inner_html_elements[i]) {
-                  copyAttributes(el, inner_html_elements[i]);
-                }
-              }
-            });
-          }
+          if (!html_target) return;
+          if (typeof window.bay[this.uniqid].inner_html !== "function") return;
+          window.bay[this.uniqid].template();
+          const new_inner_html = stringToHTML(
+            window.bay[this.uniqid].inner_html()
+          );
+          dom_diff(new_inner_html, html_target);
+          const inner_html_elements = [...html_target.querySelectorAll("*")];
+          const inner_html_template_elements = [
+            ...new_inner_html.querySelectorAll("*"),
+          ];
+          this.isEqual_fn(inner_html_template_elements, inner_html_elements);
+        }
+
+        render_shadowDOM() {
+          const templateHTML = stringToHTML(window.bay[this.uniqid].template());
+          dom_diff(templateHTML, this.shadowRootHTML);
+          const all_template_elements = [...templateHTML.querySelectorAll("*")];
+          const all_shadow_elements = [
+            ...this.shadowRootHTML.querySelectorAll("*"),
+          ];
+          this.isEqual_fn(all_template_elements, all_shadow_elements);
         }
 
         render_debouncer() {
@@ -1155,34 +1166,18 @@ const bay = () => {
             if (has_inner_html) {
               this.render_innerHTML(this.inner_html_target);
             }
-
-            const templateHTML = stringToHTML(
-              window.bay[this.uniqid].template()
-            );
-            const shadowHTML = this.shadowRoot.querySelector("#bay");
-            dom_diff(templateHTML, shadowHTML);
-
-            const all_template_elements = [
-              ...templateHTML.querySelectorAll("*"),
-            ];
-            const all_shadow_elements = [...shadowHTML.querySelectorAll("*")];
-            all_template_elements.forEach((el, i) => {
-              const is_equal = all_shadow_elements[i].isEqualNode(el);
-              if (!is_equal) {
-                if (all_shadow_elements[i]) {
-                  copyAttributes(el, all_shadow_elements[i]);
-                }
-              }
-            });
+            this.render_shadowDOM();
 
             // Events and Styles
             if (has_inner_html) {
               this.add_events_and_styles([
                 ...this.inner_html_target.querySelectorAll("*"),
-                ...shadowHTML.querySelectorAll("*"),
+                ...this.shadowRootHTML.querySelectorAll("*"),
               ]);
             } else {
-              this.add_events_and_styles([...shadowHTML.querySelectorAll("*")]);
+              this.add_events_and_styles([
+                ...this.shadowRootHTML.querySelectorAll("*"),
+              ]);
             }
 
             this.set_styles();
