@@ -263,6 +263,7 @@ const bay = () => {
       if (
         attr.name !== "bay" &&
         attr.name !== "inner-html" &&
+        attr.name !== "fouc" &&
         all_attrs.indexOf(attr.name) === -1
       ) {
         all_attrs.push(attr.name);
