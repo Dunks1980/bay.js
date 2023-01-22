@@ -423,6 +423,21 @@ const bay = () => {
     let has_globals = false;
     let has_inner_html = false;
     try {
+      // css ======================================================
+      let fouc_styles = /*CSS*/`
+      *:not(:defined) {
+        opacity: 0;
+        max-width: 0px;
+        max-height: 0px;
+      }
+      *:not(:defined) * {
+        opacity: 0;
+        max-width: 0px;
+        max-height: 0px;
+      }`;
+
+      styles_text = fouc_styles + styles_text;
+
       // html ====================================================
       component_html = html.body;
       component_tagname = element_tagname;
@@ -1205,6 +1220,11 @@ const bay = () => {
             if (this.shadowRoot.querySelector("[bay]")) {
               get_all_bays(this.shadowRoot);
             }
+
+            if (this.hasAttribute('fouc')) {
+              this.removeAttribute('fouc');
+            }
+
           } catch (error) {
             console.error(error);
           }
