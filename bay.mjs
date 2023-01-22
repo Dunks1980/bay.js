@@ -425,18 +425,8 @@ const bay = () => {
     let has_inner_html = false;
     try {
       // css ======================================================
-      let fouc_styles = /*CSS*/`
-      *:not(:defined) {
-        opacity: 0;
-        max-width: 0px;
-        max-height: 0px;
-      }
-      *:not(:defined) * {
-        opacity: 0;
-        max-width: 0px;
-        max-height: 0px;
-      }`;
-
+      let fouc_styles =
+        "*:not(:defined){opacity:0;max-width:0px;max-height:0px;}*:not(:defined)*{opacity:0;max-width:0px;max-height:0px;}";
       styles_text = fouc_styles + styles_text;
 
       // html ====================================================
@@ -1222,10 +1212,9 @@ const bay = () => {
               get_all_bays(this.shadowRoot);
             }
 
-            if (this.hasAttribute('fouc')) {
-              this.removeAttribute('fouc');
+            if (this.hasAttribute("fouc")) {
+              this.removeAttribute("fouc");
             }
-
           } catch (error) {
             console.error(error);
           }
