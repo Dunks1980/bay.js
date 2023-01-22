@@ -310,8 +310,8 @@ const bay = () => {
    * @param {HTMLElement} elem
    */
   function dom_diff(template, elem) {
-    const domNodes = Array.prototype.slice.call(elem.childNodes);
-    const templateNodes = Array.prototype.slice.call(template.childNodes);
+    const domNodes = [...elem.childNodes];
+    const templateNodes = [...template.childNodes];
     let count = domNodes.length - templateNodes.length;
     if (count > 0) {
       for (; count > 0; count--) {
@@ -495,19 +495,35 @@ const bay = () => {
           const has_children = for_el.querySelector("for");
           if (!has_children) {
             const this_for = `bay_for_${makeid(8)}`;
-            const for_array = for_el.getAttribute("array") || [];
-            const for_params =
-              for_el.getAttribute("params") || "element, index, array";
-            while (for_el.attributes.length > 0)
-              for_el.removeAttribute(for_el.attributes[0].name);
-            let for_html = for_el.outerHTML;
-            for_html = for_html
-              .replace(
-                "<for>",
-                `\${(() => { let ${this_for} = ''; ${for_array}.forEach((${for_params}) => { ${this_for} += \``
-              )
-              .replace("</for>", `\`}); return ${this_for}; })() }`);
-            for_el.outerHTML = for_html;
+            if (for_el.getAttribute("array")) {
+              const for_array = for_el.getAttribute("array") || [];
+              const for_params =
+                for_el.getAttribute("params") || "element, index, array";
+              while (for_el.attributes.length > 0)
+                for_el.removeAttribute(for_el.attributes[0].name);
+              let for_html = for_el.outerHTML;
+              for_html = for_html
+                .replace(
+                  "<for>",
+                  `\${(() => { let ${this_for} = ''; ${for_array}.forEach((${for_params}) => { ${this_for} += \``
+                )
+                .replace("</for>", `\`}); return ${this_for}; })() }`);
+              for_el.outerHTML = for_html;
+            } else {
+              const statement = [...for_el.attributes][0]
+                ? [...for_el.attributes][0].nodeValue
+                : "";
+              while (for_el.attributes.length > 0)
+                for_el.removeAttribute(for_el.attributes[0].name);
+              let for_html = for_el.outerHTML;
+              for_html = for_html
+                .replace(
+                  "<for>",
+                  `\${(() => { let ${this_for} = ''; for (${statement}) { ${this_for} += \``
+                )
+                .replace("</for>", `\`}; return ${this_for}; })() }`);
+              for_el.outerHTML = for_html;
+            }
           }
         });
       }
@@ -1152,10 +1168,7 @@ const bay = () => {
             this.shadowRoot.innerHTML = "";
             return;
           }
-          if (
-            !this.original_template ||
-            !this.shadowRoot.querySelector("#bay").innerHTML
-          ) {
+          if (!this.original_template || !this.shadowRootHTML.innerHTML) {
             return;
           }
           if (typeof window.bay[this.uniqid].template !== "function") {
