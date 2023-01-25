@@ -1,23 +1,60 @@
 export default /*HTML*/`
-<div class="container-background \${this.bg}" :click="$el.setAttribute('open', 'false');" :style="
-    display: \${this.display};
-    transition: all \${this.duration} ease;
-  " :transitionend="this.transition_end()">
-  <div id="container-content" :click="e.stopPropagation();" :style="
+<div 
+  id="container-background"
+  class="container-background \${this.bg} \${this.open}" 
+  :click="$el.setAttribute('open', 'false'); this.closed_callback()" 
+  :style="\${this.background_style()}" 
+  :transitionend="this.transition_end()" 
+  :transitionstart="this.transition_start()"
+  :transitioncancel="this.transition_cancel()"
+  >
+  <div id="container-content" :click="e.stopPropagation();" :style="\${this.content_style()}">
+    <div id="content-wrap">
+      <slot></slot>
+    </div>
+  </div>
+</div>
+
+<script>
+  this.background_style = () => {
+    return \`box-sizing: border-box; display: \${this.display}; transition: all \${this.duration} ease;\`;
+  }
+  this.content_style = () => {
+    return \` 
       overflow: hidden;
       left: \${this.left};
       top: \${this.top};
       transform: translate(\${this.translateX}, \${this.translateY}) scale(\${this.scale});
       opacity: \${this.opacity};
       display: \${this.display};
-      transition: all \${this.duration} \${this.curve};
-    ">
-    <div id="content-wrap">
-      <slot></slot>
-    </div>
-  </div>
-</div>
-<script>
+      transition: all \${this.duration} \${this.curve};\`;
+  }
+  this.transitionCounter = 0;
+  this.transition_start = () => {
+    this.transitionCounter++;
+  }
+  this.transition_cancel = () => {
+    this.transitionCounter--;
+  }
+  this.transition_end = () => {
+    this.transitionCounter--;
+    if(this.transitionCounter === 0) {
+      let el = $bay.getElementById('container-background');
+      let test = window.getComputedStyle(el).getPropertyValue("pointer-events");
+      if (test === 'none') {
+        this.display = 'none';
+        this.bg = '';
+        this.closed_callback();
+      }
+    }
+  }
+  this.closed_callback = () => {
+    if (this.closed && typeof this.closed === 'function') {
+      $parent[this.closed]();
+    }
+  }
+  this.open = this.open || false;
+  this.closed = this.closed || false;
   this.bg = '';
   this['bg-color'] = this['bg-color'] || 'rgba(0,0,0,.5)';
   this.position = this.position || 'center';
@@ -73,22 +110,20 @@ export default /*HTML*/`
     }
     return pos_obj;
   }
-  this.modal = (open) => {
+  this.modal = () => {
     const elementbg = $bay.querySelector('.container-background');
     const element = $bay.querySelector('#container-content');
-    const wrap = $bay.querySelector('#content-wrap');
-    const el_width = wrap.getBoundingClientRect().width;
     let x = pos_fn().open_x;
     let y = pos_fn().open_y;
     let el_scale = pos_fn().open_scale;
     let el_opacity = pos_fn().open_opacity;
-    if (open === 'true') {
+    if (this.open === 'true') {
       element.style.display = 'inline-block';
       elementbg.style.display = 'block';
       this.display = 'inline-block';
       this.displaybg = 'block';
       this.bg = ' open';
-    } else if (open === 'false') {
+    } else if (this.open === 'false') {
       x = pos_fn().close_x;
       y = pos_fn().close_y;
       el_scale = pos_fn().close_scale;
@@ -102,15 +137,11 @@ export default /*HTML*/`
     this.scale = el_scale;
     this.opacity = el_opacity;
   };
-  this.transition_end = () => {
-    if (this.open !== 'true') {
-      this.display = 'none';
-      this.displaybg = 'none';
-    }
-  }
+
+  this.refresh = 0;
 </script>
 <script props>
-  this.modal(this.open);
+  this.modal();
 </script>
 <script mounted>
   this.left = pos_fn().left;
