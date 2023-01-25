@@ -49,7 +49,7 @@ export default /*HTML*/`
     }
   }
   this.closed_callback = () => {
-    if (this.closed && typeof this.closed === 'function') {
+    if (this.closed && typeof $parent[this.closed] === 'function') {
       $parent[this.closed]();
     }
   }
