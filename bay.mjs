@@ -1,6 +1,7 @@
 const bay = () => {
   "use strict";
 
+  let $ = (el, selector) => el.querySelectorAll(selector);
   const local_name = "$bay";
   const store_name = "$global";
   const element_name = "$el";
@@ -14,7 +15,7 @@ const bay = () => {
    * @param {HTMLElement} root
    */
   (function attachShadowRoots(root) {
-    root.querySelectorAll("template[shadowroot]").forEach((template) => {
+    $(root, "template[shadowroot]").forEach((template) => {
       const mode = template.getAttribute("shadowroot");
       const shadowRoot = template.parentNode.attachShadow({ mode });
       shadowRoot.appendChild(template.content);
@@ -119,7 +120,7 @@ const bay = () => {
    * @param {HTMLElement} element root element
    */
   function get_all_bays(element) {
-    const bays = [...element.querySelectorAll("[bay]")];
+    const bays = [...$(element, "[bay]")];
     bays.forEach((el, i) => {
       if (el.getAttribute("bay") === "dsd") {
         el.setAttribute("bay", `dsd-${i}`);
@@ -423,6 +424,7 @@ const bay = () => {
     let observedAttributes_from_element;
     let has_globals = false;
     let has_inner_html = false;
+    let tagname_str = "";
     try {
       // css ======================================================
       let fouc_styles =
@@ -453,25 +455,28 @@ const bay = () => {
        * content in the dsd tags are loaded before the component is rendered
        * then removed from the DOM, noscript tags are unwrapped.
        */
-      while ([...component_html.querySelectorAll("dsd")].length > 0) {
-        const dsds = [...component_html.querySelectorAll("dsd")];
+      tagname_str = "dsd";
+      while ([...$(component_html, tagname_str)].length > 0) {
+        const dsds = [...$(component_html, tagname_str)];
         dsds.forEach((dsd_el) => {
           dsd_el.remove();
         });
       }
+      tagname_str = "noscript";
       component_html.innerHTML = component_html.innerHTML
-        .replaceAll("<noscript>", "")
-        .replaceAll("</noscript>", "");
+        .replaceAll(`<${tagname_str}>`, "")
+        .replaceAll(`</${tagname_str}>`, "");
 
       /**
        * maps
        * replace map tags with the equivalent javascript code
        * has extra join attribute
        */
-      while ([...component_html.querySelectorAll("map")].length > 0) {
-        const maps = [...component_html.querySelectorAll("map")];
+      tagname_str = "map";
+      while ([...$(component_html, tagname_str)].length > 0) {
+        const maps = [...$(component_html, tagname_str)];
         maps.forEach((map_el) => {
-          const has_children = map_el.querySelector("map");
+          const has_children = map_el.querySelector(tagname_str);
           if (!has_children) {
             const map_array = map_el.getAttribute("array") || [];
             const map_params =
@@ -482,10 +487,10 @@ const bay = () => {
             let map_html = map_el.outerHTML;
             map_html = map_html
               .replace(
-                "<map>",
-                `\${ ${map_array}.map((${map_params}) => { return \``
+                `<${tagname_str}>`,
+                `\${ ${map_array}.${tagname_str}((${map_params}) => { return \``
               )
-              .replace("</map>", `\`}).join('${map_join}')}`);
+              .replace(`</${tagname_str}>`, `\`}).join('${map_join}')}`);
             map_el.outerHTML = map_html;
           }
         });
@@ -495,12 +500,13 @@ const bay = () => {
        * fors
        * replace for tags with the equivalent javascript code
        */
-      while ([...component_html.querySelectorAll("for")].length > 0) {
-        const fors = [...component_html.querySelectorAll("for")];
+      tagname_str = "for";
+      while ([...$(component_html, tagname_str)].length > 0) {
+        const fors = [...$(component_html, tagname_str)];
         fors.forEach((for_el) => {
-          const has_children = for_el.querySelector("for");
+          const has_children = for_el.querySelector(tagname_str);
           if (!has_children) {
-            const this_for = `bay_for_${makeid(8)}`;
+            const this_for = `bay_${tagname_str}_${makeid(8)}`;
             if (for_el.getAttribute("array")) {
               const for_array = for_el.getAttribute("array") || [];
               const for_params =
@@ -510,10 +516,10 @@ const bay = () => {
               let for_html = for_el.outerHTML;
               for_html = for_html
                 .replace(
-                  "<for>",
+                  `<${tagname_str}>`,
                   `\${(() => { let ${this_for} = ''; ${for_array}.forEach((${for_params}) => { ${this_for} += \``
                 )
-                .replace("</for>", `\`}); return ${this_for}; })() }`);
+                .replace(`</${tagname_str}>`, `\`}); return ${this_for}; })() }`);
               for_el.outerHTML = for_html;
             } else {
               const statement = [...for_el.attributes][0]
@@ -524,10 +530,10 @@ const bay = () => {
               let for_html = for_el.outerHTML;
               for_html = for_html
                 .replace(
-                  "<for>",
-                  `\${(() => { let ${this_for} = ''; for (${statement}) { ${this_for} += \``
+                  `<${tagname_str}>`,
+                  `\${(() => { let ${this_for} = ''; ${tagname_str} (${statement}) { ${this_for} += \``
                 )
-                .replace("</for>", `\`}; return ${this_for}; })() }`);
+                .replace(`</${tagname_str}>`, `\`}; return ${this_for}; })() }`);
               for_el.outerHTML = for_html;
             }
           }
@@ -541,10 +547,11 @@ const bay = () => {
        * if the if tag is followed by a else-if or else tag then the
        * brackets are left open for them and closed in else-if or else tag
        */
-      while ([...component_html.querySelectorAll("if")].length > 0) {
-        const if_statements = [...component_html.querySelectorAll("if")];
+      tagname_str = "if";
+      while ([...$(component_html, tagname_str)].length > 0) {
+        const if_statements = [...$(component_html, tagname_str)];
         if_statements.forEach((if_statement_el) => {
-          const has_children = [...if_statement_el.querySelectorAll("if")];
+          const has_children = [...$(if_statement_el, tagname_str)];
           if (!has_children.length > 0) {
             const statement = [...if_statement_el.attributes][0]
               ? [...if_statement_el.attributes][0].nodeValue
@@ -562,17 +569,18 @@ const bay = () => {
               close_func = `\` }`;
             }
             if_statement_el.outerHTML = if_html
-              .replace("<if>", `\${(() => { if (${statement}) { return \``)
-              .replace("</if>", close_func);
+              .replace(`<${tagname_str}>`, `\${(() => { ${tagname_str} (${statement}) { return \``)
+              .replace(`</${tagname_str}>`, close_func);
           }
         });
       }
 
       // else-if's ====================================================
-      while ([...component_html.querySelectorAll("else-if")].length > 0) {
-        const if_statements = [...component_html.querySelectorAll("else-if")];
+      tagname_str = "else-if";
+      while ([...$(component_html, tagname_str)].length > 0) {
+        const if_statements = [...$(component_html, tagname_str)];
         if_statements.forEach((if_statement_el) => {
-          const has_children = [...if_statement_el.querySelectorAll("else-if")];
+          const has_children = [...$(if_statement_el, tagname_str)];
           if (!has_children.length > 0) {
             const statement = [...if_statement_el.attributes][0]
               ? [...if_statement_el.attributes][0].nodeValue
@@ -586,21 +594,22 @@ const bay = () => {
               );
             let if_html = if_statement_el.outerHTML;
             let close_func = `\` } return '' })() }`;
-            if (next_el === "else-if" || next_el === "else") {
+            if (next_el === tagname_str || next_el === "else") {
               close_func = `\` }`;
             }
             if_statement_el.outerHTML = if_html
-              .replace("<else-if>", `\ else if (${statement}) { return \``)
-              .replace("</else-if>", close_func);
+              .replace(`<${tagname_str}>`, `\ else if (${statement}) { return \``)
+              .replace(`</${tagname_str}>`, close_func);
           }
         });
       }
 
       // else's ====================================================
-      while ([...component_html.querySelectorAll("else")].length > 0) {
-        const if_statements = [...component_html.querySelectorAll("else")];
+      tagname_str = "else";
+      while ([...$(component_html, tagname_str)].length > 0) {
+        const if_statements = [...$(component_html, tagname_str)];
         if_statements.forEach((if_statement_el) => {
-          const has_children = [...if_statement_el.querySelectorAll("else")];
+          const has_children = [...$(if_statement_el, tagname_str)];
           if (!has_children.length > 0) {
             while (if_statement_el.attributes.length > 0)
               if_statement_el.removeAttribute(
@@ -608,8 +617,8 @@ const bay = () => {
               );
             let if_html = if_statement_el.outerHTML;
             if_statement_el.outerHTML = if_html
-              .replace("<else>", `\ else { return \``)
-              .replace("</else>", `\` } return '' })() }`);
+              .replace(`<${tagname_str}>`, `\ ${tagname_str} { return \``)
+              .replace(`</${tagname_str}>`, `\` } return '' })() }`);
           }
         });
       }
@@ -618,13 +627,14 @@ const bay = () => {
        * switch's
        * replace switch tags with the equivalent javascript code
        */
-      while ([...component_html.querySelectorAll("switch")].length > 0) {
+      tagname_str = "switch";
+      while ([...$(component_html, tagname_str)].length > 0) {
         const switch_statements = [
-          ...component_html.querySelectorAll("switch"),
+          ...$(component_html, tagname_str),
         ];
         switch_statements.forEach((switch_statement_el) => {
           const has_children = [
-            ...switch_statement_el.querySelectorAll("switch"),
+            ...$(switch_statement_el, tagname_str),
           ];
           if (!has_children.length > 0) {
             const statement = [...switch_statement_el.attributes][0]
@@ -636,8 +646,8 @@ const bay = () => {
               );
             let switch_html = switch_statement_el.outerHTML;
             switch_statement_el.outerHTML = switch_html
-              .replace("<switch>", `\${(() => { switch (${statement}) { `)
-              .replace("</switch>", ` }; return '' })() }`);
+              .replace(`<${tagname_str}>`, `\${(() => { ${tagname_str} (${statement}) { `)
+              .replace(`</${tagname_str}>`, ` }; return '' })() }`);
           }
         });
       }
@@ -649,10 +659,11 @@ const bay = () => {
        * if break attribute is present, add break; to the end of the case statement
        * if tag is empty and does not contain a break it will continue to the next case
        */
-      while ([...component_html.querySelectorAll("case")].length > 0) {
-        const case_statements = [...component_html.querySelectorAll("case")];
+      tagname_str = "case";
+      while ([...$(component_html, tagname_str)].length > 0) {
+        const case_statements = [...$(component_html, tagname_str)];
         case_statements.forEach((case_statement_el) => {
-          const has_children = [...case_statement_el.querySelectorAll("case")];
+          const has_children = [...$(case_statement_el, tagname_str)];
           if (!has_children.length > 0) {
             const break_prop = case_statement_el.hasAttribute("break")
               ? "break;"
@@ -669,14 +680,15 @@ const bay = () => {
                 case_statement_el.attributes[0].name
               );
             let case_html = case_statement_el.outerHTML;
+            
             if (shared_case.length === 0) {
               case_statement_el.outerHTML = case_html
-                .replace("<case>", `case ${statement}:`)
-                .replace("</case>", ` ` + break_prop);
+                .replace(`<${tagname_str}>`, `${tagname_str} ${statement}:`)
+                .replace(`</${tagname_str}>`, ` ` + break_prop);
             } else {
               case_statement_el.outerHTML = case_html
-                .replace("<case>", `case ${statement}: return \``)
-                .replace("</case>", `\`; ` + break_prop);
+                .replace(`<${tagname_str}>`, `${tagname_str} ${statement}: return \``)
+                .replace(`</${tagname_str}>`, `\`; ` + break_prop);
             }
           }
         });
@@ -687,13 +699,14 @@ const bay = () => {
        * nest inside switch
        * default case for switch
        */
-      while ([...component_html.querySelectorAll("default")].length > 0) {
+      tagname_str = "default";
+      while ([...$(component_html, tagname_str)].length > 0) {
         const default_statements = [
-          ...component_html.querySelectorAll("default"),
+          ...$(component_html, tagname_str),
         ];
         default_statements.forEach((default_statement_el) => {
           const has_children = [
-            ...default_statement_el.querySelectorAll("default"),
+            ...$(default_statement_el, tagname_str),
           ];
           if (!has_children.length > 0) {
             while (default_statement_el.attributes.length > 0)
@@ -702,8 +715,8 @@ const bay = () => {
               );
             let default_html = default_statement_el.outerHTML;
             default_statement_el.outerHTML = default_html
-              .replace("<default>", `default: return \``)
-              .replace("</default>", `\`;`);
+              .replace(`<${tagname_str}>`, `${tagname_str}: return \``)
+              .replace(`</${tagname_str}>`, `\`;`);
           }
         });
       }
@@ -714,17 +727,18 @@ const bay = () => {
        * inserts the innerHTML of the tag into the parent element
        * within the bay element's tag, will replace any HTML already present
        */
-      while ([...component_html.querySelectorAll("inner-html")].length > 0) {
+      tagname_str = "inner-html";
+      while ([...$(component_html, tagname_str)].length > 0) {
         has_inner_html = true;
-        const inner_htmls = [...component_html.querySelectorAll("inner-html")];
+        const inner_htmls = [...$(component_html, tagname_str)];
         inner_htmls.forEach((inner_html_el) => {
           while (inner_html_el.attributes.length > 0) {
             inner_html_el.removeAttribute(inner_html_el.attributes[0].name);
           }
           let inner_html_el_html = inner_html_el.outerHTML;
           inner_html_el_html = inner_html_el_html
-            .replace("<inner-html>", "${ (() => { $bay_inner_html += `")
-            .replace("</inner-html>", "`; return ''} )()}");
+            .replace(`<${tagname_str}>`, "${ (() => { $bay_inner_html += `")
+            .replace(`</${tagname_str}>`, "`; return ''} )()}");
           inner_html_el.outerHTML = inner_html_el_html;
           inner_html_el.remove();
         });
@@ -736,75 +750,58 @@ const bay = () => {
        * script tags with update attribute will be wrapped in a setTimeout iife
        * script tags with render attribute will be wrapped in a function iife
        */
-      while (
-        [
-          ...component_html.querySelectorAll(
-            "script[update], script[render], script[props], script[slotchange]"
-          ),
-        ].length > 0
-      ) {
-        const scripts = [
-          ...component_html.querySelectorAll(
-            "script[update], script[render], script[props], script[slotchange]"
-          ),
-        ];
-        scripts.forEach((script) => {
-          const script_type = script.attributes[0].name;
-          while (script.attributes.length > 0)
-            script.removeAttribute(script.attributes[0].name);
-          let script_html = script.outerHTML;
+      let script_text = "";
+      tagname_str = "script";
+      while ([...$(component_html, tagname_str)].length > 0) {
+        const scripts = [...$(component_html, tagname_str)];
+        scripts.forEach((script_el) => {
+          const script_type = script_el.attributes.length
+            ? script_el.attributes[0].name
+            : "";
+          while (script_el.attributes.length > 0)
+            script_el.removeAttribute(script_el.attributes[0].name);
+          let script_html = script_el.outerHTML;
+          let ss = `<${tagname_str}>`;
+          let se = `</${tagname_str}>`;
           switch (script_type) {
             case "update":
               script_html = script_html
-                .replace("<script>", "${/*update*/ (() => {setTimeout(() => {")
-                .replace("</script>", "}, 0); return ``})()}");
+                .replace(ss, "${/*update*/ (() => {setTimeout(() => {")
+                .replace(se, "}, 0); return ``})()}");
               break;
             case "props":
               script_html = script_html
-                .replace(
-                  "<script>",
-                  "${ /*props updates*/ (() => {$props = () => {"
-                )
-                .replace("</script>", "};return ``})()}");
+                .replace(ss, "${ /*props updates*/ (() => {$props = () => {")
+                .replace(se, "};return ``})()}");
               break;
             case "render":
               script_html = script_html
-                .replace("<script>", "${ /*render*/ (() => {")
-                .replace("</script>", " return ``})()}");
+                .replace(ss, "${ /*render*/ (() => {")
+                .replace(se, " return ``})()}");
               break;
             case "slotchange":
               script_html = script_html
                 .replace(
-                  "<script>",
+                  ss,
                   "${ /*slotchange updates*/ (() => {$slotchange = (e) => { $details = e.detail;\n"
                 )
-                .replace("</script>", "};return ``})()}");
+                .replace(se, "};return ``})()}");
+              break;
+            case "mounted":
+              script_text += `$bay['$mounted'] = () => {${script_el.innerText}};`;
+              script_el.remove();
+              break;
+            default:
+              script_text += component_html.querySelector(tagname_str).innerText;
+              script_el.remove();
               break;
           }
-
-          script.outerHTML = script_html;
-          script.remove();
+          if (script_el && script_el.parentNode) {
+            script_el.outerHTML = script_html;
+            script_el.remove();
+          }
         });
       }
-
-      // main & mount scripts ============================================
-
-      /**
-       * main script
-       * replace script tags with the equivalent javascript code
-       * script tags with mount attribute will only be fired when the component is mounted
-       */
-      let script_text = "";
-      const main_mount_scripts = [...component_html.querySelectorAll("script")];
-      main_mount_scripts.forEach((script) => {
-        if (!script.attributes[0]) {
-          script_text += component_html.querySelector("script").innerText;
-          script.remove();
-        } else if (script.attributes[0].name.indexOf("mount") > -1) {
-          script_text += `$bay['$mounted'] = () => {${script.innerText}};`;
-          script.remove();
-        }
-      });
       script = script_text;
 
       // apply passed attributes =========================================
@@ -825,7 +822,6 @@ const bay = () => {
         constructor() {
           super();
           this.mounted = false;
-          this.template = document.createElement("template");
           this.original_template = `${component_html.innerHTML}`;
           this.uniqid = makeid(8);
           this.CSP_errors = false;
@@ -876,8 +872,9 @@ const bay = () => {
             this.attachShadow({
               mode: "open",
             });
-            this.template.innerHTML = /*HTML*/ `<div id="bay"></div>`;
-            this.shadowRoot.appendChild(this.template.content.cloneNode(true));
+            let template = document.createElement("template");
+            template.innerHTML = /*HTML*/ `<div id="bay"></div>`;
+            this.shadowRoot.appendChild(template.content.cloneNode(true));
           }
 
           // local proxy setup =============================================
@@ -966,7 +963,7 @@ const bay = () => {
             );
             window.dispatchEvent(this.local_slotchange_evt);
           });
-          let bay_slots = this.querySelectorAll("*");
+          let bay_slots = $(this, "*");
           bay_slots.forEach((slot) => {
             const slot_observer = new MutationObserver((mutations) => {
               mutations.forEach((mutation) => {
@@ -1143,9 +1140,9 @@ const bay = () => {
             window.bay[this.uniqid].inner_html()
           );
           dom_diff(new_inner_html, html_target);
-          const inner_html_elements = [...html_target.querySelectorAll("*")];
+          const inner_html_elements = [...$(html_target, "*")];
           const inner_html_template_elements = [
-            ...new_inner_html.querySelectorAll("*"),
+            ...$(new_inner_html, "*"),
           ];
           this.isEqual_fn(inner_html_template_elements, inner_html_elements);
         }
@@ -1153,9 +1150,9 @@ const bay = () => {
         render_shadowDOM() {
           const templateHTML = stringToHTML(window.bay[this.uniqid].template());
           dom_diff(templateHTML, this.shadowRootHTML);
-          const all_template_elements = [...templateHTML.querySelectorAll("*")];
+          const all_template_elements = [...$(templateHTML, "*")];
           const all_shadow_elements = [
-            ...this.shadowRootHTML.querySelectorAll("*"),
+            ...$(this.shadowRootHTML, "*"),
           ];
           this.isEqual_fn(all_template_elements, all_shadow_elements);
         }
@@ -1190,12 +1187,12 @@ const bay = () => {
             // Events and Styles
             if (has_inner_html) {
               this.add_events_and_styles([
-                ...this.inner_html_target.querySelectorAll("*"),
-                ...this.shadowRootHTML.querySelectorAll("*"),
+                ...$(this.inner_html_target, "*"),
+                ...$(this.shadowRootHTML, "*"),
               ]);
             } else {
               this.add_events_and_styles([
-                ...this.shadowRootHTML.querySelectorAll("*"),
+                ...$(this.shadowRootHTML, "*"),
               ]);
             }
 
