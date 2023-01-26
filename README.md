@@ -1,7 +1,7 @@
 # <img src="https://unpkg.com/@dunks1980/bay.js/favicon.svg?v=1" width="40"> bay.js
 <br />
 
-[![npm version](https://badge.fury.io/js/%40dunks1980%2Fbay.js.svg)](https://badge.fury.io/js/%40dunks1980%2Fbay.js) [![Known Vulnerabilities](https://snyk.io/test/github/dunks1980/bay.js/badge.svg?targetFile=package.json)](https://snyk.io/test/github/dunks1980/bay.js?targetFile=package.json) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Known Vulnerabilities](https://snyk.io/test/github/dunks1980/bay.js/badge.svg?targetFile=package.json)](https://snyk.io/test/github/dunks1980/bay.js?targetFile=package.json) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 <br />
 
 An easy to use, lightweight library for web-components. It doesn't need a build step but can be included in a build step if you want to. It's a great way to create reusable components for your projects. It's available as a NPM package and doesn't use any dependencies and is 4kb minified + gzipped. It also doesn't use eval or new Function so can be used in strict CSP polices without a build step. For documentation and demos go to [Bayjs.org](https://bayjs.org/examples/index.html).
