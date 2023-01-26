@@ -259,16 +259,19 @@ const bay = () => {
    */
   function getAttributes(bay) {
     let all_attrs = [];
-    const this_attrs = [...bay.attributes];
-    this_attrs.forEach((attr) => {
-      if (
-        attr.name !== "bay" &&
-        attr.name !== "inner-html" &&
-        attr.name !== "fouc" &&
-        all_attrs.indexOf(attr.name) === -1
-      ) {
-        all_attrs.push(attr.name);
-      }
+    const bay_els = [...$(document, bay.tagName.toLocaleLowerCase())];
+    bay_els.forEach((bay_el) => {
+      const this_attrs = [...bay_el.attributes];
+      this_attrs.forEach((attr) => {
+        if (
+          attr.name !== "bay" &&
+          attr.name !== "inner-html" &&
+          attr.name !== "fouc" &&
+          all_attrs.indexOf(attr.name) === -1
+        ) {
+          all_attrs.push(attr.name);
+        }
+      });
     });
     return all_attrs;
   }
