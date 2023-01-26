@@ -259,19 +259,22 @@ const bay = () => {
    */
   function getAttributes(bay) {
     let all_attrs = [];
+    const bay_attrs = [...bay.attributes];
+    const pusher = (attr) => {
+      if (
+        attr.name !== "bay" &&
+        attr.name !== "inner-html" &&
+        attr.name !== "fouc" &&
+        all_attrs.indexOf(attr.name) === -1
+      ) {
+        all_attrs.push(attr.name);
+      }
+    };
+    bay_attrs.forEach((attr) => pusher(attr));
     const bay_els = [...$(document, bay.tagName.toLocaleLowerCase())];
     bay_els.forEach((bay_el) => {
       const this_attrs = [...bay_el.attributes];
-      this_attrs.forEach((attr) => {
-        if (
-          attr.name !== "bay" &&
-          attr.name !== "inner-html" &&
-          attr.name !== "fouc" &&
-          all_attrs.indexOf(attr.name) === -1
-        ) {
-          all_attrs.push(attr.name);
-        }
-      });
+      this_attrs.forEach((attr) => pusher(attr));
     });
     return all_attrs;
   }
@@ -522,7 +525,10 @@ const bay = () => {
                   `<${tagname_str}>`,
                   `\${(() => { let ${this_for} = ''; ${for_array}.forEach((${for_params}) => { ${this_for} += \``
                 )
-                .replace(`</${tagname_str}>`, `\`}); return ${this_for}; })() }`);
+                .replace(
+                  `</${tagname_str}>`,
+                  `\`}); return ${this_for}; })() }`
+                );
               for_el.outerHTML = for_html;
             } else {
               const statement = [...for_el.attributes][0]
@@ -536,7 +542,10 @@ const bay = () => {
                   `<${tagname_str}>`,
                   `\${(() => { let ${this_for} = ''; ${tagname_str} (${statement}) { ${this_for} += \``
                 )
-                .replace(`</${tagname_str}>`, `\`}; return ${this_for}; })() }`);
+                .replace(
+                  `</${tagname_str}>`,
+                  `\`}; return ${this_for}; })() }`
+                );
               for_el.outerHTML = for_html;
             }
           }
@@ -572,7 +581,10 @@ const bay = () => {
               close_func = `\` }`;
             }
             if_statement_el.outerHTML = if_html
-              .replace(`<${tagname_str}>`, `\${(() => { ${tagname_str} (${statement}) { return \``)
+              .replace(
+                `<${tagname_str}>`,
+                `\${(() => { ${tagname_str} (${statement}) { return \``
+              )
               .replace(`</${tagname_str}>`, close_func);
           }
         });
@@ -601,7 +613,10 @@ const bay = () => {
               close_func = `\` }`;
             }
             if_statement_el.outerHTML = if_html
-              .replace(`<${tagname_str}>`, `\ else if (${statement}) { return \``)
+              .replace(
+                `<${tagname_str}>`,
+                `\ else if (${statement}) { return \``
+              )
               .replace(`</${tagname_str}>`, close_func);
           }
         });
@@ -632,13 +647,9 @@ const bay = () => {
        */
       tagname_str = "switch";
       while ([...$(component_html, tagname_str)].length > 0) {
-        const switch_statements = [
-          ...$(component_html, tagname_str),
-        ];
+        const switch_statements = [...$(component_html, tagname_str)];
         switch_statements.forEach((switch_statement_el) => {
-          const has_children = [
-            ...$(switch_statement_el, tagname_str),
-          ];
+          const has_children = [...$(switch_statement_el, tagname_str)];
           if (!has_children.length > 0) {
             const statement = [...switch_statement_el.attributes][0]
               ? [...switch_statement_el.attributes][0].nodeValue
@@ -649,7 +660,10 @@ const bay = () => {
               );
             let switch_html = switch_statement_el.outerHTML;
             switch_statement_el.outerHTML = switch_html
-              .replace(`<${tagname_str}>`, `\${(() => { ${tagname_str} (${statement}) { `)
+              .replace(
+                `<${tagname_str}>`,
+                `\${(() => { ${tagname_str} (${statement}) { `
+              )
               .replace(`</${tagname_str}>`, ` }; return '' })() }`);
           }
         });
@@ -683,14 +697,17 @@ const bay = () => {
                 case_statement_el.attributes[0].name
               );
             let case_html = case_statement_el.outerHTML;
-            
+
             if (shared_case.length === 0) {
               case_statement_el.outerHTML = case_html
                 .replace(`<${tagname_str}>`, `${tagname_str} ${statement}:`)
                 .replace(`</${tagname_str}>`, ` ` + break_prop);
             } else {
               case_statement_el.outerHTML = case_html
-                .replace(`<${tagname_str}>`, `${tagname_str} ${statement}: return \``)
+                .replace(
+                  `<${tagname_str}>`,
+                  `${tagname_str} ${statement}: return \``
+                )
                 .replace(`</${tagname_str}>`, `\`; ` + break_prop);
             }
           }
@@ -704,13 +721,9 @@ const bay = () => {
        */
       tagname_str = "default";
       while ([...$(component_html, tagname_str)].length > 0) {
-        const default_statements = [
-          ...$(component_html, tagname_str),
-        ];
+        const default_statements = [...$(component_html, tagname_str)];
         default_statements.forEach((default_statement_el) => {
-          const has_children = [
-            ...$(default_statement_el, tagname_str),
-          ];
+          const has_children = [...$(default_statement_el, tagname_str)];
           if (!has_children.length > 0) {
             while (default_statement_el.attributes.length > 0)
               default_statement_el.removeAttribute(
@@ -795,7 +808,8 @@ const bay = () => {
               script_el.remove();
               break;
             default:
-              script_text += component_html.querySelector(tagname_str).innerText;
+              script_text +=
+                component_html.querySelector(tagname_str).innerText;
               script_el.remove();
               break;
           }
@@ -1144,9 +1158,7 @@ const bay = () => {
           );
           dom_diff(new_inner_html, html_target);
           const inner_html_elements = [...$(html_target, "*")];
-          const inner_html_template_elements = [
-            ...$(new_inner_html, "*"),
-          ];
+          const inner_html_template_elements = [...$(new_inner_html, "*")];
           this.isEqual_fn(inner_html_template_elements, inner_html_elements);
         }
 
@@ -1154,9 +1166,7 @@ const bay = () => {
           const templateHTML = stringToHTML(window.bay[this.uniqid].template());
           dom_diff(templateHTML, this.shadowRootHTML);
           const all_template_elements = [...$(templateHTML, "*")];
-          const all_shadow_elements = [
-            ...$(this.shadowRootHTML, "*"),
-          ];
+          const all_shadow_elements = [...$(this.shadowRootHTML, "*")];
           this.isEqual_fn(all_template_elements, all_shadow_elements);
         }
 
@@ -1194,9 +1204,7 @@ const bay = () => {
                 ...$(this.shadowRootHTML, "*"),
               ]);
             } else {
-              this.add_events_and_styles([
-                ...$(this.shadowRootHTML, "*"),
-              ]);
+              this.add_events_and_styles([...$(this.shadowRootHTML, "*")]);
             }
 
             this.set_styles();
