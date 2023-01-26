@@ -259,7 +259,6 @@ const bay = () => {
    */
   function getAttributes(bay) {
     let all_attrs = [];
-    const bay_attrs = [...bay.attributes];
     const pusher = (attr) => {
       if (
         attr.name !== "bay" &&
@@ -270,11 +269,18 @@ const bay = () => {
         all_attrs.push(attr.name);
       }
     };
-    bay_attrs.forEach((attr) => pusher(attr));
-    const bay_els = [...$(document, bay.tagName.toLocaleLowerCase())];
-    bay_els.forEach((bay_el) => {
+    [...bay.attributes].forEach((attr) => pusher(attr));
+    [...$(document, bay.tagName.toLocaleLowerCase())].forEach((bay_el) => {
       const this_attrs = [...bay_el.attributes];
       this_attrs.forEach((attr) => pusher(attr));
+    });
+    [...$(document, "template")].forEach((template) => {
+      [...$(template.content, bay.tagName.toLocaleLowerCase())].forEach(
+        (bay_el) => {
+          const this_attrs = [...bay_el.attributes];
+          this_attrs.forEach((attr) => pusher(attr));
+        }
+      );
     });
     return all_attrs;
   }
@@ -417,6 +423,14 @@ const bay = () => {
   }
 
   /**
+   * remove element attributes
+   * @param {HTMLElement} el
+   */
+  function removeAttributes(el) {
+    while (el.attributes.length > 0) el.removeAttribute(el.attributes[0].name);
+  }
+
+  /**
    * Create a custom element from a template.
    * @param {HTMLElement} html html element
    * @param {String} element_tagname custom element tagname
@@ -430,7 +444,6 @@ const bay = () => {
     let observedAttributes_from_element;
     let has_globals = false;
     let has_inner_html = false;
-    let tagname_str = "";
     try {
       // css ======================================================
       let fouc_styles =
@@ -453,372 +466,202 @@ const bay = () => {
         has_globals = true;
       }
 
-      /**
-       * Following while loops replace custom tags with the equivalent javascript code
-       *
-       * dsds
-       * declarative shadow dom, https://web.dev/declarative-shadow-dom/
-       * content in the dsd tags are loaded before the component is rendered
-       * then removed from the DOM, noscript tags are unwrapped.
-       */
-      tagname_str = "dsd";
-      while ([...$(component_html, tagname_str)].length > 0) {
-        const dsds = [...$(component_html, tagname_str)];
-        dsds.forEach((dsd_el) => {
-          dsd_el.remove();
-        });
-      }
-      tagname_str = "noscript";
-      component_html.innerHTML = component_html.innerHTML
-        .replaceAll(`<${tagname_str}>`, "")
-        .replaceAll(`</${tagname_str}>`, "");
+      let array_of_tags = [
+        "dsd",
+        "noscript",
+        "map",
+        "for",
+        "if",
+        "else-if",
+        "else",
+        "switch",
+        "case",
+        "default",
+        "inner-html",
+        "script",
+      ];
 
-      /**
-       * maps
-       * replace map tags with the equivalent javascript code
-       * has extra join attribute
-       */
-      tagname_str = "map";
-      while ([...$(component_html, tagname_str)].length > 0) {
-        const maps = [...$(component_html, tagname_str)];
-        maps.forEach((map_el) => {
-          const has_children = map_el.querySelector(tagname_str);
-          if (!has_children) {
-            const map_array = map_el.getAttribute("array") || [];
-            const map_params =
-              map_el.getAttribute("params") || "element, index, array";
-            const map_join = map_el.getAttribute("join") || "";
-            while (map_el.attributes.length > 0)
-              map_el.removeAttribute(map_el.attributes[0].name);
-            let map_html = map_el.outerHTML;
-            map_html = map_html
-              .replace(
-                `<${tagname_str}>`,
-                `\${ ${map_array}.${tagname_str}((${map_params}) => { return \``
-              )
-              .replace(`</${tagname_str}>`, `\`}).join('${map_join}')}`);
-            map_el.outerHTML = map_html;
-          }
-        });
-      }
-
-      /**
-       * fors
-       * replace for tags with the equivalent javascript code
-       */
-      tagname_str = "for";
-      while ([...$(component_html, tagname_str)].length > 0) {
-        const fors = [...$(component_html, tagname_str)];
-        fors.forEach((for_el) => {
-          const has_children = for_el.querySelector(tagname_str);
-          if (!has_children) {
-            const this_for = `bay_${tagname_str}_${makeid(8)}`;
-            if (for_el.getAttribute("array")) {
-              const for_array = for_el.getAttribute("array") || [];
-              const for_params =
-                for_el.getAttribute("params") || "element, index, array";
-              while (for_el.attributes.length > 0)
-                for_el.removeAttribute(for_el.attributes[0].name);
-              let for_html = for_el.outerHTML;
-              for_html = for_html
-                .replace(
-                  `<${tagname_str}>`,
-                  `\${(() => { let ${this_for} = ''; ${for_array}.forEach((${for_params}) => { ${this_for} += \``
-                )
-                .replace(
-                  `</${tagname_str}>`,
-                  `\`}); return ${this_for}; })() }`
-                );
-              for_el.outerHTML = for_html;
-            } else {
-              const statement = [...for_el.attributes][0]
-                ? [...for_el.attributes][0].nodeValue
-                : "";
-              while (for_el.attributes.length > 0)
-                for_el.removeAttribute(for_el.attributes[0].name);
-              let for_html = for_el.outerHTML;
-              for_html = for_html
-                .replace(
-                  `<${tagname_str}>`,
-                  `\${(() => { let ${this_for} = ''; ${tagname_str} (${statement}) { ${this_for} += \``
-                )
-                .replace(
-                  `</${tagname_str}>`,
-                  `\`}; return ${this_for}; })() }`
-                );
-              for_el.outerHTML = for_html;
-            }
-          }
-        });
-      }
-
-      /**
-       * if's
-       * replace if tags with the equivalent javascript code
-       * if children tags are replaced first before the parent
-       * if the if tag is followed by a else-if or else tag then the
-       * brackets are left open for them and closed in else-if or else tag
-       */
-      tagname_str = "if";
-      while ([...$(component_html, tagname_str)].length > 0) {
-        const if_statements = [...$(component_html, tagname_str)];
-        if_statements.forEach((if_statement_el) => {
-          const has_children = [...$(if_statement_el, tagname_str)];
-          if (!has_children.length > 0) {
-            const statement = [...if_statement_el.attributes][0]
-              ? [...if_statement_el.attributes][0].nodeValue
-              : "";
-            const next_el = if_statement_el.nextElementSibling
-              ? if_statement_el.nextElementSibling.tagName.toLowerCase()
-              : "";
-            while (if_statement_el.attributes.length > 0)
-              if_statement_el.removeAttribute(
-                if_statement_el.attributes[0].name
-              );
-            let if_html = if_statement_el.outerHTML;
-            let close_func = `\` } return '' })() }`;
-            if (next_el === "else-if" || next_el === "else") {
-              close_func = `\` }`;
-            }
-            if_statement_el.outerHTML = if_html
-              .replace(
-                `<${tagname_str}>`,
-                `\${(() => { ${tagname_str} (${statement}) { return \``
-              )
-              .replace(`</${tagname_str}>`, close_func);
-          }
-        });
-      }
-
-      // else-if's ====================================================
-      tagname_str = "else-if";
-      while ([...$(component_html, tagname_str)].length > 0) {
-        const if_statements = [...$(component_html, tagname_str)];
-        if_statements.forEach((if_statement_el) => {
-          const has_children = [...$(if_statement_el, tagname_str)];
-          if (!has_children.length > 0) {
-            const statement = [...if_statement_el.attributes][0]
-              ? [...if_statement_el.attributes][0].nodeValue
-              : "";
-            const next_el = if_statement_el.nextElementSibling
-              ? if_statement_el.nextElementSibling.tagName.toLowerCase()
-              : "";
-            while (if_statement_el.attributes.length > 0)
-              if_statement_el.removeAttribute(
-                if_statement_el.attributes[0].name
-              );
-            let if_html = if_statement_el.outerHTML;
-            let close_func = `\` } return '' })() }`;
-            if (next_el === tagname_str || next_el === "else") {
-              close_func = `\` }`;
-            }
-            if_statement_el.outerHTML = if_html
-              .replace(
-                `<${tagname_str}>`,
-                `\ else if (${statement}) { return \``
-              )
-              .replace(`</${tagname_str}>`, close_func);
-          }
-        });
-      }
-
-      // else's ====================================================
-      tagname_str = "else";
-      while ([...$(component_html, tagname_str)].length > 0) {
-        const if_statements = [...$(component_html, tagname_str)];
-        if_statements.forEach((if_statement_el) => {
-          const has_children = [...$(if_statement_el, tagname_str)];
-          if (!has_children.length > 0) {
-            while (if_statement_el.attributes.length > 0)
-              if_statement_el.removeAttribute(
-                if_statement_el.attributes[0].name
-              );
-            let if_html = if_statement_el.outerHTML;
-            if_statement_el.outerHTML = if_html
-              .replace(`<${tagname_str}>`, `\ ${tagname_str} { return \``)
-              .replace(`</${tagname_str}>`, `\` } return '' })() }`);
-          }
-        });
-      }
-
-      /**
-       * switch's
-       * replace switch tags with the equivalent javascript code
-       */
-      tagname_str = "switch";
-      while ([...$(component_html, tagname_str)].length > 0) {
-        const switch_statements = [...$(component_html, tagname_str)];
-        switch_statements.forEach((switch_statement_el) => {
-          const has_children = [...$(switch_statement_el, tagname_str)];
-          if (!has_children.length > 0) {
-            const statement = [...switch_statement_el.attributes][0]
-              ? [...switch_statement_el.attributes][0].nodeValue
-              : "";
-            while (switch_statement_el.attributes.length > 0)
-              switch_statement_el.removeAttribute(
-                switch_statement_el.attributes[0].name
-              );
-            let switch_html = switch_statement_el.outerHTML;
-            switch_statement_el.outerHTML = switch_html
-              .replace(
-                `<${tagname_str}>`,
-                `\${(() => { ${tagname_str} (${statement}) { `
-              )
-              .replace(`</${tagname_str}>`, ` }; return '' })() }`);
-          }
-        });
-      }
-
-      /**
-       * case's
-       * nest inside switch
-       * replace case tags with the equivalent javascript code
-       * if break attribute is present, add break; to the end of the case statement
-       * if tag is empty and does not contain a break it will continue to the next case
-       */
-      tagname_str = "case";
-      while ([...$(component_html, tagname_str)].length > 0) {
-        const case_statements = [...$(component_html, tagname_str)];
-        case_statements.forEach((case_statement_el) => {
-          const has_children = [...$(case_statement_el, tagname_str)];
-          if (!has_children.length > 0) {
-            const break_prop = case_statement_el.hasAttribute("break")
-              ? "break;"
-              : "";
-            if (break_prop) {
-              case_statement_el.removeAttribute("break");
-            }
-            const shared_case = case_statement_el.innerHTML;
-            const statement = [...case_statement_el.attributes][0]
-              ? [...case_statement_el.attributes][0].nodeValue
-              : "";
-            while (case_statement_el.attributes.length > 0)
-              case_statement_el.removeAttribute(
-                case_statement_el.attributes[0].name
-              );
-            let case_html = case_statement_el.outerHTML;
-
-            if (shared_case.length === 0) {
-              case_statement_el.outerHTML = case_html
-                .replace(`<${tagname_str}>`, `${tagname_str} ${statement}:`)
-                .replace(`</${tagname_str}>`, ` ` + break_prop);
-            } else {
-              case_statement_el.outerHTML = case_html
-                .replace(
-                  `<${tagname_str}>`,
-                  `${tagname_str} ${statement}: return \``
-                )
-                .replace(`</${tagname_str}>`, `\`; ` + break_prop);
-            }
-          }
-        });
-      }
-
-      /**
-       * default's
-       * nest inside switch
-       * default case for switch
-       */
-      tagname_str = "default";
-      while ([...$(component_html, tagname_str)].length > 0) {
-        const default_statements = [...$(component_html, tagname_str)];
-        default_statements.forEach((default_statement_el) => {
-          const has_children = [...$(default_statement_el, tagname_str)];
-          if (!has_children.length > 0) {
-            while (default_statement_el.attributes.length > 0)
-              default_statement_el.removeAttribute(
-                default_statement_el.attributes[0].name
-              );
-            let default_html = default_statement_el.outerHTML;
-            default_statement_el.outerHTML = default_html
-              .replace(`<${tagname_str}>`, `${tagname_str}: return \``)
-              .replace(`</${tagname_str}>`, `\`;`);
-          }
-        });
-      }
-
-      /**
-       * inner-html
-       * replace inner-html tags with the equivalent javascript code
-       * inserts the innerHTML of the tag into the parent element
-       * within the bay element's tag, will replace any HTML already present
-       */
-      tagname_str = "inner-html";
-      while ([...$(component_html, tagname_str)].length > 0) {
-        has_inner_html = true;
-        const inner_htmls = [...$(component_html, tagname_str)];
-        inner_htmls.forEach((inner_html_el) => {
-          while (inner_html_el.attributes.length > 0) {
-            inner_html_el.removeAttribute(inner_html_el.attributes[0].name);
-          }
-          let inner_html_el_html = inner_html_el.outerHTML;
-          inner_html_el_html = inner_html_el_html
-            .replace(`<${tagname_str}>`, "${ (() => { $bay_inner_html += `")
-            .replace(`</${tagname_str}>`, "`; return ''} )()}");
-          inner_html_el.outerHTML = inner_html_el_html;
-          inner_html_el.remove();
-        });
-      }
-
-      /**
-       * lifecycle scripts
-       * replace script tags with the equivalent javascript code
-       * script tags with update attribute will be wrapped in a setTimeout iife
-       * script tags with render attribute will be wrapped in a function iife
-       */
+      let default_params = "element, index, array";
       let script_text = "";
-      tagname_str = "script";
-      while ([...$(component_html, tagname_str)].length > 0) {
-        const scripts = [...$(component_html, tagname_str)];
-        scripts.forEach((script_el) => {
-          const script_type = script_el.attributes.length
-            ? script_el.attributes[0].name
-            : "";
-          while (script_el.attributes.length > 0)
-            script_el.removeAttribute(script_el.attributes[0].name);
-          let script_html = script_el.outerHTML;
-          let ss = `<${tagname_str}>`;
-          let se = `</${tagname_str}>`;
-          switch (script_type) {
-            case "update":
-              script_html = script_html
-                .replace(ss, "${/*update*/ (() => {setTimeout(() => {")
-                .replace(se, "}, 0); return ``})()}");
-              break;
-            case "props":
-              script_html = script_html
-                .replace(ss, "${ /*props updates*/ (() => {$props = () => {")
-                .replace(se, "};return ``})()}");
-              break;
-            case "render":
-              script_html = script_html
-                .replace(ss, "${ /*render*/ (() => {")
-                .replace(se, " return ``})()}");
-              break;
-            case "slotchange":
-              script_html = script_html
-                .replace(
-                  ss,
-                  "${ /*slotchange updates*/ (() => {$slotchange = (e) => { $details = e.detail;\n"
-                )
-                .replace(se, "};return ``})()}");
-              break;
-            case "mounted":
-              script_text += `$bay['$mounted'] = () => {${script_el.innerText}};`;
-              script_el.remove();
-              break;
-            default:
-              script_text +=
-                component_html.querySelector(tagname_str).innerText;
-              script_el.remove();
-              break;
-          }
-          if (script_el && script_el.parentNode) {
-            script_el.outerHTML = script_html;
-            script_el.remove();
-          }
-        });
-      }
+
+      array_of_tags.forEach((tagname_str) => {
+        while ([...$(component_html, tagname_str)].length > 0) {
+          const tags = [...$(component_html, tagname_str)];
+          tags.forEach((tag_el) => {
+            const has_children = tag_el.querySelector(tagname_str);
+            if (!has_children) {
+              const tag_array = tag_el.getAttribute("array") || [];
+              const tag_params =
+                tag_el.getAttribute("params") || default_params;
+              const tag_join = tag_el.getAttribute("join") || "";
+              const tag_statement = [...tag_el.attributes][0]
+                ? [...tag_el.attributes][0].nodeValue
+                : "";
+              const next_el = tag_el.nextElementSibling
+                ? tag_el.nextElementSibling.tagName.toLowerCase()
+                : "";
+              let close_func = `\` } return '' })() }`;
+              const break_prop = tag_el.hasAttribute("break") ? "break;" : "";
+              const shared_case = tag_el.innerHTML.length === 0;
+              const script_type = tag_el.attributes.length
+                ? tag_el.attributes[0].name
+                : "";
+              const open_tag = `<${tagname_str}>`;
+              const close_tag = `</${tagname_str}>`;
+
+              removeAttributes(tag_el);
+              let outer_html = tag_el.outerHTML;
+              switch (tagname_str) {
+                case "dsd":
+                  tag_el.remove();
+                  break;
+                case "noscript":
+                  component_html.innerHTML = component_html.innerHTML
+                    .replaceAll(open_tag, "")
+                    .replaceAll(close_tag, "");
+                  break;
+                case "map":
+                  outer_html = outer_html
+                    .replace(
+                      open_tag,
+                      `\${ ${tag_array}.${tagname_str}((${tag_params}) => { return \``
+                    )
+                    .replace(close_tag, `\`}).join('${tag_join}')}`);
+                  tag_el.outerHTML = outer_html;
+                  break;
+                case "for":
+                  const this_for = `bay_${tagname_str}_${makeid(8)}`;
+                  if (tag_array.length) {
+                    outer_html = outer_html
+                      .replace(
+                        open_tag,
+                        `\${(() => { let ${this_for} = ''; ${tag_array}.forEach((${tag_params}) => { ${this_for} += \``
+                      )
+                      .replace(close_tag, `\`}); return ${this_for}; })() }`);
+                  } else {
+                    outer_html = outer_html
+                      .replace(
+                        open_tag,
+                        `\${(() => { let ${this_for} = ''; ${tagname_str} (${tag_statement}) { ${this_for} += \``
+                      )
+                      .replace(close_tag, `\`}; return ${this_for}; })() }`);
+                  }
+                  tag_el.outerHTML = outer_html;
+                  break;
+                case "if":
+                  if (next_el === "else-if" || next_el === "else") {
+                    close_func = `\` }`;
+                  }
+                  tag_el.outerHTML = outer_html
+                    .replace(
+                      open_tag,
+                      `\${(() => { ${tagname_str} (${tag_statement}) { return \``
+                    )
+                    .replace(close_tag, close_func);
+                  break;
+                case "else-if":
+                  if (next_el === "else-if" || next_el === "else") {
+                    close_func = `\` }`;
+                  }
+                  tag_el.outerHTML = outer_html
+                    .replace(
+                      open_tag,
+                      `\ else if (${tag_statement}) { return \``
+                    )
+                    .replace(close_tag, close_func);
+                  break;
+                case "else":
+                  tag_el.outerHTML = outer_html
+                    .replace(open_tag, `\ ${tagname_str} { return \``)
+                    .replace(close_tag, close_func);
+                  break;
+                case "switch":
+                  tag_el.outerHTML = outer_html
+                    .replace(
+                      open_tag,
+                      `\${(() => { ${tagname_str} (${tag_statement}) { `
+                    )
+                    .replace(close_tag, ` }; return '' })() }`);
+                  break;
+                case "case":
+                  if (shared_case) {
+                    tag_el.outerHTML = outer_html
+                      .replace(open_tag, `${tagname_str} ${tag_statement}:`)
+                      .replace(close_tag, ` ` + break_prop);
+                  } else {
+                    tag_el.outerHTML = outer_html
+                      .replace(
+                        open_tag,
+                        `${tagname_str} ${tag_statement}: return \``
+                      )
+                      .replace(close_tag, `\`; ` + break_prop);
+                  }
+                  break;
+                case "default":
+                  tag_el.outerHTML = outer_html
+                    .replace(open_tag, `${tagname_str}: return \``)
+                    .replace(close_tag, `\`;`);
+                  break;
+                case "inner-html":
+                  has_inner_html = true;
+                  tag_el.outerHTML = outer_html
+                    .replace(open_tag, "${ (() => { $bay_inner_html += `")
+                    .replace(close_tag, "`; return ''} )()}");
+                  tag_el.remove();
+                  break;
+                case "script":
+                  // ------------------ SCRIPT TAGS ------------------
+                  switch (script_type) {
+                    case "update":
+                      outer_html = outer_html
+                        .replace(
+                          open_tag,
+                          "${/*update*/ (() => {setTimeout(() => {"
+                        )
+                        .replace(close_tag, "}, 0); return ``})()}");
+                      break;
+                    case "props":
+                      outer_html = outer_html
+                        .replace(
+                          open_tag,
+                          "${ /*props updates*/ (() => {$props = () => {"
+                        )
+                        .replace(close_tag, "};return ``})()}");
+                      break;
+                    case "render":
+                      outer_html = outer_html
+                        .replace(open_tag, "${ /*render*/ (() => {")
+                        .replace(close_tag, " return ``})()}");
+                      break;
+                    case "slotchange":
+                      outer_html = outer_html
+                        .replace(
+                          open_tag,
+                          "${ /*slotchange updates*/ (() => {$slotchange = (e) => { $details = e.detail;\n"
+                        )
+                        .replace(close_tag, "};return ``})()}");
+                      break;
+                    case "mounted":
+                      script_text += `$bay['$mounted'] = () => {${tag_el.innerText}};`;
+                      tag_el.remove();
+                      break;
+                    default:
+                      script_text +=
+                        component_html.querySelector(tagname_str).innerText;
+                      tag_el.remove();
+                      break;
+                  }
+                  if (tag_el && tag_el.parentNode) {
+                    tag_el.outerHTML = outer_html;
+                    tag_el.remove();
+                  }
+                  break;
+              }
+            }
+          });
+        }
+      });
+
       script = script_text;
 
       // apply passed attributes =========================================
