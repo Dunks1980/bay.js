@@ -1,7 +1,6 @@
 const bay = () => {
   "use strict";
-
-  let $ = (el, selector) => el.querySelectorAll(selector);
+  const $ = (el, selector) => el.querySelectorAll(selector);
   const local_name = "$bay";
   const store_name = "$global";
   const element_name = "$el";
@@ -221,7 +220,7 @@ const bay = () => {
         file_name = location;
         if (!bay.shadowRoot) {
           modify_template(
-            decodeHtml(bay.querySelector("template").innerHTML),
+            decodeHtml($(bay, "template")[0].innerHTML),
             bay
           );
         } else {
@@ -229,7 +228,7 @@ const bay = () => {
         }
       } else if (location.substring(0, 1) === "#") {
         file_name = location;
-        const template_el = document.querySelector(location);
+        const template_el = $(document, location)[0];
         if (!template_el) {
           console.error(`Bay cannot find "${location}" selector.`);
           return;
@@ -400,6 +399,7 @@ const bay = () => {
    */
   function copyAttributes(template, shadow) {
     [...shadow.attributes].forEach((attribute) => {
+      if (attribute.name === "style") return; // handled by isEqual_fn
       if (!template.hasAttribute(attribute.name)) {
         shadow.removeAttribute(attribute.nodeName);
         if (canSetAttribute(shadow, attribute.nodeName)) {
@@ -446,9 +446,12 @@ const bay = () => {
     let has_inner_html = false;
     try {
       // css ======================================================
-      let fouc_styles =
+      const fouc_styles =
         "*:not(:defined){opacity:0;max-width:0px;max-height:0px;}*:not(:defined)*{opacity:0;max-width:0px;max-height:0px;}";
-      styles_text = fouc_styles + styles_text;
+
+      const show_styles = "[bay-show]{overflow:hidden;transition:opacity var(--bay-show-transition),max-height var(--bay-show-transition);}[bay-show].bay-enter{opacity:1; max-height:100vh;}[bay-show].bay-leave{opacity:0; max-height:0;}";
+
+      styles_text = fouc_styles + show_styles + styles_text;
 
       // html ====================================================
       component_html = html.body;
@@ -474,6 +477,7 @@ const bay = () => {
         "if",
         "else-if",
         "else",
+        "show",
         "switch",
         "case",
         "default",
@@ -488,7 +492,7 @@ const bay = () => {
         while ([...$(component_html, tagname_str)].length > 0) {
           const tags = [...$(component_html, tagname_str)];
           tags.forEach((tag_el) => {
-            const has_children = tag_el.querySelector(tagname_str);
+            const has_children = $(tag_el, tagname_str)[0];
             if (!has_children) {
               const tag_array = tag_el.getAttribute("array") || [];
               const tag_params =
@@ -506,9 +510,10 @@ const bay = () => {
               const script_type = tag_el.attributes.length
                 ? tag_el.attributes[0].name
                 : "";
+              const tag_transition =
+                tag_el.getAttribute("transition") || "0s ease";
               const open_tag = `<${tagname_str}>`;
               const close_tag = `</${tagname_str}>`;
-
               removeAttributes(tag_el);
               let outer_html = tag_el.outerHTML;
               switch (tagname_str) {
@@ -574,6 +579,15 @@ const bay = () => {
                   tag_el.outerHTML = outer_html
                     .replace(open_tag, `\ ${tagname_str} { return \``)
                     .replace(close_tag, close_func);
+                  break;
+                case "show":
+                  outer_html = outer_html
+                    .replace(
+                      open_tag,
+                      `<div bay-show :style="--bay-show-transition: ${tag_transition};" class="\${${tag_statement} ? 'bay-enter' : 'bay-leave'}">`
+                    )
+                    .replace(close_tag, `</div>`);
+                  tag_el.outerHTML = outer_html;
                   break;
                 case "switch":
                   tag_el.outerHTML = outer_html
@@ -647,7 +661,7 @@ const bay = () => {
                       break;
                     default:
                       script_text +=
-                        component_html.querySelector(tagname_str).innerText;
+                        $(component_html, tagname_str)[0].innerText;
                       tag_el.remove();
                       break;
                   }
@@ -692,9 +706,9 @@ const bay = () => {
 
           const inner_html_target = this.getAttribute("inner-html");
           if (inner_html_target) {
-            if (document.querySelector(inner_html_target)) {
+            if ($(document, inner_html_target)[0]) {
               this.inner_html_target =
-                document.querySelector(inner_html_target);
+                $(document, inner_html_target)[0];
             } else {
               console.error(
                 "inner-html target " + inner_html_target + " not found."
@@ -766,7 +780,7 @@ const bay = () => {
           };
           var default_data = {};
           this.shadowRoot.proxy = new Proxy(default_data, handler);
-          this.shadowRootHTML = this.shadowRoot.querySelector("#bay");
+          this.shadowRootHTML = $(this.shadowRoot, "#bay")[0];
 
           window.bay[this.uniqid] = this.shadowRoot;
           [...attrs].forEach((attr) => {
@@ -913,7 +927,7 @@ const bay = () => {
           }
         }
 
-        add_events_and_styles(elements, inner_html) {
+        add_events_and_styles(elements) {
           if (!elements) return;
           let this_newEvents = ``;
           elements.forEach((el, i) => {
@@ -922,15 +936,7 @@ const bay = () => {
               let event = attr.name.substring(0, 1) === ":";
               if (event) {
                 if (attr.name.indexOf(":style") > -1) {
-                  let style_obj = {};
-                  let style_vals = attr.value.split(";") || [attr.value];
-                  style_vals.map((style) => {
-                    let style_val = style.split(":");
-                    if (style_val[0] && style_val[1]) {
-                      style_obj[style_val[0].trim()] = style_val[1].trim();
-                    }
-                  });
-                  Object.assign(el.style, style_obj);
+                  el.style = attr.value;
                 } else {
                   let attr_data = attr.value.replaceAll(
                     "window.bay",
@@ -988,6 +994,10 @@ const bay = () => {
             const is_equal = current_els[i].isEqualNode(el);
             if (!is_equal && current_els[i]) {
               copyAttributes(el, current_els[i]);
+            }
+            // cleanup old styles
+            if (!el.hasAttribute(":style") && !el.hasAttribute("style")) {
+              current_els[i].removeAttribute("style");
             }
           });
         }
@@ -1059,7 +1069,7 @@ const bay = () => {
               }, 14);
             }
 
-            if (this.shadowRoot.querySelector("[bay]")) {
+            if ($(this.shadowRoot, "[bay]")[0]) {
               get_all_bays(this.shadowRoot);
             }
 
@@ -1118,7 +1128,7 @@ const bay = () => {
               "CSP issue, add blob: to script-src & style-src whitelist.";
             return;
           } else {
-            if (this.shadowRoot.querySelector("[bay]")) {
+            if ($(this.shadowRoot, "[bay]")[0]) {
               get_all_bays(this.shadowRoot);
             }
           }
