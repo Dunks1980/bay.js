@@ -146,7 +146,7 @@ const bay = () => {
   function modify_template(template_el, bay) {
     const doc = new DOMParser();
     let html;
-    let styles_text;
+    let styles_string = "";
     let tagname = bay.tagName.toLowerCase();
     let start_split = "export default /*HTML*/`";
     if (template_el.startsWith(start_split)) {
@@ -155,16 +155,16 @@ const bay = () => {
       template_el = template_el.substring(0, template_el.length - 2);
       template_el = template_el.replaceAll("\\${", "${").replaceAll("\\`", "`");
     }
-    if (template_el.indexOf("<style>") > -1) {
-      styles_text = template_el.split("<style>")[1].split("</style>")[0];
+    while (template_el.indexOf("<style>") > -1) {
+      const styles_text = template_el.split("<style>")[1].split("</style>")[0];
+      template_el = template_el.replaceAll(`<style>${styles_text}</style>`, "");
+      styles_string += styles_text;
     }
-    template_el = template_el
-      .replaceAll(/<!--[\s\S]*?-->/g, "")
-      .replaceAll(`<style>${styles_text}</style>`, "");
+    template_el = template_el.replaceAll(/<!--[\s\S]*?-->/g, "");
     html = doc.parseFromString(template_el, "text/html");
     if (html) {
       if (!customElements.get(tagname)) {
-        create_component(html, tagname, getAttributes(bay), styles_text);
+        create_component(html, tagname, getAttributes(bay), styles_string);
       }
     }
   }
@@ -219,10 +219,7 @@ const bay = () => {
       if (location.substring(0, 4) === "dsd-") {
         file_name = location;
         if (!bay.shadowRoot) {
-          modify_template(
-            decodeHtml($(bay, "template")[0].innerHTML),
-            bay
-          );
+          modify_template(decodeHtml($(bay, "template")[0].innerHTML), bay);
         } else {
           modify_template(decodeHtml(bay.shadowRoot.innerHTML), bay);
         }
@@ -449,9 +446,7 @@ const bay = () => {
       const fouc_styles =
         "*:not(:defined){opacity:0;max-width:0px;max-height:0px;}*:not(:defined)*{opacity:0;max-width:0px;max-height:0px;}";
 
-      const show_styles = "[bay-show]{overflow:hidden;transition:opacity var(--bay-show-transition),max-height var(--bay-show-transition);}[bay-show].bay-enter{opacity:1; max-height:100vh;}[bay-show].bay-leave{opacity:0; max-height:0;}";
-
-      styles_text = fouc_styles + show_styles + styles_text;
+      styles_text = fouc_styles + styles_text;
 
       // html ====================================================
       component_html = html.body;
@@ -477,7 +472,6 @@ const bay = () => {
         "if",
         "else-if",
         "else",
-        "show",
         "switch",
         "case",
         "default",
@@ -510,8 +504,6 @@ const bay = () => {
               const script_type = tag_el.attributes.length
                 ? tag_el.attributes[0].name
                 : "";
-              const tag_transition =
-                tag_el.getAttribute("transition") || "0s ease";
               const open_tag = `<${tagname_str}>`;
               const close_tag = `</${tagname_str}>`;
               removeAttributes(tag_el);
@@ -579,15 +571,6 @@ const bay = () => {
                   tag_el.outerHTML = outer_html
                     .replace(open_tag, `\ ${tagname_str} { return \``)
                     .replace(close_tag, close_func);
-                  break;
-                case "show":
-                  outer_html = outer_html
-                    .replace(
-                      open_tag,
-                      `<div bay-show :style="--bay-show-transition: ${tag_transition};" class="\${${tag_statement} ? 'bay-enter' : 'bay-leave'}">`
-                    )
-                    .replace(close_tag, `</div>`);
-                  tag_el.outerHTML = outer_html;
                   break;
                 case "switch":
                   tag_el.outerHTML = outer_html
@@ -660,8 +643,8 @@ const bay = () => {
                       tag_el.remove();
                       break;
                     default:
-                      script_text +=
-                        $(component_html, tagname_str)[0].innerText;
+                      script_text += $(component_html, tagname_str)[0]
+                        .innerText;
                       tag_el.remove();
                       break;
                   }
@@ -707,8 +690,7 @@ const bay = () => {
           const inner_html_target = this.getAttribute("inner-html");
           if (inner_html_target) {
             if ($(document, inner_html_target)[0]) {
-              this.inner_html_target =
-                $(document, inner_html_target)[0];
+              this.inner_html_target = $(document, inner_html_target)[0];
             } else {
               console.error(
                 "inner-html target " + inner_html_target + " not found."
