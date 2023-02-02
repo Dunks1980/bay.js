@@ -61,11 +61,12 @@ const bay = () => {
   // ------------------------------
 
   /**
-   * Global data object that can be accessed by all components.
+   * Creates a proxy and fires the callback when the data changes.
+   * @param {object} obj proxy object can be empty or have some default data
+   * @param {function} callback function to be called when the data changes
    */
-  if (!window.bay.global) {
-    const global_data = {};
-    const global_handler = {
+  function make_proxy_object(obj, callback) {
+    return new Proxy(obj, {
       get(target, key) {
         if (key == "isProxy") {
           return true;
@@ -78,18 +79,22 @@ const bay = () => {
           return;
         }
         if (!prop.isProxy && typeof prop === "object") {
-          target[key] = new Proxy(prop, global_handler);
+          target[key] = make_proxy_object(prop, callback);
         }
         return target[key];
       },
       set: (target, key, value) => {
         target[key] = escapeHTML(value);
-        dispatch_global_event();
+        if (callback) callback();
         return true;
       },
-    };
-    window.bay.global = new Proxy(global_data, global_handler);
+    });
   }
+
+  // make the global data object ---------------------------------
+  window.bay.global = make_proxy_object({}, () => {
+    dispatch_global_event();
+  });
   // ------------------------------
 
   /**
@@ -734,34 +739,9 @@ const bay = () => {
           }
 
           // local proxy setup =============================================
-          var handler = {
-            get(target, key) {
-              if (key == "isProxy") {
-                return true;
-              }
-              const prop = target[key];
-              if (typeof prop == "undefined") {
-                return;
-              }
-              if (prop == null) {
-                return;
-              }
-              if (!prop.isProxy && typeof prop === "object") {
-                target[key] = new Proxy(prop, handler);
-              }
-              return target[key];
-            },
-            set: (target, key, value) => {
-              if (value === undefined) {
-                return true;
-              }
-              target[key] = escapeHTML(value);
-              this.render_debouncer();
-              return true;
-            },
-          };
-          var default_data = {};
-          this.shadowRoot.proxy = new Proxy(default_data, handler);
+          this.shadowRoot.proxy = make_proxy_object({}, () => {
+            this.render_debouncer();
+          });
           this.shadowRootHTML = $(this.shadowRoot, "#bay")[0];
 
           window.bay[this.uniqid] = this.shadowRoot;
@@ -1142,9 +1122,9 @@ const bay = () => {
   }
   // ------------------------------
 
-  window.onload = () => {
+  window.addEventListener("load", () => {
     get_all_bays(document);
-  };
+  });
 
   bay.refresh = () => {
     get_all_bays(document);
