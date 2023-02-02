@@ -92,8 +92,14 @@ const bay = () => {
   }
 
   // make the global data object ---------------------------------
+  let dispatch_debounced;
   window.bay.global = make_proxy_object({}, () => {
-    dispatch_global_event();
+    if (dispatch_debounced) {
+      window.cancelAnimationFrame(dispatch_debounced);
+    }
+    dispatch_debounced = window.requestAnimationFrame(() => {
+      dispatch_global_event();
+    });
   });
   // ------------------------------
 
