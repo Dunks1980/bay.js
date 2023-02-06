@@ -3,6 +3,7 @@ const bay = () => {
   const $ = (el, selector) => el.querySelectorAll(selector);
   const local_name = "$bay";
   const store_name = "$global";
+  const route_name = "$route";
   const element_name = "$el";
   window.bay = {};
   let file_name = "";
@@ -32,6 +33,11 @@ const bay = () => {
     window.dispatchEvent(evt);
   }
   // ------------------------------
+
+  function dispatch_route_event() {
+    const evt = new CustomEvent("bay_route_event");
+    window.dispatchEvent(evt);
+  }
 
   /**
    * Escapes HTML characters in a string to prevent XSS attacks when added data to proxys.
@@ -101,7 +107,65 @@ const bay = () => {
       dispatch_global_event();
     });
   });
-  // ------------------------------
+
+  // make the route object ---------------------------------
+  let route_debounced;
+  window.bay.route = make_proxy_object({}, () => {
+    if (route_debounced) {
+      window.cancelAnimationFrame(route_debounced);
+    }
+    route_debounced = window.requestAnimationFrame(() => {
+      dispatch_route_event();
+    });
+  });
+
+  // set route proxy ------------------------------
+  function update_route() {
+    window.bay.route.href = window.location.href;
+    window.bay.route.protocol = window.location.protocol;
+    window.bay.route.host = window.location.host;
+    window.bay.route.hostname = window.location.hostname;
+    window.bay.route.port = window.location.port;
+    window.bay.route.path = window.location.pathname;
+    window.bay.route.search = window.location.search;
+    window.bay.route.hash = window.location.hash;
+    window.bay.route.params = {};
+    let searchParams = new URLSearchParams(window.location.search);
+    for (let [key, value] of searchParams) {
+      window.bay.route.params[key] = value;
+    }
+  }
+  update_route();
+  window.addEventListener("popstate", () => {
+    update_route();
+  });
+
+  /**
+   * find a matching route and return the variables
+   * @param {string} url "/users/42/posts/test/test.html"
+   * @param {string} pattern "/users/:userId/posts/:postId/*"
+   * @returns {object} {id: 42, title: "test"}
+   */
+
+  window.bay.router = function (url, pattern) {
+    const patternParts = pattern.split("/");
+    const urlParts = url.split("/");
+    let match = true;
+    let params = {};
+    if (patternParts.length !== urlParts.length) {
+      match = false;
+    } else {
+      for (let i = 0; i < patternParts.length; i++) {
+        if (patternParts[i][0] === ":") {
+          params[patternParts[i].slice(1)] = urlParts[i];
+        } else if (patternParts[i] !== "*" && patternParts[i] !== urlParts[i]) {
+          match = false;
+          break;
+        }
+      }
+    }
+    return match ? params : false;
+  };
 
   /**
    * Generates a random string to be used as a unique ID.
@@ -451,6 +515,7 @@ const bay = () => {
     let script;
     let observedAttributes_from_element;
     let has_globals = false;
+    let has_route = false;
     let has_inner_html = false;
     try {
       // css ======================================================
@@ -475,6 +540,15 @@ const bay = () => {
         has_globals = true;
       }
 
+      // detect if has route ===================================
+      if (
+        component_html.innerHTML.indexOf("$route.") > -1 ||
+        component_html.innerHTML.indexOf("$route[") > -1 ||
+        component_html.innerHTML.indexOf("$bay.update_route") > -1
+      ) {
+        has_route = true;
+      }
+
       let array_of_tags = [
         "dsd",
         "noscript",
@@ -487,6 +561,8 @@ const bay = () => {
         "case",
         "default",
         "inner-html",
+        "route",
+        "router",
         "script",
       ];
 
@@ -517,6 +593,7 @@ const bay = () => {
                 : "";
               const open_tag = `<${tagname_str}>`;
               const close_tag = `</${tagname_str}>`;
+              const tag_el_attributes = [...tag_el.attributes];
               removeAttributes(tag_el);
               let outer_html = tag_el.outerHTML;
               switch (tagname_str) {
@@ -616,6 +693,26 @@ const bay = () => {
                     .replace(open_tag, "${ (() => { $bay_inner_html += `")
                     .replace(close_tag, "`; return ''} )()}");
                   tag_el.remove();
+                  break;
+                case "route":
+                  let attrs_str = "";
+                  tag_el_attributes.forEach((attr) => {
+                    attrs_str += ` ${attr.name}="${attr.value}"`;
+                  });
+                  tag_el.outerHTML = outer_html
+                    .replace(
+                      open_tag,
+                      `<a bay-route :click="e.preventDefault();history.pushState({},'',e.target.getAttribute('href'));$bay.update_route();"${attrs_str}>`
+                    )
+                    .replace(close_tag, `</a>`);
+                  break;
+                case "router":
+                  tag_el.outerHTML = outer_html
+                    .replace(
+                      open_tag,
+                      `\${(() => { let $path = window.bay.router(window.bay.route.path,'${tag_statement}'); if ($path) { return \``
+                    )
+                    .replace(close_tag, close_func);
                   break;
                 case "script":
                   // ------------------ SCRIPT TAGS ------------------
@@ -773,6 +870,7 @@ const bay = () => {
 
           const local_var = `const ${local_name} = window.bay['${this.uniqid}'];\n`;
           const global_var = `const ${store_name} = window.bay.global;\n`;
+          const route_var = `const ${route_name} = window.bay.route;\n`;
           const element_var = `const ${element_name} = ${local_name}['${element_name}'];\n`;
 
           // add update function ===========================================
@@ -796,6 +894,13 @@ const bay = () => {
 
           window.bay.encode = escapeHTML;
           const encode_var = `$bay.encode = bay.encode;\n`;
+
+          // add update route function =====================================
+          window.bay.update_route = update_route;
+          let route_update_var = ``;
+          if (has_route) {
+            route_update_var = `$bay.update_route = bay.update_route;\n`;
+          }
 
           // add slotchange event ==========================================
           window.bay[this.uniqid].addEventListener("slotchange", (e) => {
@@ -837,9 +942,9 @@ const bay = () => {
             inner_html_fn = `\n$bay.inner_html = () => { return $bay_inner_html; };`;
           }
 
-          this.blob_prefixes = `${local_var}${global_var}${element_var}${parent_var}${inner_html_var}${encode_var}${decode_var}${update_func}${slotchange_func}`;
+          this.blob_prefixes = `${local_var}${global_var}${route_var}${element_var}${parent_var}${inner_html_var}${encode_var}${decode_var}${update_func}${slotchange_func}${route_update_var}`;
 
-          this.blob_event_prefixes = `${local_var}${global_var}${element_var}${parent_var}${encode_var}${decode_var}`;
+          this.blob_event_prefixes = `${local_var}${global_var}${route_var}${element_var}${parent_var}${encode_var}${decode_var}${route_update_var}`;
 
           let proxy_script =
             `${this.blob_prefixes}` +
@@ -1106,6 +1211,11 @@ const bay = () => {
           try {
             if (has_globals) {
               window.addEventListener("bay_global_event", (e) => {
+                this.render_debouncer();
+              });
+            }
+            if (has_route) {
+              window.addEventListener("bay_route_event", (e) => {
                 this.render_debouncer();
               });
             }
