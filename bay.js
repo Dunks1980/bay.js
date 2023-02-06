@@ -890,16 +890,16 @@ const bay = () => {
 
           // add decode & encode functions =================================
           window.bay.decode = decodeHtml;
-          const decode_var = `$bay.decode = bay.decode;\n`;
+          const decode_var = `$bay.decode = window.bay.decode;\n`;
 
           window.bay.encode = escapeHTML;
-          const encode_var = `$bay.encode = bay.encode;\n`;
+          const encode_var = `$bay.encode = window.bay.encode;\n`;
 
           // add update route function =====================================
           window.bay.update_route = update_route;
           let route_update_var = ``;
           if (has_route) {
-            route_update_var = `$bay.update_route = bay.update_route;\n`;
+            route_update_var = `$bay.update_route = window.bay.update_route;\n`;
           }
 
           // add slotchange event ==========================================
