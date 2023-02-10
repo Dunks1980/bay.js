@@ -9,6 +9,7 @@ const bay = () => {
   let file_name = "";
   let to_fetch = [];
   let already_fetched = [];
+  let blobs_obj = {};
 
   /**
    * Used to attach shadow roots to templates with the shadowroot attribute
@@ -186,6 +187,7 @@ const bay = () => {
       return uuidv4().replaceAll("-", "").substring(0, length);
     }
   }
+  const bay_instance_id = makeid(8);
   // ------------------------------
 
   /**
@@ -239,7 +241,13 @@ const bay = () => {
     html = doc.parseFromString(template_el, "text/html");
     if (html) {
       if (!customElements.get(tagname)) {
-        create_component(html, tagname, getAttributes(bay), styles_string);
+        create_component(
+          html,
+          tagname,
+          getAttributes(bay),
+          styles_string,
+          false
+        );
       }
     }
   }
@@ -273,7 +281,8 @@ const bay = () => {
           html,
           element_tagname.toLowerCase(),
           passed_attributes,
-          styles_text
+          styles_text,
+          true
         );
       }
     }
@@ -502,6 +511,23 @@ const bay = () => {
     while (el.attributes.length > 0) el.removeAttribute(el.attributes[0].name);
   }
 
+  const show_element = /*HTML*/ `
+    <div id="show" :style="\${this.style()}"><slot></slot></div>
+    <script update>$bay.getElementById('show').ontransitionend = () => this.end();</script>
+    <script props>this.slide(this.open);</script>
+    <script mounted>this.slide(this.open);</script>
+    <script>
+      this.opacity = 0;
+      this.display = 'none';
+      this.slide = (open) => {
+        let opacity = 0;
+        if (open === 'true') {opacity = 1; this.display = 'block';}
+        requestAnimationFrame(() => {this.opacity = opacity;});};
+      this.end = () => {if (this.open === 'false') { this.display = 'none';}}
+      this.style = () => {return \`display:\${this.display}; opacity:\${this.opacity}; transition: opacity \${this.transition || '0s'};\`;};
+    </script>
+  `;
+
   /**
    * Create a custom element from a template.
    * @param {HTMLElement} html html element
@@ -509,7 +535,13 @@ const bay = () => {
    * @param {Array} attrs array of attributes to be added to the custom element
    * @param {String} styles_text css styles
    */
-  function create_component(html, element_tagname, attrs, styles_text) {
+  function create_component(
+    html,
+    element_tagname,
+    attrs,
+    styles_text,
+    revoke_blob
+  ) {
     let component_tagname = "";
     let component_html = "";
     let script;
@@ -520,9 +552,9 @@ const bay = () => {
     try {
       // css ======================================================
       const fouc_styles =
-        "*:not(:defined){opacity:0;max-width:0px;max-height:0px;}*:not(:defined)*{opacity:0;max-width:0px;max-height:0px;}";
+        "*:not(:defined){opacity:0;max-width:0px;max-height:0px;}*:not(:defined)*{opacity:0;max-width:0px;max-height:0px;}.bay-hide{display:none;}";
 
-      styles_text = fouc_styles + styles_text;
+      styles_text = fouc_styles + (styles_text || "");
 
       // html ====================================================
       component_html = html.body;
@@ -549,6 +581,13 @@ const bay = () => {
         has_route = true;
       }
 
+      if (component_html.innerHTML.indexOf("</show>") > -1) {
+        bay.create(`show-${bay_instance_id}`, show_element, [
+          "open",
+          "transition",
+        ]);
+      }
+
       let array_of_tags = [
         "dsd",
         "noscript",
@@ -557,6 +596,7 @@ const bay = () => {
         "if",
         "else-if",
         "else",
+        "show",
         "switch",
         "case",
         "default",
@@ -579,6 +619,7 @@ const bay = () => {
               const tag_params =
                 tag_el.getAttribute("params") || default_params;
               const tag_join = tag_el.getAttribute("join") || "";
+              const tag_duration = tag_el.getAttribute("duration") || "0s";
               const tag_statement = [...tag_el.attributes][0]
                 ? [...tag_el.attributes][0].nodeValue
                 : "";
@@ -659,6 +700,23 @@ const bay = () => {
                   tag_el.outerHTML = outer_html
                     .replace(open_tag, `\ ${tagname_str} { return \``)
                     .replace(close_tag, close_func);
+                  break;
+                case "show":
+                  if (tag_duration === "0s") {
+                    tag_el.outerHTML = outer_html
+                      .replace(
+                        open_tag,
+                        `<div class="\${(${tag_statement}) ? 'bay-show' : 'bay-show bay-hide'}">`
+                      )
+                      .replace(close_tag, `</div>`);
+                  } else {
+                    tag_el.outerHTML = outer_html
+                      .replace(
+                        open_tag,
+                        `<show-${bay_instance_id} class="bay-show" open="\${${tag_statement}}" transition="${tag_duration} ease-in-out">`
+                      )
+                      .replace(close_tag, `</show-${bay_instance_id}>`);
+                  }
                   break;
                 case "switch":
                   tag_el.outerHTML = outer_html
@@ -864,11 +922,16 @@ const bay = () => {
           this.shadowRoot.uniqid = this.uniqid;
           let rootNode = this.getRootNode();
           let parent_var = ``;
+          let parent_event_var = ``;
+          let parent_uniqid = ``;
           if (rootNode.host) {
-            parent_var = `const $parent = window.bay['${rootNode.host.uniqid}']['proxy'];\n`;
+            parent_var = `const $parent = window.bay[parent_uniqid]['proxy'];\n`;
+            parent_event_var = `const $parent = window.bay['${rootNode.host.uniqid}']['proxy'];\n`;
+            parent_uniqid = rootNode.host.uniqid;
           }
 
-          const local_var = `const ${local_name} = window.bay['${this.uniqid}'];\n`;
+          const local_var = `const ${local_name} = window.bay[bay_uniqid];\n`;
+          const local_evevt_var = `const ${local_name} = window.bay['${this.uniqid}'];\n`;
           const global_var = `const ${store_name} = window.bay.global;\n`;
           const route_var = `const ${route_name} = window.bay.route;\n`;
           const element_var = `const ${element_name} = ${local_name}['${element_name}'];\n`;
@@ -879,13 +942,13 @@ const bay = () => {
           );
           let update_func = ``;
           if (this.original_template.indexOf(`/*props updates*/`) > -1) {
-            update_func = `let $props;\nwindow.addEventListener(\`bay_local_update_event_${this.uniqid}\`, () => $props());\n`;
+            update_func = `let $props;\nwindow.addEventListener(\`bay_local_update_event_\${bay_uniqid}\`, () => $props());\n`;
           }
 
           // add slotchange function =======================================
           let slotchange_func = ``;
           if (this.original_template.indexOf(`/*slotchange updates*/`) > -1) {
-            update_func = `let $slotchange = () => {};\nlet $details = {'element': '', 'changed': ''};\nwindow.addEventListener(\`bay_slotchange_event_${this.uniqid}\`, (e) => $slotchange(e));\n`;
+            update_func = `let $slotchange = () => {};\nlet $details = {'element': '', 'changed': ''};\nwindow.addEventListener(\`bay_slotchange_event_\${bay_uniqid}\`, (e) => $slotchange(e));\n`;
           }
 
           // add decode & encode functions =================================
@@ -944,7 +1007,7 @@ const bay = () => {
 
           this.blob_prefixes = `${local_var}${global_var}${route_var}${element_var}${parent_var}${inner_html_var}${encode_var}${decode_var}${update_func}${slotchange_func}${route_update_var}`;
 
-          this.blob_event_prefixes = `${local_var}${global_var}${route_var}${element_var}${parent_var}${encode_var}${decode_var}${route_update_var}`;
+          this.blob_event_prefixes = `${local_evevt_var}${global_var}${route_var}${element_var}${parent_event_var}${encode_var}${decode_var}${route_update_var}`;
 
           let proxy_script =
             `${this.blob_prefixes}` +
@@ -970,7 +1033,8 @@ const bay = () => {
           }
 
           this.add_JS_BlobFileToHead(
-            `${proxy_script}\n${local_name}.template = () => {${inner_html_reset}return \`${proxy_html}\`;};\n${local_name}.styles = () => { return \`${proxy_css}\`;};${inner_html_fn}`
+            `${proxy_script}\n${local_name}.template = () => {${inner_html_reset}return \`${proxy_html}\`;};\n${local_name}.styles = () => { return \`${proxy_css}\`;};${inner_html_fn}`,
+            parent_uniqid
           );
 
           this.hasAdoptedStyleSheets = false;
@@ -1179,17 +1243,32 @@ const bay = () => {
          * the template function will return the html and the styles function will return the styles
          * this is used by the diff function to compare the old and new html and styles with updated data
          */
-        async add_JS_BlobFileToHead(text) {
-          const blob = new Blob(
-            [`export default () => {"use strict";\n${text}};`],
-            {
-              type: "text/javascript",
-            }
-          );
-          const blobUrl = URL.createObjectURL(blob);
-          const code = await import(blobUrl);
-          code.default();
-          URL.revokeObjectURL(blobUrl);
+        async add_JS_BlobFileToHead(text, parent_uniqid) {
+          if (!blobs_obj[element_tagname]) {
+            const blob = new Blob(
+              [
+                `export default (bay_uniqid, parent_uniqid) => {"use strict";\n${text}};`,
+              ],
+              { type: "text/javascript" }
+            );
+            const blobUrl = URL.createObjectURL(blob);
+            blobs_obj[element_tagname] = blobUrl;
+            await import(blobUrl).then((code) => {
+              code.default(this.uniqid, parent_uniqid);
+              this.after_blob_loaded();
+              if (revoke_blob) {
+                URL.revokeObjectURL(blobUrl);
+              }
+            });
+          } else {
+            await import(blobs_obj[element_tagname]).then((code) => {
+              code.default(this.uniqid, parent_uniqid);
+              this.after_blob_loaded();
+            });
+          }
+        }
+
+        after_blob_loaded() {
           if (!this.dsd) {
             this.original_template = window.bay[this.uniqid].template();
             this.shadowRoot.getElementById("bay").innerHTML =
