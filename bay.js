@@ -762,7 +762,7 @@ const bay = () => {
                   tag_el.outerHTML = outer_html
                     .replace(
                       open_tag,
-                      `<a bay-route :click="e.preventDefault();history.pushState({},'',e.target.getAttribute('href'));$bay.update_route();"${attrs_str}>`
+                      `<a bay-route :click="e.preventDefault();history.pushState({},'',e.target.getAttribute('href'));window.bay.update_route();"${attrs_str}>`
                     )
                     .replace(close_tag, `</a>`);
                   break;
