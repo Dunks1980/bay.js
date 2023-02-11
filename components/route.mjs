@@ -8,7 +8,11 @@ export default /*HTML*/`
     if (attr.value !== '' && attr.name !== '') {
       el_attrs += \` \${attr.name}="\${attr.value}"\`;
     }
+    $el.removeAttribute(attr.name);
   });
-  this.a_el = \`<a bay-route :click="e.preventDefault();history.pushState({},'',e.target.getAttribute('href'));$bay.update_route();"\${el_attrs}>\${$el.innerHTML}</a>\`;
+  this.get_route = (e) => {
+    e.preventDefault();history.pushState({},'',e.target.getAttribute('href'));$bay.update_route();
+  }
+  this.a_el = \`<a bay-route :click="this.get_route(e)"\${el_attrs}>\${$el.innerHTML}</a>\`;
 </script>
 `;
