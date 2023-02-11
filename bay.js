@@ -576,6 +576,8 @@ const bay = () => {
       if (
         component_html.innerHTML.indexOf("$route.") > -1 ||
         component_html.innerHTML.indexOf("$route[") > -1 ||
+        component_html.innerHTML.indexOf("</router>") > -1 ||
+        component_html.innerHTML.indexOf("</route>") > -1 ||
         component_html.innerHTML.indexOf("$bay.update_route") > -1
       ) {
         has_route = true;
