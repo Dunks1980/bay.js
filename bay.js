@@ -153,16 +153,12 @@ const bay = () => {
     const urlParts = url.split("/");
     let match = true;
     let params = {};
-    if (patternParts.length !== urlParts.length) {
-      match = false;
-    } else {
-      for (let i = 0; i < patternParts.length; i++) {
-        if (patternParts[i][0] === ":") {
-          params[patternParts[i].slice(1)] = urlParts[i];
-        } else if (patternParts[i] !== "*" && patternParts[i] !== urlParts[i]) {
-          match = false;
-          break;
-        }
+    for (let i = 0; i < patternParts.length; i++) {
+      if (patternParts[i][0] === ":") {
+        params[patternParts[i].slice(1)] = urlParts[i];
+      } else if (patternParts[i] !== "*" && patternParts[i] !== urlParts[i]) {
+        match = false;
+        break;
       }
     }
     return match ? params : false;
