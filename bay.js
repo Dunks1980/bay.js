@@ -550,8 +550,7 @@ const bay = () => {
       const fouc_styles =
         "*:not(:defined){opacity:0;max-width:0px;max-height:0px}" +
         "*:not(:defined)*{opacity:0;max-width:0px;max-height:0px}" +
-        ".bay-hide{display:none}" +
-        "[bay-route]*{pointer-events:none}";
+        ".bay-hide{display:none}";
 
       styles_text = fouc_styles + (styles_text || "");
 
@@ -581,7 +580,13 @@ const bay = () => {
       ) {
         has_route = true;
       }
+      if (
+        component_html.innerHTML.indexOf("</route>") > -1
+      ) {
+        styles_text = (styles_text || "") + "[bay-route]>*{pointer-events:none}";
+      }
 
+      // detect if has show ===================================
       if (component_html.innerHTML.indexOf("</show>") > -1) {
         bay.create(`show-${bay_instance_id}`, show_element, [
           "open",
