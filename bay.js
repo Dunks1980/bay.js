@@ -548,7 +548,10 @@ const bay = () => {
     try {
       // css ======================================================
       const fouc_styles =
-        "*:not(:defined){opacity:0;max-width:0px;max-height:0px;}*:not(:defined)*{opacity:0;max-width:0px;max-height:0px;}.bay-hide{display:none;}";
+        "*:not(:defined){opacity:0;max-width:0px;max-height:0px}" +
+        "*:not(:defined)*{opacity:0;max-width:0px;max-height:0px}" +
+        ".bay-hide{display:none}" +
+        "[bay-route]*{pointer-events:none}";
 
       styles_text = fouc_styles + (styles_text || "");
 
