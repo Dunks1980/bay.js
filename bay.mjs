@@ -625,7 +625,7 @@ const bay = () => {
               const tag_params =
                 tag_el.getAttribute("params") || default_params;
               const tag_join = tag_el.getAttribute("join") || "";
-              const tag_duration = tag_el.getAttribute("duration") || "0s";
+              const tag_duration = tag_el.getAttribute("duration") || false;
               const tag_statement = [...tag_el.attributes][0]
                 ? [...tag_el.attributes][0].nodeValue
                 : "";
@@ -708,7 +708,7 @@ const bay = () => {
                     .replace(close_tag, close_func);
                   break;
                 case "show":
-                  if (tag_duration === "0s") {
+                  if (!tag_duration) {
                     tag_el.outerHTML = outer_html
                       .replace(
                         open_tag,
