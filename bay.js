@@ -16,8 +16,8 @@ const bay = () => {
    * @param {HTMLElement} root
    */
   (function attachShadowRoots(root) {
-    $(root, "template[shadowroot]").forEach((template) => {
-      const mode = template.getAttribute("shadowroot");
+    $(root, "template[shadowrootmode], template[shadowroot]").forEach((template) => {
+      const mode = template.getAttribute("shadowrootmode") || template.getAttribute("shadowroot");
       const shadowRoot = template.parentNode.attachShadow({ mode });
       shadowRoot.appendChild(template.content);
       template.remove();
@@ -546,6 +546,11 @@ const bay = () => {
     let has_route = false;
     let has_inner_html = false;
     try {
+
+
+
+
+
       // css ======================================================
       const fouc_styles =
         "*:not(:defined){opacity:0;max-width:0px;max-height:0px}" +
@@ -580,10 +585,9 @@ const bay = () => {
       ) {
         has_route = true;
       }
-      if (
-        component_html.innerHTML.indexOf("</route>") > -1
-      ) {
-        styles_text = (styles_text || "") + "[bay-route]>*{pointer-events:none}";
+      if (component_html.innerHTML.indexOf("</route>") > -1) {
+        styles_text =
+          (styles_text || "") + "[bay-route]>*{pointer-events:none}";
       }
 
       // detect if has show ===================================
@@ -594,7 +598,10 @@ const bay = () => {
         ]);
       }
 
-      let array_of_tags = [
+      const default_params = "element, index, array";
+      let script_text = "";
+
+      const array_of_tags = [
         "dsd",
         "noscript",
         "map",
@@ -612,222 +619,216 @@ const bay = () => {
         "script",
       ];
 
-      let default_params = "element, index, array";
-      let script_text = "";
+      const tag_changer = (tag_el, tagname_str) => {
+        const has_children = $(tag_el, tagname_str)[0];
+        if (!has_children) {
+          const tag_array = tag_el.getAttribute("array") || [];
+          const tag_params = tag_el.getAttribute("params") || default_params;
+          const tag_join = tag_el.getAttribute("join") || "";
+          const tag_duration = tag_el.getAttribute("duration") || false;
+          const tag_statement = [...tag_el.attributes][0]
+            ? [...tag_el.attributes][0].nodeValue
+            : "";
+          const next_el = tag_el.nextElementSibling
+            ? tag_el.nextElementSibling.tagName.toLowerCase()
+            : "";
+          let close_func = `\` } return '' })() }`;
+          const break_prop = tag_el.hasAttribute("break") ? "break;" : "";
+          const shared_case = tag_el.innerHTML.length === 0;
+          const script_type = tag_el.attributes.length
+            ? tag_el.attributes[0].name
+            : "";
+          const open_tag = `<${tagname_str}>`;
+          const close_tag = `</${tagname_str}>`;
+          const tag_el_attributes = [...tag_el.attributes];
+          removeAttributes(tag_el);
+          let outer_html = tag_el.outerHTML;
+          switch (tagname_str) {
+            case "dsd":
+              tag_el.remove();
+              break;
+            case "noscript":
+              component_html.innerHTML = component_html.innerHTML
+                .replaceAll(open_tag, "")
+                .replaceAll(close_tag, "");
+              break;
+            case "map":
+              outer_html = outer_html
+                .replace(
+                  open_tag,
+                  `\${ ${tag_array}.${tagname_str}((${tag_params}) => { return \``
+                )
+                .replace(close_tag, `\`}).join('${tag_join}')}`);
+              tag_el.outerHTML = outer_html;
+              break;
+            case "for":
+              const this_for = `bay_${tagname_str}_${makeid(8)}`;
+              if (tag_array.length) {
+                outer_html = outer_html
+                  .replace(
+                    open_tag,
+                    `\${(() => { let ${this_for} = ''; ${tag_array}.forEach((${tag_params}) => { ${this_for} += \``
+                  )
+                  .replace(close_tag, `\`}); return ${this_for}; })() }`);
+              } else {
+                outer_html = outer_html
+                  .replace(
+                    open_tag,
+                    `\${(() => { let ${this_for} = ''; ${tagname_str} (${tag_statement}) { ${this_for} += \``
+                  )
+                  .replace(close_tag, `\`}; return ${this_for}; })() }`);
+              }
+              tag_el.outerHTML = outer_html;
+              break;
+            case "if":
+              if (next_el === "else-if" || next_el === "else") {
+                close_func = `\` }`;
+              }
+              tag_el.outerHTML = outer_html
+                .replace(
+                  open_tag,
+                  `\${(() => { ${tagname_str} (${tag_statement}) { return \``
+                )
+                .replace(close_tag, close_func);
+              break;
+            case "else-if":
+              if (next_el === "else-if" || next_el === "else") {
+                close_func = `\` }`;
+              }
+              tag_el.outerHTML = outer_html
+                .replace(open_tag, `\ else if (${tag_statement}) { return \``)
+                .replace(close_tag, close_func);
+              break;
+            case "else":
+              tag_el.outerHTML = outer_html
+                .replace(open_tag, `\ ${tagname_str} { return \``)
+                .replace(close_tag, close_func);
+              break;
+            case "show":
+              if (!tag_duration) {
+                tag_el.outerHTML = outer_html
+                  .replace(
+                    open_tag,
+                    `<div class="\${(${tag_statement}) ? 'bay-show' : 'bay-show bay-hide'}">`
+                  )
+                  .replace(close_tag, `</div>`);
+              } else {
+                tag_el.outerHTML = outer_html
+                  .replace(
+                    open_tag,
+                    `<show-${bay_instance_id} class="bay-show" open="\${${tag_statement}}" transition="${tag_duration} ease-in-out">`
+                  )
+                  .replace(close_tag, `</show-${bay_instance_id}>`);
+              }
+              break;
+            case "switch":
+              tag_el.outerHTML = outer_html
+                .replace(
+                  open_tag,
+                  `\${(() => { ${tagname_str} (${tag_statement}) { `
+                )
+                .replace(close_tag, ` }; return '' })() }`);
+              break;
+            case "case":
+              if (shared_case) {
+                tag_el.outerHTML = outer_html
+                  .replace(open_tag, `${tagname_str} ${tag_statement}:`)
+                  .replace(close_tag, ` ` + break_prop);
+              } else {
+                tag_el.outerHTML = outer_html
+                  .replace(
+                    open_tag,
+                    `${tagname_str} ${tag_statement}: return \``
+                  )
+                  .replace(close_tag, `\`; ` + break_prop);
+              }
+              break;
+            case "default":
+              tag_el.outerHTML = outer_html
+                .replace(open_tag, `${tagname_str}: return \``)
+                .replace(close_tag, `\`;`);
+              break;
+            case "inner-html":
+              has_inner_html = true;
+              tag_el.outerHTML = outer_html
+                .replace(open_tag, "${ (() => { $bay_inner_html += `")
+                .replace(close_tag, "`; return ''} )()}");
+              tag_el.remove();
+              break;
+            case "route":
+              let attrs_str = "";
+              tag_el_attributes.forEach((attr) => {
+                attrs_str += ` ${attr.name}="${attr.value}"`;
+              });
+              tag_el.outerHTML = outer_html
+                .replace(
+                  open_tag,
+                  `<a bay-route :click="e.preventDefault();history.pushState({},'',e.target.getAttribute('href'));window.bay.update_route();"${attrs_str}>`
+                )
+                .replace(close_tag, `</a>`);
+              break;
+            case "router":
+              tag_el.outerHTML = outer_html
+                .replace(
+                  open_tag,
+                  `\${(() => { let $path = window.bay.router(window.bay.route.path,'${tag_statement}'); if ($path) { return \``
+                )
+                .replace(close_tag, close_func);
+              break;
+            case "script":
+              // ------------------ SCRIPT TAGS ------------------
+              switch (script_type) {
+                case "update":
+                  outer_html = outer_html
+                    .replace(
+                      open_tag,
+                      "${/*update*/ (() => {setTimeout(() => {"
+                    )
+                    .replace(close_tag, "}, 0); return ``})()}");
+                  break;
+                case "props":
+                  outer_html = outer_html
+                    .replace(
+                      open_tag,
+                      "${ /*props updates*/ (() => {$props = () => {"
+                    )
+                    .replace(close_tag, "};return ``})()}");
+                  break;
+                case "render":
+                  outer_html = outer_html
+                    .replace(open_tag, "${ /*render*/ (() => {")
+                    .replace(close_tag, " return ``})()}");
+                  break;
+                case "slotchange":
+                  outer_html = outer_html
+                    .replace(
+                      open_tag,
+                      "${ /*slotchange updates*/ (() => {$slotchange = (e) => { $details = e.detail;\n"
+                    )
+                    .replace(close_tag, "};return ``})()}");
+                  break;
+                case "mounted":
+                  script_text += `$bay['$mounted'] = () => {${tag_el.innerText}};`;
+                  tag_el.remove();
+                  break;
+                default:
+                  script_text += $(component_html, tagname_str)[0].innerText;
+                  tag_el.remove();
+                  break;
+              }
+              if (tag_el && tag_el.parentNode) {
+                tag_el.outerHTML = outer_html;
+                tag_el.remove();
+              }
+              break;
+          }
+        }
+      };
 
       array_of_tags.forEach((tagname_str) => {
         while ([...$(component_html, tagname_str)].length > 0) {
           const tags = [...$(component_html, tagname_str)];
-          tags.forEach((tag_el) => {
-            const has_children = $(tag_el, tagname_str)[0];
-            if (!has_children) {
-              const tag_array = tag_el.getAttribute("array") || [];
-              const tag_params =
-                tag_el.getAttribute("params") || default_params;
-              const tag_join = tag_el.getAttribute("join") || "";
-              const tag_duration = tag_el.getAttribute("duration") || false;
-              const tag_statement = [...tag_el.attributes][0]
-                ? [...tag_el.attributes][0].nodeValue
-                : "";
-              const next_el = tag_el.nextElementSibling
-                ? tag_el.nextElementSibling.tagName.toLowerCase()
-                : "";
-              let close_func = `\` } return '' })() }`;
-              const break_prop = tag_el.hasAttribute("break") ? "break;" : "";
-              const shared_case = tag_el.innerHTML.length === 0;
-              const script_type = tag_el.attributes.length
-                ? tag_el.attributes[0].name
-                : "";
-              const open_tag = `<${tagname_str}>`;
-              const close_tag = `</${tagname_str}>`;
-              const tag_el_attributes = [...tag_el.attributes];
-              removeAttributes(tag_el);
-              let outer_html = tag_el.outerHTML;
-              switch (tagname_str) {
-                case "dsd":
-                  tag_el.remove();
-                  break;
-                case "noscript":
-                  component_html.innerHTML = component_html.innerHTML
-                    .replaceAll(open_tag, "")
-                    .replaceAll(close_tag, "");
-                  break;
-                case "map":
-                  outer_html = outer_html
-                    .replace(
-                      open_tag,
-                      `\${ ${tag_array}.${tagname_str}((${tag_params}) => { return \``
-                    )
-                    .replace(close_tag, `\`}).join('${tag_join}')}`);
-                  tag_el.outerHTML = outer_html;
-                  break;
-                case "for":
-                  const this_for = `bay_${tagname_str}_${makeid(8)}`;
-                  if (tag_array.length) {
-                    outer_html = outer_html
-                      .replace(
-                        open_tag,
-                        `\${(() => { let ${this_for} = ''; ${tag_array}.forEach((${tag_params}) => { ${this_for} += \``
-                      )
-                      .replace(close_tag, `\`}); return ${this_for}; })() }`);
-                  } else {
-                    outer_html = outer_html
-                      .replace(
-                        open_tag,
-                        `\${(() => { let ${this_for} = ''; ${tagname_str} (${tag_statement}) { ${this_for} += \``
-                      )
-                      .replace(close_tag, `\`}; return ${this_for}; })() }`);
-                  }
-                  tag_el.outerHTML = outer_html;
-                  break;
-                case "if":
-                  if (next_el === "else-if" || next_el === "else") {
-                    close_func = `\` }`;
-                  }
-                  tag_el.outerHTML = outer_html
-                    .replace(
-                      open_tag,
-                      `\${(() => { ${tagname_str} (${tag_statement}) { return \``
-                    )
-                    .replace(close_tag, close_func);
-                  break;
-                case "else-if":
-                  if (next_el === "else-if" || next_el === "else") {
-                    close_func = `\` }`;
-                  }
-                  tag_el.outerHTML = outer_html
-                    .replace(
-                      open_tag,
-                      `\ else if (${tag_statement}) { return \``
-                    )
-                    .replace(close_tag, close_func);
-                  break;
-                case "else":
-                  tag_el.outerHTML = outer_html
-                    .replace(open_tag, `\ ${tagname_str} { return \``)
-                    .replace(close_tag, close_func);
-                  break;
-                case "show":
-                  if (!tag_duration) {
-                    tag_el.outerHTML = outer_html
-                      .replace(
-                        open_tag,
-                        `<div class="\${(${tag_statement}) ? 'bay-show' : 'bay-show bay-hide'}">`
-                      )
-                      .replace(close_tag, `</div>`);
-                  } else {
-                    tag_el.outerHTML = outer_html
-                      .replace(
-                        open_tag,
-                        `<show-${bay_instance_id} class="bay-show" open="\${${tag_statement}}" transition="${tag_duration} ease-in-out">`
-                      )
-                      .replace(close_tag, `</show-${bay_instance_id}>`);
-                  }
-                  break;
-                case "switch":
-                  tag_el.outerHTML = outer_html
-                    .replace(
-                      open_tag,
-                      `\${(() => { ${tagname_str} (${tag_statement}) { `
-                    )
-                    .replace(close_tag, ` }; return '' })() }`);
-                  break;
-                case "case":
-                  if (shared_case) {
-                    tag_el.outerHTML = outer_html
-                      .replace(open_tag, `${tagname_str} ${tag_statement}:`)
-                      .replace(close_tag, ` ` + break_prop);
-                  } else {
-                    tag_el.outerHTML = outer_html
-                      .replace(
-                        open_tag,
-                        `${tagname_str} ${tag_statement}: return \``
-                      )
-                      .replace(close_tag, `\`; ` + break_prop);
-                  }
-                  break;
-                case "default":
-                  tag_el.outerHTML = outer_html
-                    .replace(open_tag, `${tagname_str}: return \``)
-                    .replace(close_tag, `\`;`);
-                  break;
-                case "inner-html":
-                  has_inner_html = true;
-                  tag_el.outerHTML = outer_html
-                    .replace(open_tag, "${ (() => { $bay_inner_html += `")
-                    .replace(close_tag, "`; return ''} )()}");
-                  tag_el.remove();
-                  break;
-                case "route":
-                  let attrs_str = "";
-                  tag_el_attributes.forEach((attr) => {
-                    attrs_str += ` ${attr.name}="${attr.value}"`;
-                  });
-                  tag_el.outerHTML = outer_html
-                    .replace(
-                      open_tag,
-                      `<a bay-route :click="e.preventDefault();history.pushState({},'',e.target.getAttribute('href'));window.bay.update_route();"${attrs_str}>`
-                    )
-                    .replace(close_tag, `</a>`);
-                  break;
-                case "router":
-                  tag_el.outerHTML = outer_html
-                    .replace(
-                      open_tag,
-                      `\${(() => { let $path = window.bay.router(window.bay.route.path,'${tag_statement}'); if ($path) { return \``
-                    )
-                    .replace(close_tag, close_func);
-                  break;
-                case "script":
-                  // ------------------ SCRIPT TAGS ------------------
-                  switch (script_type) {
-                    case "update":
-                      outer_html = outer_html
-                        .replace(
-                          open_tag,
-                          "${/*update*/ (() => {setTimeout(() => {"
-                        )
-                        .replace(close_tag, "}, 0); return ``})()}");
-                      break;
-                    case "props":
-                      outer_html = outer_html
-                        .replace(
-                          open_tag,
-                          "${ /*props updates*/ (() => {$props = () => {"
-                        )
-                        .replace(close_tag, "};return ``})()}");
-                      break;
-                    case "render":
-                      outer_html = outer_html
-                        .replace(open_tag, "${ /*render*/ (() => {")
-                        .replace(close_tag, " return ``})()}");
-                      break;
-                    case "slotchange":
-                      outer_html = outer_html
-                        .replace(
-                          open_tag,
-                          "${ /*slotchange updates*/ (() => {$slotchange = (e) => { $details = e.detail;\n"
-                        )
-                        .replace(close_tag, "};return ``})()}");
-                      break;
-                    case "mounted":
-                      script_text += `$bay['$mounted'] = () => {${tag_el.innerText}};`;
-                      tag_el.remove();
-                      break;
-                    default:
-                      script_text += $(component_html, tagname_str)[0]
-                        .innerText;
-                      tag_el.remove();
-                      break;
-                  }
-                  if (tag_el && tag_el.parentNode) {
-                    tag_el.outerHTML = outer_html;
-                    tag_el.remove();
-                  }
-                  break;
-              }
-            }
-          });
+          tags.forEach((el) => tag_changer(el, tagname_str));
         }
       });
 
@@ -1070,42 +1071,44 @@ const bay = () => {
           }
         }
 
+        apply_events_and_styles(attr, el, i) {
+          let event = attr.name.substring(0, 1) === ":";
+          if (event) {
+            if (attr.name.indexOf(":style") > -1) {
+              el.style = attr.value;
+            } else {
+              let attr_data = attr.value.replaceAll(
+                "window.bay",
+                `${local_name}`
+              );
+              if (
+                this.newEvents.indexOf(`${local_name}['${i}'] = {};`) === -1
+              ) {
+                this.newEvents += `${local_name}['${i}'] = {};`;
+              }
+              this.newEvents += `${local_name}['${i}']['${attr.name}'] = function(e) {${attr_data}};\n`;
+              el[`on${attr.name.split(":")[1]}`] = (e) => {
+                if (
+                  window.bay[this.uniqid][`${i}`] &&
+                  window.bay[this.uniqid][`${i}`][`${attr.name}`]
+                ) {
+                  window.bay[this.uniqid][`${i}`][attr.name](e);
+                }
+              };
+            }
+          }
+        }
+
         add_events_and_styles(elements) {
           if (!elements) return;
-          let this_newEvents = ``;
+          this.newEvents = ``;
           elements.forEach((el, i) => {
             const attrs = el.attributes;
-            [...attrs].forEach((attr) => {
-              let event = attr.name.substring(0, 1) === ":";
-              if (event) {
-                if (attr.name.indexOf(":style") > -1) {
-                  el.style = attr.value;
-                } else {
-                  let attr_data = attr.value.replaceAll(
-                    "window.bay",
-                    `${local_name}`
-                  );
-                  if (
-                    this_newEvents.indexOf(`${local_name}['${i}'] = {};`) === -1
-                  ) {
-                    this_newEvents += `${local_name}['${i}'] = {};`;
-                  }
-                  this_newEvents += `${local_name}['${i}']['${attr.name}'] = function(e) {${attr_data}};\n`;
-                  el[`on${attr.name.split(":")[1]}`] = (e) => {
-                    if (
-                      window.bay[this.uniqid][`${i}`] &&
-                      window.bay[this.uniqid][`${i}`][`${attr.name}`]
-                    ) {
-                      window.bay[this.uniqid][`${i}`][attr.name](e);
-                    }
-                  };
-                }
-              }
-            });
+            [...attrs].forEach((attr) => this.apply_events_and_styles(attr, el, i));
           });
-          if (this_newEvents && this.oldEvents !== this_newEvents) {
-            this.oldEvents = this_newEvents;
-            this.add_JS_Blob_event(this_newEvents);
+          if (this.newEvents && this.oldEvents !== this.newEvents) {
+            this.oldEvents = this.newEvents;
+            this.add_JS_Blob_event(this.newEvents);
           }
         }
 
