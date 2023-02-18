@@ -5,6 +5,7 @@ const bay = () => {
   const store_name = "$global";
   const route_name = "$route";
   const element_name = "$el";
+  const data_attr = `data-bay-`;
   window.bay = {};
   let file_name = "";
   let to_fetch = [];
@@ -16,13 +17,17 @@ const bay = () => {
    * @param {HTMLElement} root
    */
   (function attachShadowRoots(root) {
-    $(root, "template[shadowrootmode], template[shadowroot]").forEach((template) => {
-      const mode = template.getAttribute("shadowrootmode") || template.getAttribute("shadowroot");
-      const shadowRoot = template.parentNode.attachShadow({ mode });
-      shadowRoot.appendChild(template.content);
-      template.remove();
-      attachShadowRoots(shadowRoot);
-    });
+    $(root, "template[shadowrootmode], template[shadowroot]").forEach(
+      (template) => {
+        const mode =
+          template.getAttribute("shadowrootmode") ||
+          template.getAttribute("shadowroot");
+        const shadowRoot = template.parentNode.attachShadow({ mode });
+        shadowRoot.appendChild(template.content);
+        template.remove();
+        attachShadowRoots(shadowRoot);
+      }
+    );
   })(document);
   // ------------------------------
 
@@ -546,11 +551,6 @@ const bay = () => {
     let has_route = false;
     let has_inner_html = false;
     try {
-
-
-
-
-
       // css ======================================================
       const fouc_styles =
         "*:not(:defined){opacity:0;max-width:0px;max-height:0px}" +
@@ -600,24 +600,6 @@ const bay = () => {
 
       const default_params = "element, index, array";
       let script_text = "";
-
-      const array_of_tags = [
-        "dsd",
-        "noscript",
-        "map",
-        "for",
-        "if",
-        "else-if",
-        "else",
-        "show",
-        "switch",
-        "case",
-        "default",
-        "inner-html",
-        "route",
-        "router",
-        "script",
-      ];
 
       const tag_changer = (tag_el, tagname_str) => {
         const has_children = $(tag_el, tagname_str)[0];
@@ -825,11 +807,38 @@ const bay = () => {
         }
       };
 
-      array_of_tags.forEach((tagname_str) => {
+      [
+        "dsd",
+        "noscript",
+        "map",
+        "for",
+        "if",
+        "else-if",
+        "else",
+        "show",
+        "switch",
+        "case",
+        "default",
+        "inner-html",
+        "route",
+        "router",
+        "script",
+      ].forEach((tagname_str) => {
         while ([...$(component_html, tagname_str)].length > 0) {
           const tags = [...$(component_html, tagname_str)];
           tags.forEach((el) => tag_changer(el, tagname_str));
         }
+      });
+
+      [...$(component_html, "*")].forEach((el) => {
+        [...el.attributes].forEach((attr) => {
+          let event = attr.name.substring(0, 1) === ":";
+          if (event) {
+            let event_name = attr.name.split(":")[1];
+            el.setAttribute(`${data_attr}${event_name}`, attr.value);
+            el.removeAttribute(attr.name);
+          }
+        });
       });
 
       script = script_text;
@@ -1072,24 +1081,24 @@ const bay = () => {
           }
         }
 
-        apply_events_and_styles(attr, el, i) {
-          let event = attr.name.substring(0, 1) === ":";
+        apply_events(attr, el, i) {
+          let event = attr.name.indexOf(data_attr) > -1;
           if (event) {
-            if (attr.name.indexOf(":style") > -1) {
-              el.style = attr.value;
+            if (attr.name.indexOf(`${data_attr}style`) > -1) {
+              if (el.style !== attr.value) {
+                el.style = attr.value;
+              }
             } else {
               let attr_data = attr.value.replaceAll(
                 "window.bay",
                 `${local_name}`
               );
-              if (
-                this.newEvents.indexOf(`${local_name}[${i}] = {};`) === -1
-              ) {
+              if (this.newEvents.indexOf(`${local_name}[${i}] = {};`) === -1) {
                 this.newEvents += `${local_name}[${i}] = {};`;
                 this.newEventsArray.push(i);
               }
               this.newEvents += `${local_name}[${i}]['${attr.name}'] = function(e) {${attr_data}};\n`;
-              el[`on${attr.name.split(":")[1]}`] = (e) => {
+              el[`on${attr.name.split(data_attr)[1]}`] = (e) => {
                 if (
                   window.bay[this.uniqid][i] &&
                   window.bay[this.uniqid][i][attr.name]
@@ -1101,13 +1110,15 @@ const bay = () => {
           }
         }
 
-        add_events_and_styles(elements) {
+        add_events(elements) {
           if (!elements) return;
           this.newEvents = ``;
           this.newEventsArray = [];
           elements.forEach((el, i) => {
-            const attrs = el.attributes;
-            [...attrs].forEach((attr) => this.apply_events_and_styles(attr, el, i));
+            // elements are the elements that have been added to the DOM
+            [...el.attributes].forEach((attr) =>
+              this.apply_events(attr, el, i)
+            );
           });
           this.oldEventsArray.forEach((id) => {
             if (this.newEventsArray.indexOf(id) === -1) {
@@ -1151,7 +1162,7 @@ const bay = () => {
               copyAttributes(el, current_els[i]);
             }
             // cleanup old styles
-            if (!el.hasAttribute(":style") && !el.hasAttribute("style")) {
+            if (!el.hasAttribute(`${data_attr}style`) && !el.hasAttribute("style")) {
               current_els[i].removeAttribute("style");
             }
           });
@@ -1165,17 +1176,19 @@ const bay = () => {
             window.bay[this.uniqid].inner_html()
           );
           dom_diff(new_inner_html, html_target);
-          const inner_html_elements = [...$(html_target, "*")];
-          const inner_html_template_elements = [...$(new_inner_html, "*")];
-          this.isEqual_fn(inner_html_template_elements, inner_html_elements);
+          this.isEqual_fn(
+            [...$(new_inner_html, "*")],
+            [...$(html_target, "*")]
+          );
         }
 
         render_shadowDOM() {
           const templateHTML = stringToHTML(window.bay[this.uniqid].template());
           dom_diff(templateHTML, this.shadowRootHTML);
-          const all_template_elements = [...$(templateHTML, "*")];
-          const all_shadow_elements = [...$(this.shadowRootHTML, "*")];
-          this.isEqual_fn(all_template_elements, all_shadow_elements);
+          this.isEqual_fn(
+            [...$(templateHTML, "*")],
+            [...$(this.shadowRootHTML, "*")]
+          );
         }
 
         render_debouncer() {
@@ -1207,12 +1220,12 @@ const bay = () => {
 
             // Events and Styles
             if (has_inner_html) {
-              this.add_events_and_styles([
+              this.add_events([
                 ...$(this.inner_html_target, "*"),
                 ...$(this.shadowRootHTML, "*"),
               ]);
             } else {
-              this.add_events_and_styles([...$(this.shadowRootHTML, "*")]);
+              this.add_events([...$(this.shadowRootHTML, "*")]);
             }
 
             this.set_styles();
