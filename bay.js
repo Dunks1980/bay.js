@@ -919,6 +919,7 @@ const bay = () => {
 
           window.bay[this.uniqid][element_name] = this;
           this.oldEvents = ``;
+          this.oldEventsArray = [];
 
           // blob strings setup ============================================
           if (!script) {
@@ -1082,17 +1083,18 @@ const bay = () => {
                 `${local_name}`
               );
               if (
-                this.newEvents.indexOf(`${local_name}['${i}'] = {};`) === -1
+                this.newEvents.indexOf(`${local_name}[${i}] = {};`) === -1
               ) {
-                this.newEvents += `${local_name}['${i}'] = {};`;
+                this.newEvents += `${local_name}[${i}] = {};`;
+                this.newEventsArray.push(i);
               }
-              this.newEvents += `${local_name}['${i}']['${attr.name}'] = function(e) {${attr_data}};\n`;
+              this.newEvents += `${local_name}[${i}]['${attr.name}'] = function(e) {${attr_data}};\n`;
               el[`on${attr.name.split(":")[1]}`] = (e) => {
                 if (
-                  window.bay[this.uniqid][`${i}`] &&
-                  window.bay[this.uniqid][`${i}`][`${attr.name}`]
+                  window.bay[this.uniqid][i] &&
+                  window.bay[this.uniqid][i][attr.name]
                 ) {
-                  window.bay[this.uniqid][`${i}`][attr.name](e);
+                  window.bay[this.uniqid][i][attr.name](e);
                 }
               };
             }
@@ -1102,12 +1104,19 @@ const bay = () => {
         add_events_and_styles(elements) {
           if (!elements) return;
           this.newEvents = ``;
+          this.newEventsArray = [];
           elements.forEach((el, i) => {
             const attrs = el.attributes;
             [...attrs].forEach((attr) => this.apply_events_and_styles(attr, el, i));
           });
+          this.oldEventsArray.forEach((id) => {
+            if (this.newEventsArray.indexOf(id) === -1) {
+              delete window.bay[this.uniqid][id];
+            }
+          });
           if (this.newEvents && this.oldEvents !== this.newEvents) {
             this.oldEvents = this.newEvents;
+            this.oldEventsArray = this.newEventsArray;
             this.add_JS_Blob_event(this.newEvents);
           }
         }
