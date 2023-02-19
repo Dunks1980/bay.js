@@ -788,7 +788,7 @@ const bay:any = () => {
                 case "render":
                   outer_html = outer_html
                     .replace(open_tag, "${ /*render*/ (() => {")
-                    .replace(close_tag, " return ``})()}");
+                    .replace(close_tag, "})()}");
                   break;
                 case "slotchange":
                   outer_html = outer_html
