@@ -85,7 +85,7 @@ const bay = () => {
                 }
                 const prop = target[key];
                 if (typeof prop == "undefined") {
-                    return;
+                    return "";
                 }
                 if (prop == null) {
                     return;
@@ -489,8 +489,7 @@ const bay = () => {
      * @param {String} element_tagname custom element tagname
      * @param {Array} attrs array of attributes to be added to the custom element
      * @param {String} styles_text css styles
-     */
-    function create_component(html, element_tagname, attrs, styles_text, revoke_blob) {
+     */ function create_component(html, element_tagname, attrs, styles_text, revoke_blob) {
         let component_tagname = "";
         let component_html = null;
         let script = "";
@@ -728,16 +727,74 @@ const bay = () => {
                     tags.forEach((el) => tag_changer(el, tagname_str));
                 }
             });
+            let has_select_bind = false;
             [...$(component_html, "*")].forEach((el) => {
                 [...el.attributes].forEach((attr) => {
                     let event = attr.name.substring(0, 1) === ":";
+                    let bind = attr.name === "bind";
+                    let bind_event = attr.name.substring(0, 5) === "bind:";
+                    let select = el.tagName.toLowerCase() === "select";
+                    let input = el.tagName.toLowerCase() === "input";
+                    let textarea = el.tagName.toLowerCase() === "textarea";
                     if (event) {
                         let event_name = attr.name.split(":")[1];
                         el.setAttribute(`${data_attr}${event_name}`, attr.value);
                         el.removeAttribute(attr.name);
                     }
+                    else if (bind && select) {
+                        el.setAttribute(`data-select-bind`, attr.value);
+                        if (el.hasAttribute("multiple")) {
+                            el.setAttribute(`multiple`, "true");
+                        }
+                        el.removeAttribute(attr.name);
+                        el.innerHTML = `\${$bay.bay_select_bind('${attr.value}', ${attr.value})}`;
+                        has_select_bind = true;
+                    }
+                    else if (bind && (input || textarea)) {
+                        el.setAttribute(`${data_attr}input`, `${attr.value} = e.target.value`);
+                        el.removeAttribute(attr.name);
+                        el.setAttribute(`value`, `\${${attr.value}}`);
+                    }
+                    else if (bind_event && (input || textarea)) {
+                        let event_name = attr.name.split(":")[1];
+                        el.setAttribute(`${data_attr}${event_name}`, `${attr.value} = e.target.value`);
+                        el.removeAttribute(attr.name);
+                        el.setAttribute(`value`, `\${setTimeout(() => {${attr.value}},1000);}`);
+                    }
                 });
             });
+            if (has_select_bind) {
+                script_text +=
+                    `$bay.bay_select_bind = function (proxy_name, proxy_value) {
+            let binds = [...$bay.querySelectorAll(\`[data-select-bind="\${proxy_name}"]\`)];
+            binds.forEach((el, i) => {
+              el.onchange = function (e) {
+                [...e.target.options].forEach((o, i) => proxy_value[i].selected = o.selected);
+              };
+              let options = [...el.querySelectorAll('option')];
+              options.forEach((el, i) => {
+                el.selected = proxy_value[i].selected;
+              });
+            });
+            return proxy_value.map((item, i, array) => {
+              let opt = document.createElement('option');
+              const optionValues = Object.entries(item);
+              optionValues.forEach(entry => {
+                if (entry[0] === 'selected' && entry[1]) {
+                  opt.selected = true;
+                  opt.setAttribute('selected', true);
+                } else if (entry[0] === 'text') {
+                  opt.textContent = entry[1];
+                } else {
+                  opt[entry[0]] = entry[1];
+                }
+              });
+              return opt.outerHTML;
+            }).join('');
+          }`
+                        .replace(/\s+/g, " ")
+                        .trim();
+            }
             script = script_text;
             // apply passed attributes =========================================
             observedAttributes_from_element = attrs;
@@ -1019,7 +1076,11 @@ const bay = () => {
                     // cleanup old styles
                     if (!el.hasAttribute(`${data_attr}style`) &&
                         !el.hasAttribute("style")) {
+                        let save_width = current_els[i].style.width;
+                        let save_height = current_els[i].style.height;
                         current_els[i].removeAttribute("style");
+                        save_width ? (current_els[i].style.width = save_width) : null;
+                        save_height ? (current_els[i].style.height = save_height) : null;
                     }
                 });
             }

@@ -4,7 +4,7 @@ declare global {
   }
 }
 
-const bay:any = () => {
+const bay: any = () => {
   "use strict";
   const $ = (el: HTMLElement | Element | Document, selector: string) =>
     el.querySelectorAll(selector);
@@ -17,7 +17,7 @@ const bay:any = () => {
   let file_name = "";
   let to_fetch: string[] = [];
   let already_fetched: string[] = [];
-  let blobs_obj:any = {};
+  let blobs_obj: any = {};
 
   /**
    * Used to attach shadow roots to templates with the shadowroot attribute
@@ -92,7 +92,7 @@ const bay:any = () => {
         }
         const prop = target[key];
         if (typeof prop == "undefined") {
-          return;
+          return "";
         }
         if (prop == null) {
           return;
@@ -205,7 +205,7 @@ const bay:any = () => {
    * adds them to an array and then fires fetch_component on non dupes.
    * @param {HTMLElement} element root element
    */
-  function get_all_bays(element: Element|Document) {
+  function get_all_bays(element: Element | Document) {
     const bays = [...$(element, "[bay]")];
     bays.forEach((el: any, i) => {
       if (el.getAttribute("bay") === "dsd") {
@@ -544,8 +544,7 @@ const bay:any = () => {
    * @param {String} element_tagname custom element tagname
    * @param {Array} attrs array of attributes to be added to the custom element
    * @param {String} styles_text css styles
-   */
-  function create_component(
+   */ function create_component(
     html: Element | any,
     element_tagname: string,
     attrs: Array<string>,
@@ -840,16 +839,81 @@ const bay:any = () => {
         }
       });
 
+      let has_select_bind = false;
       [...$(component_html, "*")].forEach((el) => {
         [...el.attributes].forEach((attr) => {
           let event = attr.name.substring(0, 1) === ":";
+          let bind = attr.name === "bind";
+          let bind_event = attr.name.substring(0, 5) === "bind:";
+          let select = el.tagName.toLowerCase() === "select";
+          let input = el.tagName.toLowerCase() === "input";
+          let textarea = el.tagName.toLowerCase() === "textarea";
           if (event) {
             let event_name = attr.name.split(":")[1];
             el.setAttribute(`${data_attr}${event_name}`, attr.value);
             el.removeAttribute(attr.name);
+          } else if (bind && select) {
+            el.setAttribute(`data-select-bind`, attr.value);
+            if (el.hasAttribute("multiple")) {
+              el.setAttribute(`multiple`, "true");
+            }
+            el.removeAttribute(attr.name);
+            el.innerHTML = `\${$bay.bay_select_bind('${attr.value}', ${attr.value})}`;
+            has_select_bind = true;
+          } else if (bind && (input || textarea)) {
+            el.setAttribute(
+              `${data_attr}input`,
+              `${attr.value} = e.target.value`
+            );
+            el.removeAttribute(attr.name);
+            el.setAttribute(`value`, `\${${attr.value}}`);
+          } else if (bind_event && (input || textarea)) {
+            let event_name = attr.name.split(":")[1];
+            el.setAttribute(
+              `${data_attr}${event_name}`,
+              `${attr.value} = e.target.value`
+            );
+            el.removeAttribute(attr.name);
+            el.setAttribute(
+              `value`,
+              `\${setTimeout(() => {${attr.value}},1000);}`
+            );
           }
         });
       });
+
+      if (has_select_bind) {
+        script_text +=
+          `$bay.bay_select_bind = function (proxy_name, proxy_value) {
+            let binds = [...$bay.querySelectorAll(\`[data-select-bind="\${proxy_name}"]\`)];
+            binds.forEach((el, i) => {
+              el.onchange = function (e) {
+                [...e.target.options].forEach((o, i) => proxy_value[i].selected = o.selected);
+              };
+              let options = [...el.querySelectorAll('option')];
+              options.forEach((el, i) => {
+                el.selected = proxy_value[i].selected;
+              });
+            });
+            return proxy_value.map((item, i, array) => {
+              let opt = document.createElement('option');
+              const optionValues = Object.entries(item);
+              optionValues.forEach(entry => {
+                if (entry[0] === 'selected' && entry[1]) {
+                  opt.selected = true;
+                  opt.setAttribute('selected', true);
+                } else if (entry[0] === 'text') {
+                  opt.textContent = entry[1];
+                } else {
+                  opt[entry[0]] = entry[1];
+                }
+              });
+              return opt.outerHTML;
+            }).join('');
+          }`
+            .replace(/\s+/g, " ")
+            .trim();
+      }
 
       script = script_text;
 
@@ -872,7 +936,7 @@ const bay:any = () => {
         uniqid;
         CSP_errors;
         dsd;
-        debouncer:Function|any;
+        debouncer: Function | any;
         blob_prefixes;
         blob_event_prefixes;
         inner_html_target: any;
@@ -881,13 +945,13 @@ const bay:any = () => {
         oldEvents: string;
         oldEventsArray: number[] = [];
         local_update_evt: CustomEvent;
-        local_slotchange_evt: CustomEvent|any;
+        local_slotchange_evt: CustomEvent | any;
         hasAdoptedStyleSheets: boolean;
-        sheet: CSSStyleSheet|any;
-        styleLinkUpdate: string|any;
-        newEvents: string|any;
+        sheet: CSSStyleSheet | any;
+        styleLinkUpdate: string | any;
+        newEvents: string | any;
         newEventsArray: number[] = [];
-        oldStyles: string|any;
+        oldStyles: string | any;
         constructor() {
           super();
           this.mounted = false;
@@ -954,7 +1018,7 @@ const bay:any = () => {
           this.shadowRootHTML = $(this.shadowDom, "#bay")[0];
 
           window.bay[this.uniqid] = this.shadowDom;
-          [...attrs].forEach((attr:any) => {
+          [...attrs].forEach((attr: any) => {
             this.shadowDom.proxy[attr.att] = attr.value;
           });
 
@@ -969,7 +1033,7 @@ const bay:any = () => {
 
           // for getting the component's root element ======================
           this.shadowDom.uniqid = this.uniqid;
-          let rootNode:any = this.getRootNode();
+          let rootNode: any = this.getRootNode();
           let parent_var = ``;
           let parent_event_var = ``;
           let parent_uniqid = ``;
@@ -1015,7 +1079,7 @@ const bay:any = () => {
           }
 
           // add slotchange event ==========================================
-          window.bay[this.uniqid].addEventListener("slotchange", (e:Event) => {
+          window.bay[this.uniqid].addEventListener("slotchange", (e: Event) => {
             this.local_slotchange_evt = new CustomEvent(
               `bay_slotchange_event_${this.uniqid}`,
               { detail: { element: e.target, changed: "slotchange" } }
@@ -1113,7 +1177,7 @@ const bay:any = () => {
           }
         }
 
-        apply_events(attr:any, el:any, i:number) {
+        apply_events(attr: any, el: any, i: number) {
           let event = attr.name.indexOf(data_attr) > -1;
           if (event) {
             if (attr.name.indexOf(`${data_attr}style`) > -1) {
@@ -1130,7 +1194,7 @@ const bay:any = () => {
                 this.newEventsArray.push(i);
               }
               this.newEvents += `${local_name}[${i}]['${attr.name}'] = function(e) {${attr_data}};\n`;
-              el[`on${attr.name.split(data_attr)[1]}`] = (e:Event) => {
+              el[`on${attr.name.split(data_attr)[1]}`] = (e: Event) => {
                 if (
                   window.bay[this.uniqid][i] &&
                   window.bay[this.uniqid][i][attr.name]
@@ -1142,11 +1206,11 @@ const bay:any = () => {
           }
         }
 
-        add_events(elements:any) {
+        add_events(elements: any) {
           if (!elements) return;
           this.newEvents = ``;
           this.newEventsArray = [];
-          elements.forEach((el:Element, i:number) => {
+          elements.forEach((el: Element, i: number) => {
             // elements are the elements that have been added to the DOM
             [...el.attributes].forEach((attr) =>
               this.apply_events(attr, el, i)
@@ -1187,8 +1251,8 @@ const bay:any = () => {
          * Renders the component from proxy data changes
          */
 
-        isEqual_fn(template_els:any, current_els:any) {
-          template_els.forEach((el:Element, i:number) => {
+        isEqual_fn(template_els: any, current_els: any) {
+          template_els.forEach((el: Element, i: number) => {
             const is_equal = current_els[i].isEqualNode(el);
             if (!is_equal && current_els[i]) {
               copyAttributes(el, current_els[i]);
@@ -1198,12 +1262,16 @@ const bay:any = () => {
               !el.hasAttribute(`${data_attr}style`) &&
               !el.hasAttribute("style")
             ) {
+              let save_width = current_els[i].style.width;
+              let save_height = current_els[i].style.height;
               current_els[i].removeAttribute("style");
+              save_width ? (current_els[i].style.width = save_width) : null;
+              save_height ? (current_els[i].style.height = save_height) : null;
             }
           });
         }
 
-        render_innerHTML(html_target:any) {
+        render_innerHTML(html_target: any) {
           if (!html_target) return;
           if (typeof window.bay[this.uniqid].inner_html !== "function") return;
           window.bay[this.uniqid].template();
@@ -1288,7 +1356,7 @@ const bay:any = () => {
          * this will create a blob file with all the events on the html (:click)
          * and add and is used to add the js in the attribute to memory
          */
-        async add_JS_Blob_event(text:string) {
+        async add_JS_Blob_event(text: string) {
           const blob = new Blob(
             [
               `export default () => {"use strict";\n${this.blob_event_prefixes}${text}};`,
@@ -1309,7 +1377,7 @@ const bay:any = () => {
          * the template function will return the html and the styles function will return the styles
          * this is used by the diff function to compare the old and new html and styles with updated data
          */
-        async add_JS_BlobFileToHead(text:string, parent_uniqid:string) {
+        async add_JS_BlobFileToHead(text: string, parent_uniqid: string) {
           if (!blobs_obj[element_tagname]) {
             const blob = new Blob(
               [
@@ -1371,7 +1439,11 @@ const bay:any = () => {
         static get observedAttributes() {
           return observedAttributes_from_element;
         }
-        attributeChangedCallback(name:string, oldValue:string, newValue:string) {
+        attributeChangedCallback(
+          name: string,
+          oldValue: string,
+          newValue: string
+        ) {
           if (oldValue !== newValue) {
             this.shadowDom.proxy[name] = newValue;
             // trigger an event for the bay with uniqid
