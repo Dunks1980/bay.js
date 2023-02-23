@@ -759,7 +759,7 @@ const bay = () => {
                       let event_name = attr.name.split(":")[1];
                       el.setAttribute(`${data_attr}${event_name}`, `${attr.value} = e.target.value`);
                       el.removeAttribute(attr.name);
-                      el.setAttribute(`value`, `\${setTimeout(() => {${attr.value}},1000);}`);
+                      el.setAttribute(`value`, `\${${attr.value}}`);
                   }
               });
           });

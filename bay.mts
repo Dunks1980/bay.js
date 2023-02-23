@@ -874,10 +874,7 @@ const bay: any = () => {
               `${attr.value} = e.target.value`
             );
             el.removeAttribute(attr.name);
-            el.setAttribute(
-              `value`,
-              `\${setTimeout(() => {${attr.value}},1000);}`
-            );
+            el.setAttribute(`value`, `\${${attr.value}}`);
           }
         });
       });
