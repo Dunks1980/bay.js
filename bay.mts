@@ -133,15 +133,12 @@ const bay: any = () => {
   });
 
   // set route proxy ------------------------------
+
   function update_route() {
-    window.bay.route.href = window.location.href;
-    window.bay.route.protocol = window.location.protocol;
-    window.bay.route.host = window.location.host;
-    window.bay.route.hostname = window.location.hostname;
-    window.bay.route.port = window.location.port;
+    Object.entries(window.location).forEach((loc) => {
+      window.bay.route[`${loc[0]}`] = loc[1];
+    });
     window.bay.route.path = window.location.pathname;
-    window.bay.route.search = window.location.search;
-    window.bay.route.hash = window.location.hash;
     window.bay.route.params = {};
     let searchParams = new URLSearchParams(window.location.search);
     for (let [key, value] of searchParams) {
@@ -860,14 +857,14 @@ const bay: any = () => {
             el.removeAttribute(attr.name);
           } else if (bind && select) {
             el.setAttribute(
-              `data-bay-custom-select-bind`,
+              `data-bay-custom-select-${bay_instance_id}`,
               `$bay_select_bind(e, ${attr.value})`
             );
             if (el.hasAttribute("multiple")) {
               el.setAttribute(`multiple`, "true");
             }
             el.removeAttribute(attr.name);
-            el.innerHTML = `\${${attr.value}.map((item) => { return \`&lt;option \${ (() => {let items = Object.entries(item); return items.map((i) => \`\${i[0]}="\${i[1]}"\` ).join(' ')})() }>\${item.text}&lt;/option>\`}).join('')}`;
+            el.innerHTML = `\${${attr.value}.map((item) => { return \`&lt;option \${ (() => {return Object.entries(item).map((o) => \`\${o[0]}="\${o[1]}"\` ).join(' ')})() }>\${item.text}&lt;/option>\`}).join('')}`;
             has_select_bind = true;
           } else if (bind && (input || textarea)) {
             el.setAttribute(
@@ -1203,16 +1200,12 @@ const bay: any = () => {
               }
               this.newEvents += `${local_name}[${i}]['${attr_name}'] = function(e) {${attr_data}};\n`;
               const handle = (e: Event) => {
-                if (
-                  window.bay[this.uniqid][i] &&
-                  window.bay[this.uniqid][i][attr_name]
-                ) {
-                  window.bay[this.uniqid][i][attr_name](e);
-                }
+                const f = window.bay[this.uniqid][i];
+                if (f && f[attr_name]) f[attr_name](e);
               };
               let handler_id = `${this.uniqid}${i}${attr_name}`;
               let handler_event = attr_name.split(data_attr)[1];
-              if (this.eventHandlers.get(handler_id)) {
+              if (this.eventHandlers.has(handler_id)) {
                 el.removeEventListener(
                   handler_event,
                   this.eventHandlers.get(handler_id)
@@ -1356,11 +1349,9 @@ const bay: any = () => {
             this.set_styles();
 
             if (has_select_bind) {
-              const select_event = new CustomEvent("select-bind", {
-                bubbles: true,
-              });
+              const select_event = new CustomEvent(`select-${bay_instance_id}`);
+              const attr_name = `[data-bay-custom-select-${bay_instance_id}]`;
               let els = [];
-              let attr_name = "[data-bay-custom-select-bind]";
               if (has_inner_html) {
                 els = [
                   ...$(this.inner_html_target, attr_name),
