@@ -497,6 +497,7 @@ const bay = () => {
       let has_globals = false;
       let has_route = false;
       let has_inner_html = false;
+      let has_select_bind = false;
       try {
           // css ======================================================
           const fouc_styles = "*:not(:defined){opacity:0;max-width:0px;max-height:0px}" +
@@ -727,27 +728,30 @@ const bay = () => {
                   tags.forEach((el) => tag_changer(el, tagname_str));
               }
           });
-          let has_select_bind = false;
           [...$(component_html, "*")].forEach((el) => {
               [...el.attributes].forEach((attr) => {
                   let event = attr.name.substring(0, 1) === ":";
                   let bind = attr.name === "bind";
                   let bind_event = attr.name.substring(0, 5) === "bind:";
+                  let custom_event = attr.name.substring(0, 7) === "custom:";
                   let select = el.tagName.toLowerCase() === "select";
                   let input = el.tagName.toLowerCase() === "input";
                   let textarea = el.tagName.toLowerCase() === "textarea";
-                  if (event) {
+                  if (event || custom_event) {
                       let event_name = attr.name.split(":")[1];
-                      el.setAttribute(`${data_attr}${event_name}`, attr.value);
+                      let custom_name = "";
+                      if (custom_event)
+                          custom_name = `custom-`;
+                      el.setAttribute(`${data_attr}${custom_name}${event_name}`, attr.value);
                       el.removeAttribute(attr.name);
                   }
                   else if (bind && select) {
-                      el.setAttribute(`data-select-bind`, attr.value);
+                      el.setAttribute(`data-bay-custom-select-bind`, `$bay_select_bind(e, ${attr.value})`);
                       if (el.hasAttribute("multiple")) {
                           el.setAttribute(`multiple`, "true");
                       }
                       el.removeAttribute(attr.name);
-                      el.innerHTML = `\${$bay.bay_select_bind('${attr.value}', ${attr.value})}`;
+                      el.innerHTML = `\${${attr.value}.map((item) => { return \`&lt;option \${ (() => {let items = Object.entries(item); return items.map((i) => \`\${i[0]}="\${i[1]}"\` ).join(' ')})() }>\${item.text}&lt;/option>\`}).join('')}`;
                       has_select_bind = true;
                   }
                   else if (bind && (input || textarea)) {
@@ -764,36 +768,29 @@ const bay = () => {
               });
           });
           if (has_select_bind) {
-              script_text +=
-                  `$bay.bay_select_bind = function (proxy_name, proxy_value) {
-          let binds = [...$bay.querySelectorAll(\`[data-select-bind="\${proxy_name}"]\`)];
-          binds.forEach((el, i) => {
-            el.onchange = function (e) {
-              [...e.target.options].forEach((o, i) => proxy_value[i].selected = o.selected);
-            };
-            let options = [...el.querySelectorAll('option')];
-            options.forEach((el, i) => {
-              el.selected = proxy_value[i].selected;
-            });
-          });
-          return proxy_value.map((item, i, array) => {
-            let opt = document.createElement('option');
-            const optionValues = Object.entries(item);
-            optionValues.forEach(entry => {
-              if (entry[0] === 'selected' && entry[1]) {
-                opt.selected = true;
-                opt.setAttribute('selected', true);
-              } else if (entry[0] === 'text') {
-                opt.textContent = entry[1];
-              } else {
-                opt[entry[0]] = entry[1];
-              }
-            });
-            return opt.outerHTML;
-          }).join('');
-        }`
-                      .replace(/\s+/g, " ")
-                      .trim();
+              window.bay.apply_select = (e, array) => {
+                  [...e.target.options].forEach((option, i) => {
+                      if (array[i].selected) {
+                          option.selected = true;
+                          option.setAttribute("selected", "true");
+                      }
+                      else {
+                          option.selected = false;
+                          option.removeAttribute("selected");
+                      }
+                  });
+                  e.target.onchange = (e2) => {
+                      let options = [...e2.target.options];
+                      options.forEach((option, i) => {
+                          if (option.selected) {
+                              array[i].selected = true;
+                          }
+                          else {
+                              array[i].selected = false;
+                          }
+                      });
+                  };
+              };
           }
           script = script_text;
           // apply passed attributes =========================================
@@ -812,6 +809,7 @@ const bay = () => {
               super();
               this.oldEventsArray = [];
               this.newEventsArray = [];
+              this.eventHandlers = new Map();
               this.mounted = false;
               this.original_template = `${component_html.innerHTML}`;
               this.uniqid = makeid(8);
@@ -950,8 +948,12 @@ const bay = () => {
                   inner_html_reset = ` $bay_inner_html = ''; `;
                   inner_html_fn = `\n$bay.inner_html = () => { return $bay_inner_html; };`;
               }
+              let select_bind_var = "";
+              if (has_select_bind) {
+                  select_bind_var = `const $bay_select_bind = window.bay.apply_select;\n`;
+              }
               this.blob_prefixes = `${local_var}${global_var}${route_var}${element_var}${parent_var}${inner_html_var}${encode_var}${decode_var}${update_func}${slotchange_func}${route_update_var}`;
-              this.blob_event_prefixes = `${local_evevt_var}${global_var}${route_var}${element_var}${parent_event_var}${encode_var}${decode_var}${route_update_var}`;
+              this.blob_event_prefixes = `${local_evevt_var}${global_var}${route_var}${element_var}${parent_event_var}${encode_var}${decode_var}${route_update_var}${select_bind_var}`;
               let proxy_script = `${this.blob_prefixes}` +
                   decodeHtml(script)
                       .replaceAll("this[", `${local_name}.proxy[`)
@@ -1002,9 +1004,14 @@ const bay = () => {
               }
           }
           apply_events(attr, el, i) {
-              let event = attr.name.indexOf(data_attr) > -1;
+              let attr_name = attr.name;
+              let event = attr_name.indexOf(data_attr) > -1;
               if (event) {
-                  if (attr.name.indexOf(`${data_attr}style`) > -1) {
+                  let custom_event = attr_name.indexOf(`-custom-`) > -1;
+                  if (custom_event) {
+                      attr_name = attr_name.replace(`custom-`, "");
+                  }
+                  if (attr_name.indexOf(`${data_attr}style`) > -1) {
                       if (el.style !== attr.value) {
                           el.style = attr.value;
                       }
@@ -1015,13 +1022,21 @@ const bay = () => {
                           this.newEvents += `${local_name}[${i}] = {};`;
                           this.newEventsArray.push(i);
                       }
-                      this.newEvents += `${local_name}[${i}]['${attr.name}'] = function(e) {${attr_data}};\n`;
-                      el[`on${attr.name.split(data_attr)[1]}`] = (e) => {
+                      this.newEvents += `${local_name}[${i}]['${attr_name}'] = function(e) {${attr_data}};\n`;
+                      const handle = (e) => {
                           if (window.bay[this.uniqid][i] &&
-                              window.bay[this.uniqid][i][attr.name]) {
-                              window.bay[this.uniqid][i][attr.name](e);
+                              window.bay[this.uniqid][i][attr_name]) {
+                              window.bay[this.uniqid][i][attr_name](e);
                           }
                       };
+                      let handler_id = `${this.uniqid}${i}${attr_name}`;
+                      let handler_event = attr_name.split(data_attr)[1];
+                      if (this.eventHandlers.get(handler_id)) {
+                          el.removeEventListener(handler_event, this.eventHandlers.get(handler_id));
+                          this.eventHandlers.delete(handler_id);
+                      }
+                      this.eventHandlers.set(handler_id, handle);
+                      el.addEventListener(handler_event, this.eventHandlers.get(handler_id));
                   }
               }
           }
@@ -1135,6 +1150,25 @@ const bay = () => {
                       this.add_events([...$(this.shadowRootHTML, "*")]);
                   }
                   this.set_styles();
+                  if (has_select_bind) {
+                      const select_event = new CustomEvent("select-bind", {
+                          bubbles: true,
+                      });
+                      let els = [];
+                      let attr_name = "[data-bay-custom-select-bind]";
+                      if (has_inner_html) {
+                          els = [
+                              ...$(this.inner_html_target, attr_name),
+                              ...$(this.shadowRootHTML, attr_name),
+                          ];
+                      }
+                      else {
+                          els = [...$(this.shadowRootHTML, attr_name)];
+                      }
+                      els.forEach((el) => {
+                          el.dispatchEvent(select_event);
+                      });
+                  }
                   if (this.mounted === false && window.bay[this.uniqid]["$mounted"]) {
                       this.mounted = true;
                       setTimeout(() => {
