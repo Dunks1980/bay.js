@@ -72,6 +72,23 @@ const bay = () => {
       return txt.value;
   }
   // ------------------------------
+  function emit(name, data) {
+      let detail = { detail: { name, data } };
+      window.dispatchEvent(new CustomEvent("bay_emit", detail));
+      window.dispatchEvent(new CustomEvent(name, detail));
+  }
+  window.bay.emit = emit;
+  function receive($bay, $el, name, data) {
+      let els = [
+          ...$($bay, `[data-bay-${name}]`),
+          ...$($el, `[data-bay-${name}]`),
+          ...$(document, `[data-bay-${name}]`),
+      ];
+      els.forEach((el) => {
+          el.dispatchEvent(new CustomEvent(name, { detail: { name, data } }));
+      });
+  }
+  window.bay.receive = receive;
   /**
    * Creates a proxy and fires the callback when the data changes.
    * @param {object} obj proxy object can be empty or have some default data
@@ -494,6 +511,7 @@ const bay = () => {
       let has_route = false;
       let has_inner_html = false;
       let has_select_bind = false;
+      let has_on = false;
       try {
           // css ======================================================
           const fouc_styles = "*:not(:defined){opacity:0;max-width:0px;max-height:0px}" +
@@ -522,6 +540,10 @@ const bay = () => {
           if (component_html.innerHTML.indexOf("</route>") > -1) {
               styles_text =
                   (styles_text || "") + "[bay-route]>*{pointer-events:none}";
+          }
+          // detect if has on ===================================
+          if (component_html.innerHTML.indexOf("$bay.on(") > -1) {
+              has_on = true;
           }
           // detect if has show ===================================
           if (component_html.innerHTML.indexOf("</show>") > -1) {
@@ -944,11 +966,19 @@ const bay = () => {
                   inner_html_reset = ` $bay_inner_html = ''; `;
                   inner_html_fn = `\n$bay.inner_html = () => { return $bay_inner_html; };`;
               }
+              // add select bind ==============================================
               let select_bind_var = "";
               if (has_select_bind) {
                   select_bind_var = `const $bay_select_bind = window.bay.apply_select;\n`;
               }
-              this.blob_prefixes = `${local_var}${global_var}${route_var}${element_var}${parent_var}${inner_html_var}${encode_var}${decode_var}${update_func}${slotchange_func}${route_update_var}`;
+              // add emit ==========================================
+              let emit_var = `$bay.emit = window.bay.emit;\n$bay.receive = window.bay.receive;\nfunction bay_receive_fn(e) {$bay.receive($bay, $el, e.detail.name, e.detail.data);}\nwindow.removeEventListener('bay_emit', bay_receive_fn);\nwindow.addEventListener('bay_emit', bay_receive_fn);\n`;
+              // add on ==========================================
+              let on_var = "";
+              if (has_on) {
+                  on_var = `$bay.on = (name, callback) => {window.addEventListener(name, e => callback(e));};\n`;
+              }
+              this.blob_prefixes = `${local_var}${global_var}${route_var}${element_var}${parent_var}${inner_html_var}${encode_var}${decode_var}${update_func}${slotchange_func}${route_update_var}${emit_var}${on_var}`;
               this.blob_event_prefixes = `${local_evevt_var}${global_var}${route_var}${element_var}${parent_event_var}${encode_var}${decode_var}${route_update_var}${select_bind_var}`;
               let proxy_script = `${this.blob_prefixes}` +
                   decodeHtml(script)
@@ -971,7 +1001,7 @@ const bay = () => {
                       .replaceAll(`  `, ``)
                       .replaceAll("\n", ``);
               }
-              this.add_JS_BlobFileToHead(`${proxy_script}\n${local_name}.template = () => {${inner_html_reset}return \`${proxy_html}\`;};\n${local_name}.styles = () => { return \`${proxy_css}\`;};${inner_html_fn}`, parent_uniqid);
+              this.addBlob(`${proxy_script}\n${local_name}.template = () => {${inner_html_reset}return \`${proxy_html}\`;};\n${local_name}.styles = () => { return \`${proxy_css}\`;};${inner_html_fn}`, parent_uniqid);
               this.hasAdoptedStyleSheets = false;
               if ("adoptedStyleSheets" in document) {
                   this.hasAdoptedStyleSheets = true;
@@ -1052,7 +1082,7 @@ const bay = () => {
               if (this.newEvents && this.oldEvents !== this.newEvents) {
                   this.oldEvents = this.newEvents;
                   this.oldEventsArray = this.newEventsArray;
-                  this.add_JS_Blob_event(this.newEvents);
+                  this.addBlob_event(this.newEvents);
               }
           }
           // constructed styles
@@ -1183,7 +1213,7 @@ const bay = () => {
            * this will create a blob file with all the events on the html (:click)
            * and add and is used to add the js in the attribute to memory
            */
-          add_JS_Blob_event(text) {
+          addBlob_event(text) {
               return __awaiter(this, void 0, void 0, function* () {
                   const blob = new Blob([
                       `export default () => {"use strict";\n${this.blob_event_prefixes}${text}};`,
@@ -1202,7 +1232,7 @@ const bay = () => {
            * the template function will return the html and the styles function will return the styles
            * this is used by the diff function to compare the old and new html and styles with updated data
            */
-          add_JS_BlobFileToHead(text, parent_uniqid) {
+          addBlob(text, parent_uniqid) {
               return __awaiter(this, void 0, void 0, function* () {
                   if (!blobs_obj[element_tagname]) {
                       const blob = new Blob([
