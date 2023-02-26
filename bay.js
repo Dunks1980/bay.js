@@ -39,13 +39,11 @@ const bay = () => {
    * Tells other components using $global that the global data has changed.
    */
   function dispatch_global_event() {
-      const evt = new CustomEvent("bay_global_event");
-      window.dispatchEvent(evt);
+      window.dispatchEvent(new CustomEvent("bay_global_event"));
   }
   // ------------------------------
   function dispatch_route_event() {
-      const evt = new CustomEvent("bay_route_event");
-      window.dispatchEvent(evt);
+      window.dispatchEvent(new CustomEvent("bay_route_event"));
   }
   /**
    * Escapes HTML characters in a string to prevent XSS attacks when added data to proxys.
@@ -73,13 +71,13 @@ const bay = () => {
   }
   // ------------------------------
   function emit(name, data) {
-      let detail = { detail: { name, data } };
+      const detail = { detail: { name, data } };
       window.dispatchEvent(new CustomEvent("bay_emit", detail));
       window.dispatchEvent(new CustomEvent(name, detail));
   }
   window.bay.emit = emit;
   function receive($bay, $el, name, data) {
-      let els = [
+      const els = [
           ...$($bay, `[data-bay-${name}]`),
           ...$($el, `[data-bay-${name}]`),
           ...$(document, `[data-bay-${name}]`),
@@ -147,7 +145,7 @@ const bay = () => {
       });
       window.bay.route.path = window.location.pathname;
       window.bay.route.params = {};
-      let searchParams = new URLSearchParams(window.location.search);
+      const searchParams = new URLSearchParams(window.location.search);
       for (let [key, value] of searchParams) {
           window.bay.route.params[key] = value;
       }
@@ -187,7 +185,7 @@ const bay = () => {
           return crypto.randomUUID().replaceAll("-", "").substring(0, length);
       }
       else {
-          let uuidv4 = () => {
+          const uuidv4 = () => {
               return ([1e7].toString() + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, (c) => (c ^
                   (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16));
           };
@@ -207,7 +205,7 @@ const bay = () => {
           if (el.getAttribute("bay") === "dsd") {
               el.setAttribute("bay", `dsd-${i}`);
           }
-          let attr = el.getAttribute("bay") || "";
+          const attr = el.getAttribute("bay") || "";
           if (to_fetch.indexOf(attr) === -1) {
               to_fetch.push(el);
           }
@@ -227,10 +225,10 @@ const bay = () => {
    */
   function modify_template(template_el, bay) {
       const doc = new DOMParser();
+      const tagname = bay.tagName.toLowerCase();
+      const start_split = "export default /*HTML*/`";
       let html;
       let styles_string = "";
-      let tagname = bay.tagName.toLowerCase();
-      let start_split = "export default /*HTML*/`";
       if (template_el.startsWith(start_split)) {
           template_el = template_el.trim();
           template_el = template_el.split(start_split)[1];
@@ -259,16 +257,15 @@ const bay = () => {
    */
   function create_template_fn(element_tagname, template_string, attributes_array) {
       const doc = new DOMParser();
-      let html;
+      const passed_attributes = attributes_array || [];
       let styles_text = "";
-      let passed_attributes = attributes_array || [];
       if (template_string.indexOf("<style>") > -1) {
           styles_text = template_string.split("<style>")[1].split("</style>")[0];
       }
       template_string = template_string
           .replaceAll(/<!--[\s\S]*?-->/g, "")
           .replaceAll(`<style>${styles_text}</style>`, "");
-      html = doc.parseFromString(template_string, "text/html");
+      let html = doc.parseFromString(template_string, "text/html");
       if (html) {
           if (!customElements.get(element_tagname.toLowerCase())) {
               create_component(html, element_tagname.toLowerCase(), passed_attributes, styles_text, true);
@@ -748,22 +745,18 @@ const bay = () => {
           });
           [...$(component_html, "*")].forEach((el) => {
               [...el.attributes].forEach((attr) => {
-                  let event = attr.name.substring(0, 1) === ":";
-                  let bind = attr.name === "bind";
-                  let bind_event = attr.name.substring(0, 5) === "bind:";
-                  let custom_event = attr.name.substring(0, 7) === "custom:";
-                  let select = el.tagName.toLowerCase() === "select";
-                  let input = el.tagName.toLowerCase() === "input";
-                  let textarea = el.tagName.toLowerCase() === "textarea";
-                  if (event || custom_event) {
-                      let event_name = attr.name.split(":")[1];
+                  const bind = attr.name === "bind";
+                  const custom_event = attr.name.substring(0, 7) === "custom:";
+                  const input = el.tagName.toLowerCase() === "input";
+                  const textarea = el.tagName.toLowerCase() === "textarea";
+                  if (attr.name.substring(0, 1) === ":" || custom_event) {
                       let custom_name = "";
                       if (custom_event)
                           custom_name = `custom-`;
-                      el.setAttribute(`${data_attr}${custom_name}${event_name}`, attr.value);
+                      el.setAttribute(`${data_attr}${custom_name}${attr.name.split(":")[1]}`, attr.value);
                       el.removeAttribute(attr.name);
                   }
-                  else if (bind && select) {
+                  else if (bind && el.tagName.toLowerCase() === "select") {
                       el.setAttribute(`data-bay-custom-select-${bay_instance_id}`, `$bay_select_bind(e, ${attr.value})`);
                       if (el.hasAttribute("multiple")) {
                           el.setAttribute(`multiple`, "true");
@@ -777,9 +770,8 @@ const bay = () => {
                       el.removeAttribute(attr.name);
                       el.setAttribute(`value`, `\${${attr.value}}`);
                   }
-                  else if (bind_event && (input || textarea)) {
-                      let event_name = attr.name.split(":")[1];
-                      el.setAttribute(`${data_attr}${event_name}`, `${attr.value} = e.target.value`);
+                  else if (attr.name.substring(0, 5) === "bind:" && (input || textarea)) {
+                      el.setAttribute(`${data_attr}${attr.name.split(":")[1]}`, `${attr.value} = e.target.value`);
                       el.removeAttribute(attr.name);
                       el.setAttribute(`value`, `\${${attr.value}}`);
                   }
@@ -798,8 +790,7 @@ const bay = () => {
                       }
                   });
                   e.target.onchange = (e2) => {
-                      let options = [...e2.target.options];
-                      options.forEach((option, i) => {
+                      [...e2.target.options].forEach((option, i) => {
                           if (option.selected) {
                               array[i].selected = true;
                           }
@@ -866,10 +857,9 @@ const bay = () => {
               // shadow dom setup ===============================================
               if (this.shadowRoot) {
                   this.shadowDom = this.shadowRoot;
-                  const nodes = [...this.shadowDom.children];
                   const wrapper = document.createElement("div");
                   wrapper.id = "bay";
-                  nodes.map((node) => wrapper.appendChild(node));
+                  [...this.shadowDom.children].map((node) => wrapper.appendChild(node));
                   this.shadowRoot.appendChild(wrapper);
                   this.dsd = true;
               }
@@ -900,7 +890,7 @@ const bay = () => {
               }
               // for getting the component's root element ======================
               this.shadowDom.uniqid = this.uniqid;
-              let rootNode = this.getRootNode();
+              const rootNode = this.getRootNode();
               let parent_var = ``;
               let parent_event_var = ``;
               let parent_uniqid = ``;
@@ -958,21 +948,21 @@ const bay = () => {
                   slot_observer.observe(slot, { attributes: true, childList: true });
               });
               // add inner-html vars ==========================================
-              let inner_html_var = "";
-              let inner_html_reset = "";
-              let inner_html_fn = "";
+              let inner_html_var = ``;
+              let inner_html_reset = ``;
+              let inner_html_fn = ``;
               if (has_inner_html) {
                   inner_html_var = `let $bay_inner_html = '';\n`;
                   inner_html_reset = ` $bay_inner_html = ''; `;
                   inner_html_fn = `\n$bay.inner_html = () => { return $bay_inner_html; };`;
               }
               // add select bind ==============================================
-              let select_bind_var = "";
+              let select_bind_var = ``;
               if (has_select_bind) {
                   select_bind_var = `const $bay_select_bind = window.bay.apply_select;\n`;
               }
               // add on ==========================================
-              let on_var = "";
+              let on_var = ``;
               if (has_on) {
                   on_var = `$bay.on = (name, callback) => {window.addEventListener(name, e => callback(e));};\n`;
               }
@@ -980,12 +970,12 @@ const bay = () => {
               let emit_var = `$bay.emit = window.bay.emit;\n$bay.receive = window.bay.receive;\n${on_var}function bay_receive_fn(e) {$bay.receive($bay, $el, e.detail.name, e.detail.data);}\nwindow.removeEventListener('bay_emit', bay_receive_fn);\nwindow.addEventListener('bay_emit', bay_receive_fn);\n`;
               this.blob_prefixes = `${local_var}${global_var}${route_var}${element_var}${parent_var}${inner_html_var}${encode_var}${decode_var}${update_func}${slotchange_func}${route_update_var}${emit_var}`;
               this.blob_event_prefixes = `${local_evevt_var}${global_var}${route_var}${element_var}${parent_event_var}${encode_var}${decode_var}${route_update_var}${select_bind_var}`;
-              let proxy_script = `${this.blob_prefixes}` +
+              const proxy_script = `${this.blob_prefixes}` +
                   decodeHtml(script)
                       .replaceAll("this[", `${local_name}.proxy[`)
                       .replaceAll("this.", `${local_name}.proxy.`)
                       .replace(/(^[ \t]*\n)/gm, "");
-              let proxy_html = decodeHtml(this.original_template)
+              const proxy_html = decodeHtml(this.original_template)
                   .replaceAll("this[", `${local_name}.proxy[`)
                   .replaceAll("this.", `${local_name}.proxy.`)
                   .replace(/(^[ \t]*\n)/gm, "");
@@ -1015,13 +1005,13 @@ const bay = () => {
                   const blob = new Blob([proxy_css], {
                       type: "text/css",
                   });
-                  let blobUrl = URL.createObjectURL(blob);
-                  let styleLink = document.createElement("link");
+                  const blobUrl = URL.createObjectURL(blob);
+                  const styleLink = document.createElement("link");
                   styleLink.rel = "stylesheet";
                   styleLink.href = blobUrl;
                   this.shadowDom.appendChild(styleLink);
                   styleLink.id = "bay-style";
-                  let styleLinkUpdate = document.createElement("link");
+                  const styleLinkUpdate = document.createElement("link");
                   styleLinkUpdate.id = "bay-style-update";
                   styleLinkUpdate.href = blobUrl;
                   styleLinkUpdate.rel = "stylesheet";
@@ -1031,8 +1021,7 @@ const bay = () => {
           }
           apply_events(attr, el, i) {
               let attr_name = attr.name;
-              let event = attr_name.indexOf(data_attr) > -1;
-              if (event) {
+              if (attr_name.indexOf(data_attr) > -1) {
                   let custom_event = attr_name.indexOf(`-custom-`) > -1;
                   if (custom_event) {
                       attr_name = attr_name.replace(`custom-`, "");
@@ -1043,7 +1032,7 @@ const bay = () => {
                       }
                   }
                   else {
-                      let attr_data = attr.value.replaceAll("window.bay", `${local_name}`);
+                      const attr_data = attr.value.replaceAll("window.bay", `${local_name}`);
                       if (this.newEvents.indexOf(`${local_name}[${i}] = {};`) === -1) {
                           this.newEvents += `${local_name}[${i}] = {};`;
                           this.newEventsArray.push(i);
@@ -1054,8 +1043,8 @@ const bay = () => {
                           if (f && f[attr_name])
                               f[attr_name](e);
                       };
-                      let handler_id = `${this.uniqid}${i}${attr_name}`;
-                      let handler_event = attr_name.split(data_attr)[1];
+                      const handler_id = `${this.uniqid}${i}${attr_name}`;
+                      const handler_event = attr_name.split(data_attr)[1];
                       if (this.eventHandlers.has(handler_id)) {
                           el.removeEventListener(handler_event, this.eventHandlers.get(handler_id));
                           this.eventHandlers.delete(handler_id);
@@ -1095,10 +1084,10 @@ const bay = () => {
                   }
                   else {
                       // safari
-                      var blob = new Blob([new_styles], {
+                      const blob = new Blob([new_styles], {
                           type: "text/css",
                       });
-                      var blobUrl = URL.createObjectURL(blob);
+                      const blobUrl = URL.createObjectURL(blob);
                       this.styleLinkUpdate.href = blobUrl;
                       URL.revokeObjectURL(blobUrl);
                   }
@@ -1116,8 +1105,8 @@ const bay = () => {
                   // cleanup old styles
                   if (!el.hasAttribute(`${data_attr}style`) &&
                       !el.hasAttribute("style")) {
-                      let save_width = current_els[i].style.width;
-                      let save_height = current_els[i].style.height;
+                      const save_width = current_els[i].style.width;
+                      const save_height = current_els[i].style.height;
                       current_els[i].removeAttribute("style");
                       save_width ? (current_els[i].style.width = save_width) : null;
                       save_height ? (current_els[i].style.height = save_height) : null;
@@ -1176,7 +1165,6 @@ const bay = () => {
                   }
                   this.set_styles();
                   if (has_select_bind) {
-                      const select_event = new CustomEvent(`select-${bay_instance_id}`);
                       const attr_name = `[data-bay-custom-select-${bay_instance_id}]`;
                       let els = [];
                       if (has_inner_html) {
@@ -1189,7 +1177,7 @@ const bay = () => {
                           els = [...$(this.shadowRootHTML, attr_name)];
                       }
                       els.forEach((el) => {
-                          el.dispatchEvent(select_event);
+                          el.dispatchEvent(new CustomEvent(`select-${bay_instance_id}`));
                       });
                   }
                   if (this.mounted === false && window.bay[this.uniqid]["$mounted"]) {

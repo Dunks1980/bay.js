@@ -42,14 +42,12 @@ const bay: any = () => {
    * Tells other components using $global that the global data has changed.
    */
   function dispatch_global_event() {
-    const evt = new CustomEvent("bay_global_event");
-    window.dispatchEvent(evt);
+    window.dispatchEvent(new CustomEvent("bay_global_event"));
   }
   // ------------------------------
 
   function dispatch_route_event() {
-    const evt = new CustomEvent("bay_route_event");
-    window.dispatchEvent(evt);
+    window.dispatchEvent(new CustomEvent("bay_route_event"));
   }
 
   /**
@@ -80,14 +78,14 @@ const bay: any = () => {
   // ------------------------------
 
   function emit(name: string, data: any) {
-    let detail = { detail: { name, data } };
+    const detail = { detail: { name, data } };
     window.dispatchEvent(new CustomEvent("bay_emit", detail));
     window.dispatchEvent(new CustomEvent(name, detail));
   }
   window.bay.emit = emit;
 
   function receive($bay: any, $el: any, name: string, data: any) {
-    let els = [
+    const els = [
       ...$($bay, `[data-bay-${name}]`),
       ...$($el, `[data-bay-${name}]`),
       ...$(document, `[data-bay-${name}]`),
@@ -159,7 +157,7 @@ const bay: any = () => {
     });
     window.bay.route.path = window.location.pathname;
     window.bay.route.params = {};
-    let searchParams = new URLSearchParams(window.location.search);
+    const searchParams = new URLSearchParams(window.location.search);
     for (let [key, value] of searchParams) {
       window.bay.route.params[key] = value;
     }
@@ -200,7 +198,7 @@ const bay: any = () => {
     if (typeof crypto.randomUUID === "function") {
       return crypto.randomUUID().replaceAll("-", "").substring(0, length);
     } else {
-      let uuidv4 = () => {
+      const uuidv4 = () => {
         return ([1e7].toString() + -1e3 + -4e3 + -8e3 + -1e11).replace(
           /[018]/g,
           (c: any) =>
@@ -227,7 +225,7 @@ const bay: any = () => {
       if (el.getAttribute("bay") === "dsd") {
         el.setAttribute("bay", `dsd-${i}`);
       }
-      let attr = el.getAttribute("bay") || "";
+      const attr = el.getAttribute("bay") || "";
       if (to_fetch.indexOf(attr) === -1) {
         to_fetch.push(el);
       }
@@ -248,10 +246,10 @@ const bay: any = () => {
    */
   function modify_template(template_el: string, bay: Element) {
     const doc = new DOMParser();
+    const tagname = bay.tagName.toLowerCase();
+    const start_split = "export default /*HTML*/`";
     let html;
     let styles_string = "";
-    let tagname = bay.tagName.toLowerCase();
-    let start_split = "export default /*HTML*/`";
     if (template_el.startsWith(start_split)) {
       template_el = template_el.trim();
       template_el = template_el.split(start_split)[1];
@@ -291,16 +289,15 @@ const bay: any = () => {
     attributes_array: Array<any>
   ) {
     const doc = new DOMParser();
-    let html;
+    const passed_attributes = attributes_array || [];
     let styles_text = "";
-    let passed_attributes = attributes_array || [];
     if (template_string.indexOf("<style>") > -1) {
       styles_text = template_string.split("<style>")[1].split("</style>")[0];
     }
     template_string = template_string
       .replaceAll(/<!--[\s\S]*?-->/g, "")
       .replaceAll(`<style>${styles_text}</style>`, "");
-    html = doc.parseFromString(template_string, "text/html");
+    let html = doc.parseFromString(template_string, "text/html");
     if (html) {
       if (!customElements.get(element_tagname.toLowerCase())) {
         create_component(
@@ -864,23 +861,19 @@ const bay: any = () => {
 
       [...$(component_html, "*")].forEach((el) => {
         [...el.attributes].forEach((attr) => {
-          let event = attr.name.substring(0, 1) === ":";
-          let bind = attr.name === "bind";
-          let bind_event = attr.name.substring(0, 5) === "bind:";
-          let custom_event = attr.name.substring(0, 7) === "custom:";
-          let select = el.tagName.toLowerCase() === "select";
-          let input = el.tagName.toLowerCase() === "input";
-          let textarea = el.tagName.toLowerCase() === "textarea";
-          if (event || custom_event) {
-            let event_name = attr.name.split(":")[1];
+          const bind = attr.name === "bind";
+          const custom_event = attr.name.substring(0, 7) === "custom:";
+          const input = el.tagName.toLowerCase() === "input";
+          const textarea = el.tagName.toLowerCase() === "textarea";
+          if (attr.name.substring(0, 1) === ":" || custom_event) {
             let custom_name = "";
             if (custom_event) custom_name = `custom-`;
             el.setAttribute(
-              `${data_attr}${custom_name}${event_name}`,
+              `${data_attr}${custom_name}${attr.name.split(":")[1]}`,
               attr.value
             );
             el.removeAttribute(attr.name);
-          } else if (bind && select) {
+          } else if (bind && el.tagName.toLowerCase() === "select") {
             el.setAttribute(
               `data-bay-custom-select-${bay_instance_id}`,
               `$bay_select_bind(e, ${attr.value})`
@@ -898,10 +891,9 @@ const bay: any = () => {
             );
             el.removeAttribute(attr.name);
             el.setAttribute(`value`, `\${${attr.value}}`);
-          } else if (bind_event && (input || textarea)) {
-            let event_name = attr.name.split(":")[1];
+          } else if (attr.name.substring(0, 5) === "bind:" && (input || textarea)) {
             el.setAttribute(
-              `${data_attr}${event_name}`,
+              `${data_attr}${attr.name.split(":")[1]}`,
               `${attr.value} = e.target.value`
             );
             el.removeAttribute(attr.name);
@@ -922,8 +914,7 @@ const bay: any = () => {
             }
           });
           e.target.onchange = (e2: any) => {
-            let options = [...e2.target.options];
-            options.forEach((option: any, i: number) => {
+            [...e2.target.options].forEach((option: any, i: number) => {
               if (option.selected) {
                 array[i].selected = true;
               } else {
@@ -1015,10 +1006,9 @@ const bay: any = () => {
           // shadow dom setup ===============================================
           if (this.shadowRoot) {
             this.shadowDom = this.shadowRoot;
-            const nodes = [...this.shadowDom.children];
             const wrapper = document.createElement("div");
             wrapper.id = "bay";
-            nodes.map((node) => wrapper.appendChild(node));
+            [...this.shadowDom.children].map((node) => wrapper.appendChild(node));
             this.shadowRoot.appendChild(wrapper);
             this.dsd = true;
           } else {
@@ -1053,7 +1043,7 @@ const bay: any = () => {
 
           // for getting the component's root element ======================
           this.shadowDom.uniqid = this.uniqid;
-          let rootNode: any = this.getRootNode();
+          const rootNode: any = this.getRootNode();
           let parent_var = ``;
           let parent_event_var = ``;
           let parent_uniqid = ``;
@@ -1129,9 +1119,9 @@ const bay: any = () => {
           });
 
           // add inner-html vars ==========================================
-          let inner_html_var = "";
-          let inner_html_reset = "";
-          let inner_html_fn = "";
+          let inner_html_var = ``;
+          let inner_html_reset = ``;
+          let inner_html_fn = ``;
           if (has_inner_html) {
             inner_html_var = `let $bay_inner_html = '';\n`;
             inner_html_reset = ` $bay_inner_html = ''; `;
@@ -1139,13 +1129,13 @@ const bay: any = () => {
           }
 
           // add select bind ==============================================
-          let select_bind_var = "";
+          let select_bind_var = ``;
           if (has_select_bind) {
             select_bind_var = `const $bay_select_bind = window.bay.apply_select;\n`;
           }
 
           // add on ==========================================
-          let on_var = "";
+          let on_var = ``;
           if (has_on) {
             on_var = `$bay.on = (name, callback) => {window.addEventListener(name, e => callback(e));};\n`;
           }
@@ -1157,13 +1147,13 @@ const bay: any = () => {
 
           this.blob_event_prefixes = `${local_evevt_var}${global_var}${route_var}${element_var}${parent_event_var}${encode_var}${decode_var}${route_update_var}${select_bind_var}`;
 
-          let proxy_script =
+          const proxy_script =
             `${this.blob_prefixes}` +
             decodeHtml(script)
               .replaceAll("this[", `${local_name}.proxy[`)
               .replaceAll("this.", `${local_name}.proxy.`)
               .replace(/(^[ \t]*\n)/gm, "");
-          let proxy_html = decodeHtml(this.original_template)
+          const proxy_html = decodeHtml(this.original_template)
             .replaceAll("this[", `${local_name}.proxy[`)
             .replaceAll("this.", `${local_name}.proxy.`)
             .replace(/(^[ \t]*\n)/gm, "");
@@ -1197,13 +1187,13 @@ const bay: any = () => {
             const blob = new Blob([proxy_css], {
               type: "text/css",
             });
-            let blobUrl = URL.createObjectURL(blob);
-            let styleLink = document.createElement("link");
+            const blobUrl = URL.createObjectURL(blob);
+            const styleLink = document.createElement("link");
             styleLink.rel = "stylesheet";
             styleLink.href = blobUrl;
             this.shadowDom.appendChild(styleLink);
             styleLink.id = "bay-style";
-            let styleLinkUpdate = document.createElement("link");
+            const styleLinkUpdate = document.createElement("link");
             styleLinkUpdate.id = "bay-style-update";
             styleLinkUpdate.href = blobUrl;
             styleLinkUpdate.rel = "stylesheet";
@@ -1214,8 +1204,7 @@ const bay: any = () => {
 
         apply_events(attr: any, el: any, i: number) {
           let attr_name = attr.name;
-          let event = attr_name.indexOf(data_attr) > -1;
-          if (event) {
+          if (attr_name.indexOf(data_attr) > -1) {
             let custom_event = attr_name.indexOf(`-custom-`) > -1;
             if (custom_event) {
               attr_name = attr_name.replace(`custom-`, "");
@@ -1225,7 +1214,7 @@ const bay: any = () => {
                 el.style = attr.value;
               }
             } else {
-              let attr_data = attr.value.replaceAll(
+              const attr_data = attr.value.replaceAll(
                 "window.bay",
                 `${local_name}`
               );
@@ -1238,8 +1227,8 @@ const bay: any = () => {
                 const f = window.bay[this.uniqid][i];
                 if (f && f[attr_name]) f[attr_name](e);
               };
-              let handler_id = `${this.uniqid}${i}${attr_name}`;
-              let handler_event = attr_name.split(data_attr)[1];
+              const handler_id = `${this.uniqid}${i}${attr_name}`;
+              const handler_event = attr_name.split(data_attr)[1];
               if (this.eventHandlers.has(handler_id)) {
                 el.removeEventListener(
                   handler_event,
@@ -1287,10 +1276,10 @@ const bay: any = () => {
               this.sheet.replaceSync(new_styles);
             } else {
               // safari
-              var blob = new Blob([new_styles], {
+              const blob = new Blob([new_styles], {
                 type: "text/css",
               });
-              var blobUrl = URL.createObjectURL(blob);
+              const blobUrl = URL.createObjectURL(blob);
               this.styleLinkUpdate.href = blobUrl;
               URL.revokeObjectURL(blobUrl);
             }
@@ -1312,8 +1301,8 @@ const bay: any = () => {
               !el.hasAttribute(`${data_attr}style`) &&
               !el.hasAttribute("style")
             ) {
-              let save_width = current_els[i].style.width;
-              let save_height = current_els[i].style.height;
+              const save_width = current_els[i].style.width;
+              const save_height = current_els[i].style.height;
               current_els[i].removeAttribute("style");
               save_width ? (current_els[i].style.width = save_width) : null;
               save_height ? (current_els[i].style.height = save_height) : null;
@@ -1384,7 +1373,6 @@ const bay: any = () => {
             this.set_styles();
 
             if (has_select_bind) {
-              const select_event = new CustomEvent(`select-${bay_instance_id}`);
               const attr_name = `[data-bay-custom-select-${bay_instance_id}]`;
               let els = [];
               if (has_inner_html) {
@@ -1396,7 +1384,7 @@ const bay: any = () => {
                 els = [...$(this.shadowRootHTML, attr_name)];
               }
               els.forEach((el) => {
-                el.dispatchEvent(select_event);
+                el.dispatchEvent(new CustomEvent(`select-${bay_instance_id}`));
               });
             }
 
