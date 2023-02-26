@@ -1144,16 +1144,16 @@ const bay: any = () => {
             select_bind_var = `const $bay_select_bind = window.bay.apply_select;\n`;
           }
 
-          // add emit ==========================================
-          let emit_var = `$bay.emit = window.bay.emit;\n$bay.receive = window.bay.receive;\nfunction bay_receive_fn(e) {$bay.receive($bay, $el, e.detail.name, e.detail.data);}\nwindow.removeEventListener('bay_emit', bay_receive_fn);\nwindow.addEventListener('bay_emit', bay_receive_fn);\n`;
-
           // add on ==========================================
           let on_var = "";
           if (has_on) {
             on_var = `$bay.on = (name, callback) => {window.addEventListener(name, e => callback(e));};\n`;
           }
 
-          this.blob_prefixes = `${local_var}${global_var}${route_var}${element_var}${parent_var}${inner_html_var}${encode_var}${decode_var}${update_func}${slotchange_func}${route_update_var}${emit_var}${on_var}`;
+          // add emit ==========================================
+          let emit_var = `$bay.emit = window.bay.emit;\n$bay.receive = window.bay.receive;\n${on_var}function bay_receive_fn(e) {$bay.receive($bay, $el, e.detail.name, e.detail.data);}\nwindow.removeEventListener('bay_emit', bay_receive_fn);\nwindow.addEventListener('bay_emit', bay_receive_fn);\n`;
+
+          this.blob_prefixes = `${local_var}${global_var}${route_var}${element_var}${parent_var}${inner_html_var}${encode_var}${decode_var}${update_func}${slotchange_func}${route_update_var}${emit_var}`;
 
           this.blob_event_prefixes = `${local_evevt_var}${global_var}${route_var}${element_var}${parent_event_var}${encode_var}${decode_var}${route_update_var}${select_bind_var}`;
 
