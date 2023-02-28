@@ -1,10 +1,11 @@
 {
   "name": "@dunks1980/bay.js",
-  "version": "2.7.8",
+  "version": "2.8.0",
   "description": "Web component library",
   "main": "bay.js",
   "module": "bay.mjs",
   "scripts": {
+    "build": "node ./build.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

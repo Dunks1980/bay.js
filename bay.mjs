@@ -9,13 +9,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 const bay = () => {
     "use strict";
+    if (!window.bay) {
+        window.bay = {};
+    }
     const $ = (el, selector) => el.querySelectorAll(selector);
     const local_name = "$bay";
     const store_name = "$global";
     const route_name = "$route";
     const element_name = "$el";
     const data_attr = `data-bay-`;
-    window.bay = {};
     let file_name = "";
     let to_fetch = [];
     let already_fetched = [];

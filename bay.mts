@@ -6,6 +6,9 @@ declare global {
 
 const bay: any = () => {
   "use strict";
+  if (!window.bay) {
+    window.bay = {};
+  }
   const $ = (el: HTMLElement | Element | Document, selector: string) =>
     el.querySelectorAll(selector);
   const local_name = "$bay";
@@ -13,7 +16,6 @@ const bay: any = () => {
   const route_name = "$route";
   const element_name = "$el";
   const data_attr = `data-bay-`;
-  window.bay = {};
   let file_name = "";
   let to_fetch: string[] = [];
   let already_fetched: string[] = [];
