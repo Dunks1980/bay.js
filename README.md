@@ -87,7 +87,7 @@ A component can be used anywhere in the HTML but inline templates must be in the
 | Syntax      | Description |
 | ----------- | ----------- |
 | bay(); | Used to initialise bay.js. |
-| bay.create('component-name', '```<h1>test\</h1>```', '["prop-1", "prop-2"]'); | Create a component. |
+| bay.create('component-name', '\<h1>test\</h1>', '["prop-1", "prop-2"]'); | Create a component. |
 | bay.refresh(); | Refresh bay custom element it is when dynamically applied to the DOM. |
 
 <hr />
@@ -111,7 +111,7 @@ A component can be used anywhere in the HTML but inline templates must be in the
 | this.xxx = 'xxx'; | Assigning this.xxx a value will trigger a bay component render. |
 | $global = 'xxx'; | Assigning $global.xxx a value will trigger render on all bay components that contain $global. |
 | $bay.querySelector('xxx'); | Use $bay in place of document. |
-| $el.querySelector('xxx'); | Use $el to get the component tag ```<component-name></component-name>```. |
+| $el.querySelector('xxx'); | Use $el to get the component tag \<component-name>\</component-name>. |
 | $parent.xxx = 'xxx'; | Assigning $parent.xxx a value will update this.xxx in parent if the parent is another bay component and inturn triggers a render. |
 | $details.changed; $details.element; | Details from the slotchange script attribute as to what changed. |
 | $route | Details from the window location. |
