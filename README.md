@@ -123,7 +123,7 @@ A component can be used anywhere in the HTML but inline templates must be in the
 
 | Syntax | Description | Example |
 |--- |--- |--- |
-| bay="#my-template" <br> bay="/my-template.html" <br> bay="dsd" | The template to use, can be a templates id or a path to a file, dsd is experimental. | [DSD](https://bayjs.org/examples?tab=template&item=example_template_dsd) |
+| bay="#template" <br> bay="/template.html" <br> bay="dsd" | The template to use, can be a templates id or a path to a file, dsd is experimental. | [DSD](https://bayjs.org/examples?tab=template&item=example_template_dsd) |
 | fouc | Used to show the component only when and hide lightDOM until fully loaded. | [FOUC](https://bayjs.org/examples?tab=attributes&item=example_attrs_fouc) |
 | inner-html="#render-target" | Used to tell the component where it should render \<inner-html>\</inner-html> content. | [Inner HTML](https://bayjs.org/examples?tab=tags&item=example_tags_innerhtml_render) |
 | xxx="value" | Any other attributes are passed into the component and become props that can be accessed via this.xxx, xxx being the attribute name. | [Props](https://bayjs.org/examples?tab=state&item=example_props) |
