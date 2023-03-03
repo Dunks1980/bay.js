@@ -86,7 +86,7 @@ A component can be used anywhere in the HTML but inline templates must be in the
 
 | Syntax      | Description | Example |
 | ----------- | ----------- | ----------- |
-| bay(); | Used to initialise bay.js. | [Installation](https://bayjs.org/examples?tab=installation&item=installation_esmodule) |
+| bay(); | Used to initialise bay.js if imported module. | [Installation](https://bayjs.org/examples?tab=installation&item=installation_esmodule) |
 | bay.create('component-name', '\<h1>test\</h1>', '["prop-1", "prop-2"]'); | Create a component. | [Create](https://bayjs.org/examples?tab=functions&item=example_functions_create) |
 | bay.refresh(); | Refresh bay custom element it is when dynamically applied to the DOM. | [Refresh](https://bayjs.org/examples?tab=functions&item=example_functions_refresh) |
 
