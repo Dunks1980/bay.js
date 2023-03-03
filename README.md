@@ -84,8 +84,8 @@ A component can be used anywhere in the HTML but inline templates must be in the
 
 ## Functions outside of components:
 
-| Syntax      | Description | Example |
-| ----------- | ----------- | ----------- |
+| Syntax | Description | Example |
+|--- |--- |--- |
 | bay(); | Used to initialise bay.js if imported module. | [Installation](https://bayjs.org/examples?tab=installation&item=installation_esmodule) |
 | bay.create('component-name', '\<h1>test\</h1>', ["prop-1", "prop-2"]); | Create a component. | [Create](https://bayjs.org/examples?tab=functions&item=example_functions_create) |
 | bay.refresh(); | Refresh bay custom element it is when dynamically applied to the DOM. | [Refresh](https://bayjs.org/examples?tab=functions&item=example_functions_refresh) |
@@ -95,8 +95,8 @@ A component can be used anywhere in the HTML but inline templates must be in the
 
 ## Functions inside a component:
 
-| Syntax      | Description | Example |
-| ----------- | ----------- |  ----------- |
+| Syntax | Description | Example |
+|--- |--- |--- |
 | $bay.encode('string'); | Encode/escape a string. | [Encode](https://bayjs.org/examples?tab=functions&item=example_functions_encode) |
 | $bay.decode('string'); | Decode/un-escape a string. | [Decode](https://bayjs.org/examples?tab=functions&item=example_functions_decode) |
 | $bay.emit('custom-event', {key: value}); | Emit a custom event. (across all components) | [Emit](https://bayjs.org/examples?tab=state&item=example_emit) |
@@ -106,8 +106,8 @@ A component can be used anywhere in the HTML but inline templates must be in the
 
 ## Variables inside a component:
 
-| Syntax      | Description | Example |
-| ----------- | ----------- |  ----------- |
+| Syntax | Description | Example |
+|--- |--- |--- |
 | this.xxx = 'xxx'; | Assigning this.xxx a value will trigger a bay component render. | [Local](https://bayjs.org/examples?tab=state&item=example_local) |
 | $global = 'xxx'; | Assigning $global.xxx a value will trigger render on all bay components that contain $global. | [Global](https://bayjs.org/examples?tab=state&item=example_global) |
 | $bay.querySelector('xxx'); | Use $bay in place of document. | [Variables](https://bayjs.org/examples?tab=template&item=example_template_variables) |
@@ -121,8 +121,8 @@ A component can be used anywhere in the HTML but inline templates must be in the
 
 ## Attributes on component element:
 
-| Syntax      | Description | Example |
-| ----------- | ----------- |  ----------- |
+| Syntax | Description | Example |
+|--- |--- |--- |
 | bay="#my-template" <br> bay="/my-template.html" <br> bay="dsd" | The template to use, can be a templates id or a path to a file, dsd is experimental. | [DSD](https://bayjs.org/examples?tab=template&item=example_template_dsd) |
 | fouc | Used to show the component only when and hide lightDOM until fully loaded. | [FOUC](https://bayjs.org/examples?tab=attributes&item=example_attrs_fouc) |
 | inner-html="#render-target" | Used to tell the component where it should render \<inner-html>\</inner-html> content. | [Inner HTML](https://bayjs.org/examples?tab=tags&item=example_tags_innerhtml_render) |
@@ -132,8 +132,8 @@ A component can be used anywhere in the HTML but inline templates must be in the
 
 ## Attributes in components: 
 
-| Syntax      | Description | Example |
-| ----------- | ----------- |  ----------- |
+| Syntax | Description | Example |
+|--- |--- |--- |
 | :style="color: red; display: ${this.display}" | Apply inlined data driven styles. | [Styles](https://bayjs.org/examples?tab=tags&item=example_tags_styles) |
 | :click="console.log('clicked')" | Any javascript event that begins with on (onclick in this example) just replace on with : (oninput="xxx" -> :input="xxx"). | [Events](https://bayjs.org/examples?tab=attributes&item=example_attrs_events) |
 | :my-event="console.log('my custom event')" | Listens for any custom event and triggers code when it detects that event has been triggered from anywhere. | [Custom event](https://bayjs.org/examples?tab=state&item=example_emit) |
