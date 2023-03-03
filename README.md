@@ -134,7 +134,7 @@ A component can be used anywhere in the HTML but inline templates must be in the
 
 | Syntax | Description | Example |
 |--- |--- |--- |
-| :style="color: red; display: ${this.display}" | Apply inlined data driven styles. | [Styles](https://bayjs.org/examples?tab=tags&item=example_tags_styles) |
+| :style="color: red; display: ${this.display}" | Apply inlined data driven styles. | [Styles](https://bayjs.org/examples?tab=attributes&item=example_attrs_styles) |
 | :click="console.log('clicked')" | Any javascript event that begins with on (onclick in this example) just replace on with : (oninput="xxx" -> :input="xxx"). | [Events](https://bayjs.org/examples?tab=attributes&item=example_attrs_events) |
 | :my-event="console.log('my custom event')" | Listens for any custom event and triggers code when it detects that event has been triggered from anywhere. | [Custom event](https://bayjs.org/examples?tab=state&item=example_emit) |
 | bind="this.xxx" | Used for 2-way data binding on \<inputs>, \<selects> and \<textareas>. | [Bind](https://bayjs.org/examples?tab=state&item=example_bind) |
