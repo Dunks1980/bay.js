@@ -110,8 +110,8 @@ A component can be used anywhere in the HTML but inline templates must be in the
 |--- |--- |--- |
 | this.xxx = 'xxx'; | Assigning this.xxx a value will trigger a bay component render. | [Local](https://bayjs.org/examples?tab=state&item=example_local) |
 | $global = 'xxx'; | Assigning $global.xxx a value will trigger render on all bay components that contain $global. | [Global](https://bayjs.org/examples?tab=state&item=example_global) |
-| $bay.querySelector('xxx'); | Use $bay to get elements in the shadowDOM. | [Variables](https://bayjs.org/examples?tab=template&item=example_template_variables) |
-| $el.querySelector('xxx'); | Use $el to get elements in the lightDOM. | [Variables](https://bayjs.org/examples?tab=template&item=example_template_variables) |
+| $bay.querySelector('xxx'); | Use $bay to get elements in the shadowDOM. [Shadow DOM vs. Light DOM](https://fai.agency/blog/web-components-dom/) | [Variables](https://bayjs.org/examples?tab=template&item=example_template_variables) |
+| $el.querySelector('xxx'); | Use $el to get elements in the lightDOM. [Shadow DOM vs. Light DOM](https://fai.agency/blog/web-components-dom/) | [Variables](https://bayjs.org/examples?tab=template&item=example_template_variables) |
 | $parent.xxx = 'xxx'; | Assigning $parent.xxx a value will update this.xxx in parent if the parent is another bay component and inturn triggers a render. | [Parent](https://bayjs.org/examples?tab=state&item=example_parent) |
 | $details.changed; <br> $details.element; | Details from the slotchange script attribute as to what changed. | [Slots](https://bayjs.org/examples?tab=tags&item=example_tags_slots) |
 | $route | Details from the window location. | [Router](https://bayjs.org/examples?tab=router&item=component_route) |
