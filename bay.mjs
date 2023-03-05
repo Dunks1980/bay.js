@@ -350,6 +350,184 @@ const bay = () => {
         return all_attrs;
     }
     // ------------------------------
+    function isEqual_fn(template_els, current_els) {
+        template_els.forEach((el, i) => {
+            const is_equal = current_els[i].isEqualNode(el);
+            if (!is_equal && current_els[i]) {
+                copyAttributes(el, current_els[i]);
+            }
+            // cleanup old styles
+            if (!el.hasAttribute(`${data_attr}style`) && !el.hasAttribute("style")) {
+                const save_width = current_els[i].style.width;
+                const save_height = current_els[i].style.height;
+                current_els[i].removeAttribute("style");
+                save_width ? (current_els[i].style.width = save_width) : null;
+                save_height ? (current_els[i].style.height = save_height) : null;
+            }
+        });
+    }
+    function render_innerHTML(uuid, html_target) {
+        if (!html_target)
+            return;
+        if (typeof window.bay[uuid].inner_html !== "function")
+            return;
+        window.bay[uuid].template();
+        const new_inner_html = stringToHTML(window.bay[uuid].inner_html());
+        dom_diff(new_inner_html, html_target);
+        isEqual_fn([...$(new_inner_html, "*")], [...$(html_target, "*")]);
+    }
+    function render_shadowDOM(uuid, shadow_html) {
+        const templateHTML = stringToHTML(window.bay[uuid].template());
+        dom_diff(templateHTML, shadow_html);
+        isEqual_fn([...$(templateHTML, "*")], [...$(shadow_html, "*")]);
+    }
+    function add_events(this_ref, elements) {
+        if (!elements)
+            return;
+        this_ref.newEvents = ``;
+        this_ref.newEventsArray = [];
+        elements.forEach((el, i) => {
+            // elements are the elements that have been added to the DOM
+            [...el.attributes].forEach((attr) => apply_events(this_ref, attr, el, i));
+        });
+        this_ref.oldEventsArray.forEach((id) => {
+            if (this_ref.newEventsArray.indexOf(id) === -1) {
+                delete window.bay[this_ref.uniqid][id];
+            }
+        });
+        if (this_ref.newEvents && this_ref.oldEvents !== this_ref.newEvents) {
+            this_ref.oldEvents = this_ref.newEvents;
+            this_ref.oldEventsArray = this_ref.newEventsArray;
+            addBlob_event(this_ref, this_ref.newEvents);
+        }
+    }
+    // constructed styles
+    function set_styles(this_ref) {
+        const new_styles = window.bay[this_ref.uniqid][`styles`]();
+        if (this_ref.oldStyles !== new_styles) {
+            this_ref.oldStyles = new_styles;
+            if (this_ref.hasAdopted) {
+                this_ref.sheet.replaceSync(new_styles);
+            }
+            else {
+                // safari
+                const blob = new Blob([new_styles], {
+                    type: "text/css",
+                });
+                const blobUrl = URL.createObjectURL(blob);
+                this_ref.styleLinkUpdate.href = blobUrl;
+                URL.revokeObjectURL(blobUrl);
+            }
+        }
+    }
+    function apply_events(this_ref, attr, el, i) {
+        let attr_name = attr.name;
+        if (attr_name.indexOf(data_attr) > -1) {
+            let custom_event = attr_name.indexOf(`-custom-`) > -1;
+            if (custom_event) {
+                attr_name = attr_name.replace(`custom-`, "");
+            }
+            if (attr_name.indexOf(`${data_attr}style`) > -1) {
+                if (el.style !== attr.value) {
+                    el.style = attr.value;
+                }
+            }
+            else {
+                const attr_data = attr.value.replaceAll("window.bay", `${local_name}`);
+                if (this_ref.newEvents.indexOf(`${local_name}[${i}] = {};`) === -1) {
+                    this_ref.newEvents += `${local_name}[${i}] = {};`;
+                    this_ref.newEventsArray.push(i);
+                }
+                this_ref.newEvents += `${local_name}[${i}]['${attr_name}'] = function(e) {${attr_data}};\n`;
+                const handle = (e) => {
+                    const f = window.bay[this_ref.uniqid][i];
+                    if (f && f[attr_name])
+                        f[attr_name](e);
+                };
+                const handler_id = `${this_ref.uniqid}${i}${attr_name}`;
+                const handler_event = attr_name.split(data_attr)[1];
+                if (this_ref.eventHandlers.has(handler_id)) {
+                    el.removeEventListener(handler_event, this_ref.eventHandlers.get(handler_id));
+                    this_ref.eventHandlers.delete(handler_id);
+                }
+                this_ref.eventHandlers.set(handler_id, handle);
+                el.addEventListener(handler_event, this_ref.eventHandlers.get(handler_id));
+            }
+        }
+    }
+    function render_debouncer(this_ref) {
+        if (this_ref.debouncer) {
+            window.cancelAnimationFrame(this_ref.debouncer);
+        }
+        this_ref.debouncer = window.requestAnimationFrame(() => {
+            this_ref.render();
+        });
+    }
+    /**
+     * this will create a blob file with all the events on the html (:click)
+     * and add and is used to add the js in the attribute to memory
+     */
+    function addBlob_event(this_ref, text) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const blob = new Blob([
+                `export default () => {"use strict";\n${this_ref.evt_prefixes}${text}};`,
+            ], {
+                type: "text/javascript",
+            });
+            const blobUrl = URL.createObjectURL(blob);
+            const code = yield import(blobUrl);
+            code.default();
+            URL.revokeObjectURL(blobUrl);
+        });
+    }
+    /**
+     * this will take all the html, scripts and styles make a blob file and add it to the head
+     * once the blob file is loaded it will run the script and add the html to the shadow dom
+     * the template function will return the html and the styles function will return the styles
+     * this is used by the diff function to compare the old and new html and styles with updated data
+     */
+    function addBlob(this_ref, revoke_blob, element_tagname, text, parent_uniqid) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!blobs_obj[element_tagname]) {
+                const blob = new Blob([
+                    `export default (bay_uniqid, parent_uniqid) => {"use strict";\n${text}};`,
+                ], { type: "text/javascript" });
+                const blobUrl = URL.createObjectURL(blob);
+                blobs_obj[element_tagname] = blobUrl;
+                yield import(blobUrl).then((code) => {
+                    code.default(this_ref.uniqid, parent_uniqid);
+                    after_blob_loaded(this_ref);
+                    if (revoke_blob) {
+                        URL.revokeObjectURL(blobUrl);
+                    }
+                });
+            }
+            else {
+                yield import(blobs_obj[element_tagname]).then((code) => {
+                    code.default(this_ref.uniqid, parent_uniqid);
+                    after_blob_loaded(this_ref);
+                });
+            }
+        });
+    }
+    function after_blob_loaded(this_ref) {
+        if (!this_ref.dsd) {
+            this_ref.tmp = window.bay[this_ref.uniqid].template();
+            this_ref.shadowDom.getElementById("bay").innerHTML =
+                this_ref.tmp;
+        }
+        render_debouncer(this_ref);
+        if (this_ref.CSP) {
+            this_ref.shadowDom.innerHTML =
+                "CSP issue, add blob: to script-src & style-src whitelist.";
+            return;
+        }
+        else {
+            if ($(this_ref.shadowDom, "[bay]")[0]) {
+                get_all_bays(this_ref.shadowDom);
+            }
+        }
+    }
     /** =============================
      * https://gomakethings.com/mit/
      * Credit to Chris Ferdinandi for these great functions
@@ -501,9 +679,10 @@ const bay = () => {
      * @param {String} element_tagname custom element tagname
      * @param {Array} attrs array of attributes to be added to the custom element
      * @param {String} styles_text css styles
-     */ function create_component(html, element_tagname, attrs, styles_text, revoke_blob) {
-        let component_tagname = "";
-        let component_html = null;
+     */
+    function create_component(html, element_tagname, attrs, styles_text, revoke_blob) {
+        let tag = "";
+        let c_html = null;
         let script = "";
         let observedAttributes_from_element = [];
         let has_globals = false;
@@ -518,34 +697,34 @@ const bay = () => {
                 ".bay-hide{display:none}";
             styles_text = fouc_styles + (styles_text || "");
             // html ====================================================
-            component_html = html.body;
-            component_tagname = element_tagname;
+            c_html = html.body;
+            tag = element_tagname;
             // Add update element ======================================
             const update_el = document.createElement(`${element_tagname}-update`);
-            component_html.appendChild(update_el);
+            c_html.appendChild(update_el);
             // detect if has globals ===================================
-            if (component_html.innerHTML.indexOf("$global.") > -1 ||
-                component_html.innerHTML.indexOf("$global[") > -1) {
+            if (c_html.innerHTML.indexOf("$global.") > -1 ||
+                c_html.innerHTML.indexOf("$global[") > -1) {
                 has_globals = true;
             }
             // detect if has route ===================================
-            if (component_html.innerHTML.indexOf("$route.") > -1 ||
-                component_html.innerHTML.indexOf("$route[") > -1 ||
-                component_html.innerHTML.indexOf("</router>") > -1 ||
-                component_html.innerHTML.indexOf("</route>") > -1 ||
-                component_html.innerHTML.indexOf("$bay.update_route") > -1) {
+            if (c_html.innerHTML.indexOf("$route.") > -1 ||
+                c_html.innerHTML.indexOf("$route[") > -1 ||
+                c_html.innerHTML.indexOf("</router>") > -1 ||
+                c_html.innerHTML.indexOf("</route>") > -1 ||
+                c_html.innerHTML.indexOf("$bay.update_route") > -1) {
                 has_route = true;
             }
-            if (component_html.innerHTML.indexOf("</route>") > -1) {
+            if (c_html.innerHTML.indexOf("</route>") > -1) {
                 styles_text =
                     (styles_text || "") + "[bay-route]>*{pointer-events:none}";
             }
             // detect if has on ===================================
-            if (component_html.innerHTML.indexOf("$bay.on(") > -1) {
+            if (c_html.innerHTML.indexOf("$bay.on(") > -1) {
                 has_on = true;
             }
             // detect if has show ===================================
-            if (component_html.innerHTML.indexOf("</show>") > -1) {
+            if (c_html.innerHTML.indexOf("</show>") > -1) {
                 bay.create(`show-${bay_instance_id}`, show_element, [
                     "open",
                     "transition",
@@ -582,7 +761,7 @@ const bay = () => {
                             tag_el.remove();
                             break;
                         case "noscript":
-                            component_html.innerHTML = component_html.innerHTML
+                            c_html.innerHTML = c_html.innerHTML
                                 .replaceAll(open_tag, "")
                                 .replaceAll(close_tag, "");
                             break;
@@ -710,7 +889,7 @@ const bay = () => {
                                     tag_el.remove();
                                     break;
                                 default:
-                                    const script_el = $(component_html, tagname_str)[0];
+                                    const script_el = $(c_html, tagname_str)[0];
                                     script_text += script_el.innerText;
                                     tag_el.remove();
                                     break;
@@ -740,12 +919,12 @@ const bay = () => {
                 "router",
                 "script",
             ].forEach((tagname_str) => {
-                while ([...$(component_html, tagname_str)].length > 0) {
-                    const tags = [...$(component_html, tagname_str)];
+                while ([...$(c_html, tagname_str)].length > 0) {
+                    const tags = [...$(c_html, tagname_str)];
                     tags.forEach((el) => tag_changer(el, tagname_str));
                 }
             });
-            [...$(component_html, "*")].forEach((el) => {
+            [...$(c_html, "*")].forEach((el) => {
                 [...el.attributes].forEach((attr) => {
                     const bind = attr.name === "bind";
                     const custom_event = attr.name.substring(0, 7) === "custom:";
@@ -772,7 +951,8 @@ const bay = () => {
                         el.removeAttribute(attr.name);
                         el.setAttribute(`value`, `\${${attr.value}}`);
                     }
-                    else if (attr.name.substring(0, 5) === "bind:" && (input || textarea)) {
+                    else if (attr.name.substring(0, 5) === "bind:" &&
+                        (input || textarea)) {
                         el.setAttribute(`${data_attr}${attr.name.split(":")[1]}`, `${attr.value} = e.target.value`);
                         el.removeAttribute(attr.name);
                         el.setAttribute(`value`, `\${${attr.value}}`);
@@ -810,49 +990,49 @@ const bay = () => {
         catch (error) {
             console.error(error);
         }
-        if (!component_tagname) {
+        if (!tag) {
             console.error("Something went wrong loading file " + file_name + ".");
             return;
         }
         // create the component
-        customElements.define(component_tagname, class extends HTMLElement {
+        customElements.define(tag, class extends HTMLElement {
             constructor() {
                 super();
                 this.oldEventsArray = [];
                 this.newEventsArray = [];
                 this.eventHandlers = new Map();
                 this.mounted = false;
-                this.original_template = `${component_html.innerHTML}`;
+                this.tmp = `${c_html.innerHTML}`;
                 this.uniqid = makeid(8);
-                this.CSP_errors = false;
+                this.CSP = false;
                 this.dsd = false;
                 this.debouncer = false;
-                this.blob_prefixes = "";
-                this.blob_event_prefixes = "";
-                const inner_html_target = this.getAttribute("inner-html");
-                if (inner_html_target) {
-                    if ($(document, inner_html_target)[0]) {
-                        this.inner_html_target = $(document, inner_html_target)[0];
+                this.prefixes = "";
+                this.evt_prefixes = "";
+                const inner_el = this.getAttribute("inner-html");
+                if (inner_el) {
+                    if ($(document, inner_el)[0]) {
+                        this.inner_el = $(document, inner_el)[0];
                     }
                     else {
-                        console.error("inner-html target " + inner_html_target + " not found.");
+                        console.error("inner-html target " + inner_el + " not found.");
                     }
                 }
                 else {
-                    this.inner_html_target = this;
+                    this.inner_el = this;
                 }
                 document.addEventListener("securitypolicyviolation", (e) => {
                     e.preventDefault();
                     if (e.violatedDirective.indexOf("script-src") > -1) {
                         if (e.blockedURI === "blob") {
                             console.warn("blob: needed in script-src CSP");
-                            this.CSP_errors = true;
+                            this.CSP = true;
                         }
                     }
                     if (e.violatedDirective.indexOf("style-src") > -1) {
                         if (e.blockedURI === "blob") {
                             console.warn("blob: needed in style-src CSP");
-                            this.CSP_errors = true;
+                            this.CSP = true;
                         }
                     }
                 });
@@ -876,7 +1056,7 @@ const bay = () => {
                 }
                 // local proxy setup =============================================
                 this.shadowDom.proxy = make_proxy_object({}, () => {
-                    this.render_debouncer();
+                    render_debouncer(this);
                 });
                 this.shadowRootHTML = $(this.shadowDom, "#bay")[0];
                 window.bay[this.uniqid] = this.shadowDom;
@@ -907,14 +1087,14 @@ const bay = () => {
                 const route_var = `const ${route_name} = window.bay.route;\n`;
                 const element_var = `const ${element_name} = ${local_name}['${element_name}'];\n`;
                 // add update function ===========================================
-                this.local_update_evt = new CustomEvent(`bay_local_update_event_${this.uniqid}`);
+                this.update_evt = new CustomEvent(`bay_local_update_event_${this.uniqid}`);
                 let update_func = ``;
-                if (this.original_template.indexOf(`/*props updates*/`) > -1) {
+                if (this.tmp.indexOf(`/*props updates*/`) > -1) {
                     update_func = `let $props;\nwindow.addEventListener(\`bay_local_update_event_\${bay_uniqid}\`, () => $props());\n`;
                 }
                 // add slotchange function =======================================
                 let slotchange_func = ``;
-                if (this.original_template.indexOf(`/*slotchange updates*/`) > -1) {
+                if (this.tmp.indexOf(`/*slotchange updates*/`) > -1) {
                     update_func = `let $slotchange = () => {};\nlet $details = {'element': '', 'changed': ''};\nwindow.addEventListener(\`bay_slotchange_event_\${bay_uniqid}\`, (e) => $slotchange(e));\n`;
                 }
                 // add decode & encode functions =================================
@@ -930,20 +1110,20 @@ const bay = () => {
                 }
                 // add slotchange event ==========================================
                 window.bay[this.uniqid].addEventListener("slotchange", (e) => {
-                    this.local_slotchange_evt = new CustomEvent(`bay_slotchange_event_${this.uniqid}`, { detail: { element: e.target, changed: "slotchange" } });
-                    window.dispatchEvent(this.local_slotchange_evt);
+                    this.local_evt = new CustomEvent(`bay_slotchange_event_${this.uniqid}`, { detail: { element: e.target, changed: "slotchange" } });
+                    window.dispatchEvent(this.local_evt);
                 });
                 let bay_slots = $(this, "*");
                 bay_slots.forEach((slot) => {
                     const slot_observer = new MutationObserver((mutations) => {
                         mutations.forEach((mutation) => {
                             if (mutation.type === "attributes") {
-                                this.local_slotchange_evt = new CustomEvent(`bay_slotchange_event_${this.uniqid}`, { detail: { element: slot, changed: "attributes" } });
-                                window.dispatchEvent(this.local_slotchange_evt);
+                                this.local_evt = new CustomEvent(`bay_slotchange_event_${this.uniqid}`, { detail: { element: slot, changed: "attributes" } });
+                                window.dispatchEvent(this.local_evt);
                             }
                             else if (mutation.type === "childList") {
-                                this.local_slotchange_evt = new CustomEvent(`bay_slotchange_event_${this.uniqid}`, { detail: { element: slot, changed: "childList" } });
-                                window.dispatchEvent(this.local_slotchange_evt);
+                                this.local_evt = new CustomEvent(`bay_slotchange_event_${this.uniqid}`, { detail: { element: slot, changed: "childList" } });
+                                window.dispatchEvent(this.local_evt);
                             }
                         });
                     });
@@ -970,14 +1150,14 @@ const bay = () => {
                 }
                 // add emit ==========================================
                 let emit_var = `$bay.emit = window.bay.emit;\n$bay.receive = window.bay.receive;\n${on_var}function bay_receive_fn(e) {$bay.receive($bay, $el, e.detail.name, e.detail.data);}\nwindow.removeEventListener('bay_emit', bay_receive_fn);\nwindow.addEventListener('bay_emit', bay_receive_fn);\n`;
-                this.blob_prefixes = `${local_var}${global_var}${route_var}${element_var}${parent_var}${inner_html_var}${encode_var}${decode_var}${update_func}${slotchange_func}${route_update_var}${emit_var}`;
-                this.blob_event_prefixes = `${local_evevt_var}${global_var}${route_var}${element_var}${parent_event_var}${encode_var}${decode_var}${route_update_var}${select_bind_var}`;
-                const proxy_script = `${this.blob_prefixes}` +
+                this.prefixes = `${local_var}${global_var}${route_var}${element_var}${parent_var}${inner_html_var}${encode_var}${decode_var}${update_func}${slotchange_func}${route_update_var}${emit_var}`;
+                this.evt_prefixes = `${local_evevt_var}${global_var}${route_var}${element_var}${parent_event_var}${encode_var}${decode_var}${route_update_var}${select_bind_var}`;
+                const proxy_script = `${this.prefixes}` +
                     decodeHtml(script)
                         .replaceAll("this[", `${local_name}.proxy[`)
                         .replaceAll("this.", `${local_name}.proxy.`)
                         .replace(/(^[ \t]*\n)/gm, "");
-                const proxy_html = decodeHtml(this.original_template)
+                const proxy_html = decodeHtml(this.tmp)
                     .replaceAll("this[", `${local_name}.proxy[`)
                     .replaceAll("this.", `${local_name}.proxy.`)
                     .replace(/(^[ \t]*\n)/gm, "");
@@ -993,12 +1173,12 @@ const bay = () => {
                         .replaceAll(`  `, ``)
                         .replaceAll("\n", ``);
                 }
-                this.addBlob(`${proxy_script}\n${local_name}.template = () => {${inner_html_reset}return \`${proxy_html}\`;};\n${local_name}.styles = () => { return \`${proxy_css}\`;};${inner_html_fn}`, parent_uniqid);
-                this.hasAdoptedStyleSheets = false;
+                addBlob(this, revoke_blob, element_tagname, `${proxy_script}\n${local_name}.template = () => {${inner_html_reset}return \`${proxy_html}\`;};\n${local_name}.styles = () => { return \`${proxy_css}\`;};${inner_html_fn}`, parent_uniqid);
+                this.hasAdopted = false;
                 if ("adoptedStyleSheets" in document) {
-                    this.hasAdoptedStyleSheets = true;
+                    this.hasAdopted = true;
                 }
-                if (this.hasAdoptedStyleSheets) {
+                if (this.hasAdopted) {
                     this.sheet = new CSSStyleSheet();
                     this.sheet.replaceSync(proxy_css);
                     this.shadowDom.adoptedStyleSheets = [this.sheet];
@@ -1021,129 +1201,15 @@ const bay = () => {
                     this.styleLinkUpdate = styleLinkUpdate;
                 }
             }
-            apply_events(attr, el, i) {
-                let attr_name = attr.name;
-                if (attr_name.indexOf(data_attr) > -1) {
-                    let custom_event = attr_name.indexOf(`-custom-`) > -1;
-                    if (custom_event) {
-                        attr_name = attr_name.replace(`custom-`, "");
-                    }
-                    if (attr_name.indexOf(`${data_attr}style`) > -1) {
-                        if (el.style !== attr.value) {
-                            el.style = attr.value;
-                        }
-                    }
-                    else {
-                        const attr_data = attr.value.replaceAll("window.bay", `${local_name}`);
-                        if (this.newEvents.indexOf(`${local_name}[${i}] = {};`) === -1) {
-                            this.newEvents += `${local_name}[${i}] = {};`;
-                            this.newEventsArray.push(i);
-                        }
-                        this.newEvents += `${local_name}[${i}]['${attr_name}'] = function(e) {${attr_data}};\n`;
-                        const handle = (e) => {
-                            const f = window.bay[this.uniqid][i];
-                            if (f && f[attr_name])
-                                f[attr_name](e);
-                        };
-                        const handler_id = `${this.uniqid}${i}${attr_name}`;
-                        const handler_event = attr_name.split(data_attr)[1];
-                        if (this.eventHandlers.has(handler_id)) {
-                            el.removeEventListener(handler_event, this.eventHandlers.get(handler_id));
-                            this.eventHandlers.delete(handler_id);
-                        }
-                        this.eventHandlers.set(handler_id, handle);
-                        el.addEventListener(handler_event, this.eventHandlers.get(handler_id));
-                    }
-                }
-            }
-            add_events(elements) {
-                if (!elements)
-                    return;
-                this.newEvents = ``;
-                this.newEventsArray = [];
-                elements.forEach((el, i) => {
-                    // elements are the elements that have been added to the DOM
-                    [...el.attributes].forEach((attr) => this.apply_events(attr, el, i));
-                });
-                this.oldEventsArray.forEach((id) => {
-                    if (this.newEventsArray.indexOf(id) === -1) {
-                        delete window.bay[this.uniqid][id];
-                    }
-                });
-                if (this.newEvents && this.oldEvents !== this.newEvents) {
-                    this.oldEvents = this.newEvents;
-                    this.oldEventsArray = this.newEventsArray;
-                    this.addBlob_event(this.newEvents);
-                }
-            }
-            // constructed styles
-            set_styles() {
-                const new_styles = window.bay[this.uniqid][`styles`]();
-                if (this.oldStyles !== new_styles) {
-                    this.oldStyles = new_styles;
-                    if (this.hasAdoptedStyleSheets) {
-                        this.sheet.replaceSync(new_styles);
-                    }
-                    else {
-                        // safari
-                        const blob = new Blob([new_styles], {
-                            type: "text/css",
-                        });
-                        const blobUrl = URL.createObjectURL(blob);
-                        this.styleLinkUpdate.href = blobUrl;
-                        URL.revokeObjectURL(blobUrl);
-                    }
-                }
-            }
             /**
              * Renders the component from proxy data changes
              */
-            isEqual_fn(template_els, current_els) {
-                template_els.forEach((el, i) => {
-                    const is_equal = current_els[i].isEqualNode(el);
-                    if (!is_equal && current_els[i]) {
-                        copyAttributes(el, current_els[i]);
-                    }
-                    // cleanup old styles
-                    if (!el.hasAttribute(`${data_attr}style`) &&
-                        !el.hasAttribute("style")) {
-                        const save_width = current_els[i].style.width;
-                        const save_height = current_els[i].style.height;
-                        current_els[i].removeAttribute("style");
-                        save_width ? (current_els[i].style.width = save_width) : null;
-                        save_height ? (current_els[i].style.height = save_height) : null;
-                    }
-                });
-            }
-            render_innerHTML(html_target) {
-                if (!html_target)
-                    return;
-                if (typeof window.bay[this.uniqid].inner_html !== "function")
-                    return;
-                window.bay[this.uniqid].template();
-                const new_inner_html = stringToHTML(window.bay[this.uniqid].inner_html());
-                dom_diff(new_inner_html, html_target);
-                this.isEqual_fn([...$(new_inner_html, "*")], [...$(html_target, "*")]);
-            }
-            render_shadowDOM() {
-                const templateHTML = stringToHTML(window.bay[this.uniqid].template());
-                dom_diff(templateHTML, this.shadowRootHTML);
-                this.isEqual_fn([...$(templateHTML, "*")], [...$(this.shadowRootHTML, "*")]);
-            }
-            render_debouncer() {
-                if (this.debouncer) {
-                    window.cancelAnimationFrame(this.debouncer);
-                }
-                this.debouncer = window.requestAnimationFrame(() => {
-                    this.render();
-                });
-            }
             render() {
-                if (this.CSP_errors) {
+                if (this.CSP) {
                     this.shadowDom.innerHTML = "";
                     return;
                 }
-                if (!this.original_template || !this.shadowRootHTML.innerHTML) {
+                if (!this.tmp || !this.shadowRootHTML.innerHTML) {
                     return;
                 }
                 if (typeof window.bay[this.uniqid].template !== "function") {
@@ -1152,26 +1218,26 @@ const bay = () => {
                 try {
                     // Diff the DOM and template
                     if (has_inner_html) {
-                        this.render_innerHTML(this.inner_html_target);
+                        render_innerHTML(this.uniqid, this.inner_el);
                     }
-                    this.render_shadowDOM();
+                    render_shadowDOM(this.uniqid, this.shadowRootHTML);
                     // Events and Styles
                     if (has_inner_html) {
-                        this.add_events([
-                            ...$(this.inner_html_target, "*"),
+                        add_events(this, [
+                            ...$(this.inner_el, "*"),
                             ...$(this.shadowRootHTML, "*"),
                         ]);
                     }
                     else {
-                        this.add_events([...$(this.shadowRootHTML, "*")]);
+                        add_events(this, [...$(this.shadowRootHTML, "*")]);
                     }
-                    this.set_styles();
+                    set_styles(this);
                     if (has_select_bind) {
                         const attr_name = `[data-bay-custom-select-${bay_instance_id}]`;
                         let els = [];
                         if (has_inner_html) {
                             els = [
-                                ...$(this.inner_html_target, attr_name),
+                                ...$(this.inner_el, attr_name),
                                 ...$(this.shadowRootHTML, attr_name),
                             ];
                         }
@@ -1199,81 +1265,16 @@ const bay = () => {
                     console.error(error);
                 }
             }
-            /**
-             * this will create a blob file with all the events on the html (:click)
-             * and add and is used to add the js in the attribute to memory
-             */
-            addBlob_event(text) {
-                return __awaiter(this, void 0, void 0, function* () {
-                    const blob = new Blob([
-                        `export default () => {"use strict";\n${this.blob_event_prefixes}${text}};`,
-                    ], {
-                        type: "text/javascript",
-                    });
-                    const blobUrl = URL.createObjectURL(blob);
-                    const code = yield import(blobUrl);
-                    code.default();
-                    URL.revokeObjectURL(blobUrl);
-                });
-            }
-            /**
-             * this will take all the html, scripts and styles make a blob file and add it to the head
-             * once the blob file is loaded it will run the script and add the html to the shadow dom
-             * the template function will return the html and the styles function will return the styles
-             * this is used by the diff function to compare the old and new html and styles with updated data
-             */
-            addBlob(text, parent_uniqid) {
-                return __awaiter(this, void 0, void 0, function* () {
-                    if (!blobs_obj[element_tagname]) {
-                        const blob = new Blob([
-                            `export default (bay_uniqid, parent_uniqid) => {"use strict";\n${text}};`,
-                        ], { type: "text/javascript" });
-                        const blobUrl = URL.createObjectURL(blob);
-                        blobs_obj[element_tagname] = blobUrl;
-                        yield import(blobUrl).then((code) => {
-                            code.default(this.uniqid, parent_uniqid);
-                            this.after_blob_loaded();
-                            if (revoke_blob) {
-                                URL.revokeObjectURL(blobUrl);
-                            }
-                        });
-                    }
-                    else {
-                        yield import(blobs_obj[element_tagname]).then((code) => {
-                            code.default(this.uniqid, parent_uniqid);
-                            this.after_blob_loaded();
-                        });
-                    }
-                });
-            }
-            after_blob_loaded() {
-                if (!this.dsd) {
-                    this.original_template = window.bay[this.uniqid].template();
-                    this.shadowDom.getElementById("bay").innerHTML =
-                        this.original_template;
-                }
-                this.render_debouncer();
-                if (this.CSP_errors) {
-                    this.shadowDom.innerHTML =
-                        "CSP issue, add blob: to script-src & style-src whitelist.";
-                    return;
-                }
-                else {
-                    if ($(this.shadowDom, "[bay]")[0]) {
-                        get_all_bays(this.shadowDom);
-                    }
-                }
-            }
             connectedCallback() {
                 try {
                     if (has_globals) {
                         window.addEventListener("bay_global_event", (e) => {
-                            this.render_debouncer();
+                            render_debouncer(this);
                         });
                     }
                     if (has_route) {
                         window.addEventListener("bay_route_event", (e) => {
-                            this.render_debouncer();
+                            render_debouncer(this);
                         });
                     }
                 }
@@ -1288,7 +1289,7 @@ const bay = () => {
                 if (oldValue !== newValue) {
                     this.shadowDom.proxy[name] = newValue;
                     // trigger an event for the bay with uniqid
-                    window.dispatchEvent(this.local_update_evt);
+                    window.dispatchEvent(this.update_evt);
                 }
             }
         });
