@@ -148,7 +148,7 @@ A component can be used anywhere in the HTML but inline templates must be in the
 | :click="console.log('clicked')" | Any javascript event that begins with on (onclick in this example) just replace on with : (oninput="xxx" -> :input="xxx"). | [Events](https://bayjs.org/examples?tab=attributes&item=example_attrs_events) |
 | :my-event="console.log('my custom event')" | Listens for any custom event and triggers code when it detects that event has been triggered from anywhere. | [Custom event](https://bayjs.org/examples?tab=state&item=example_emit) |
 | bind="this.xxx" | Used for 2-way data binding on \<inputs>, \<selects> and \<textareas>. | [Bind](https://bayjs.org/examples?tab=state&item=example_bind) |
-| slot="slot-name" | Used to define a slot as per standard web-component. | [Slot](https://bayjs.org/examples?tab=tags&item=example_tags_slots) |
+| slot="slot-name" | Used to define a slot as per standard web-component. | [Slots](https://bayjs.org/examples?tab=tags&item=example_tags_slots) |
 
 
 <br />
@@ -167,6 +167,7 @@ A component can be used anywhere in the HTML but inline templates must be in the
 | \<map array="this.arr">...\</map> | Map, to iterate over an array \<map params="item, i, array" array="this.arr" join="\<hr>"> params and join are optional, default params are: element, index, array. | [Iterations](https://bayjs.org/examples?tab=tags&item=example_tags_iterations) |
 | \<for array="this.arr">...\</for> | Foreach loop, to iterate over an array \<for params="item, i, array" array="this.arr"> params are optional, default params are: element, index, array. | [Iterations](https://bayjs.org/examples?tab=tags&item=example_tags_iterations) |
 | \<for this="let i = 0; i < this.arr.length; i++">...\</for> | For loop, to iterate with conditions. | [Iterations](https://bayjs.org/examples?tab=tags&item=example_tags_iterations) |
-| \<inner-html>...\</inner-html> | To render to the Light DOM. If inner-html attribute is present on the component it will render inside that element:<br /> \<my-comp bay="..." inner-html="#render-target">. | [Inner HTML](https://bayjs.org/examples?tab=tags&item=example_tags_innerhtml) |
+| \<inner-html>...\</inner-html> | To render to the Light DOM. If inner-html attribute is present on the component it will render inside that element:<br /> \<my-comp bay="..." inner-html="#render-target">. If inner-html attribute is not present on the component you can use a slot to see the inner-html content. | [Inner HTML](https://bayjs.org/examples?tab=tags&item=example_tags_innerhtml) |
+| \<slot name="slot1">...\</slot> | Used to define a slot as per standard web-component. | [Slots](https://bayjs.org/examples?tab=tags&item=example_tags_slots) |
 | \<route href="/xxx/var">...\</route> | Route creates the route for the router tag, is intended for a single page application (SPA). | [Route](https://bayjs.org/examples?tab=router&item=component_route) |
 | \<router this="/xxx/:xxx">...\</router> | Router matches the current url, :xxx are used for variables. | [Route](https://bayjs.org/examples?tab=router&item=component_route) |
