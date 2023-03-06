@@ -258,15 +258,12 @@ const bay: any = () => {
       template_el = template_el.substring(0, template_el.length - 2);
       template_el = template_el.replaceAll("\\${", "${").replaceAll("\\`", "`");
     }
-    template_el = template_el
-      .replaceAll(/<!--[\s\S]*?-->/g, "")
-      .replaceAll("{{", "${")
-      .replaceAll("}}", "}");
     while (template_el.indexOf("<style>") > -1) {
       const styles_text = template_el.split("<style>")[1].split("</style>")[0];
       template_el = template_el.replaceAll(`<style>${styles_text}</style>`, "");
       styles_string += styles_text;
     }
+    template_el = template_el.replaceAll(/<!--[\s\S]*?-->/g, "");
     html = doc.parseFromString(template_el, "text/html");
     if (html) {
       if (!customElements.get(tagname)) {
@@ -295,18 +292,13 @@ const bay: any = () => {
   ) {
     const doc = new DOMParser();
     const passed_attributes = attributes_array || [];
-    template_string = template_string
-      .replaceAll(/<!--[\s\S]*?-->/g, "")
-      .replaceAll("{{", "${")
-      .replaceAll("}}", "}");
     let styles_text = "";
     if (template_string.indexOf("<style>") > -1) {
       styles_text = template_string.split("<style>")[1].split("</style>")[0];
     }
-    template_string = template_string.replaceAll(
-      `<style>${styles_text}</style>`,
-      ""
-    );
+    template_string = template_string
+      .replaceAll(/<!--[\s\S]*?-->/g, "")
+      .replaceAll(`<style>${styles_text}</style>`, "");
     let html = doc.parseFromString(template_string, "text/html");
     if (html) {
       if (!customElements.get(element_tagname.toLowerCase())) {
@@ -431,6 +423,38 @@ const bay: any = () => {
     isEqual_fn([...$(templateHTML, "*")], [...$(shadow_html, "*")]);
   }
 
+  function add_events(this_ref: any, elements: any) {
+    if (!elements) return;
+    this_ref.newEvents = ``;
+    elements.forEach((el: Element, i: number) => {
+      // elements are the elements that have been added to the DOM
+      [...el.attributes].forEach((attr) => apply_events(this_ref, attr, el, i));
+    });
+    if (this_ref.newEvents && this_ref.oldEvents !== this_ref.newEvents) {
+      this_ref.oldEvents = this_ref.newEvents;
+      addBlob_event(this_ref, this_ref.newEvents);
+    }
+  }
+
+  // constructed styles
+  function set_styles(this_ref: any) {
+    const new_styles = window.bay[this_ref.uniqid][`styles`]();
+    if (this_ref.oldStyles !== new_styles) {
+      this_ref.oldStyles = new_styles;
+      if (this_ref.hasAdopted) {
+        this_ref.sheet.replaceSync(new_styles);
+      } else {
+        // safari
+        const blob = new Blob([new_styles], {
+          type: "text/css",
+        });
+        const blobUrl = URL.createObjectURL(blob);
+        this_ref.styleLinkUpdate.href = blobUrl;
+        URL.revokeObjectURL(blobUrl);
+      }
+    }
+  }
+
   function apply_events(this_ref: any, attr: any, el: any, i: number) {
     let attr_name = attr.name;
     if (attr_name.indexOf(data_attr) > -1) {
@@ -469,38 +493,6 @@ const bay: any = () => {
           handler_event,
           this_ref.eventHandlers.get(handler_id)
         );
-      }
-    }
-  }
-
-  function add_events(this_ref: any, elements: any) {
-    if (!elements) return;
-    this_ref.newEvents = ``;
-    elements.forEach((el: Element, i: number) => {
-      // elements are the elements that have been added to the DOM
-      [...el.attributes].forEach((attr) => apply_events(this_ref, attr, el, i));
-    });
-    if (this_ref.newEvents && this_ref.oldEvents !== this_ref.newEvents) {
-      this_ref.oldEvents = this_ref.newEvents;
-      addBlob_event(this_ref, this_ref.newEvents);
-    }
-  }
-
-  // constructed styles
-  function set_styles(this_ref: any) {
-    const new_styles = window.bay[this_ref.uniqid][`styles`]();
-    if (this_ref.oldStyles !== new_styles) {
-      this_ref.oldStyles = new_styles;
-      if (this_ref.hasAdopted) {
-        this_ref.sheet.replaceSync(new_styles);
-      } else {
-        // safari
-        const blob = new Blob([new_styles], {
-          type: "text/css",
-        });
-        const blobUrl = URL.createObjectURL(blob);
-        this_ref.styleLinkUpdate.href = blobUrl;
-        URL.revokeObjectURL(blobUrl);
       }
     }
   }
@@ -1356,12 +1348,16 @@ const bay: any = () => {
               .replaceAll("this.", `${local_name}.proxy.`)
               .replace(/(^[ \t]*\n)/gm, "");
           const proxy_html = decodeHtml(this.tmp)
+            .replaceAll("{{", "${")
+            .replaceAll("}}", "}")
             .replaceAll("this[", `${local_name}.proxy[`)
             .replaceAll("this.", `${local_name}.proxy.`)
             .replace(/(^[ \t]*\n)/gm, "");
           let proxy_css = "";
           if (styles_text) {
             proxy_css = decodeHtml(styles_text)
+              .replaceAll("{{", "${")
+              .replaceAll("}}", "}")
               .replaceAll('"${', "${")
               .replaceAll("'${", "${")
               .replaceAll(`}"`, `}`)
