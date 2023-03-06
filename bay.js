@@ -237,12 +237,15 @@ const bay = () => {
           template_el = template_el.substring(0, template_el.length - 2);
           template_el = template_el.replaceAll("\\${", "${").replaceAll("\\`", "`");
       }
+      template_el = template_el
+          .replaceAll(/<!--[\s\S]*?-->/g, "")
+          .replaceAll("{{", "${")
+          .replaceAll("}}", "}");
       while (template_el.indexOf("<style>") > -1) {
           const styles_text = template_el.split("<style>")[1].split("</style>")[0];
           template_el = template_el.replaceAll(`<style>${styles_text}</style>`, "");
           styles_string += styles_text;
       }
-      template_el = template_el.replaceAll(/<!--[\s\S]*?-->/g, "");
       html = doc.parseFromString(template_el, "text/html");
       if (html) {
           if (!customElements.get(tagname)) {
@@ -260,12 +263,15 @@ const bay = () => {
   function create_template_fn(element_tagname, template_string, attributes_array) {
       const doc = new DOMParser();
       const passed_attributes = attributes_array || [];
+      template_string = template_string
+          .replaceAll(/<!--[\s\S]*?-->/g, "")
+          .replaceAll("{{", "${")
+          .replaceAll("}}", "}");
       let styles_text = "";
       if (template_string.indexOf("<style>") > -1) {
           styles_text = template_string.split("<style>")[1].split("</style>")[0];
       }
       template_string = template_string
-          .replaceAll(/<!--[\s\S]*?-->/g, "")
           .replaceAll(`<style>${styles_text}</style>`, "");
       let html = doc.parseFromString(template_string, "text/html");
       if (html) {
