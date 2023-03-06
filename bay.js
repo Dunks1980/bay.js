@@ -1147,16 +1147,12 @@ const bay = () => {
                       .replaceAll("this.", `${local_name}.proxy.`)
                       .replace(/(^[ \t]*\n)/gm, "");
               const proxy_html = decodeHtml(this.tmp)
-                  .replaceAll("{{", "${")
-                  .replaceAll("}}", "}")
                   .replaceAll("this[", `${local_name}.proxy[`)
                   .replaceAll("this.", `${local_name}.proxy.`)
                   .replace(/(^[ \t]*\n)/gm, "");
               let proxy_css = "";
               if (styles_text) {
                   proxy_css = decodeHtml(styles_text)
-                      .replaceAll("{{", "${")
-                      .replaceAll("}}", "}")
                       .replaceAll('"${', "${")
                       .replaceAll("'${", "${")
                       .replaceAll(`}"`, `}`)
