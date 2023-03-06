@@ -271,8 +271,7 @@ const bay = () => {
       if (template_string.indexOf("<style>") > -1) {
           styles_text = template_string.split("<style>")[1].split("</style>")[0];
       }
-      template_string = template_string
-          .replaceAll(`<style>${styles_text}</style>`, "");
+      template_string = template_string.replaceAll(`<style>${styles_text}</style>`, "");
       let html = doc.parseFromString(template_string, "text/html");
       if (html) {
           if (!customElements.get(element_tagname.toLowerCase())) {
@@ -387,23 +386,50 @@ const bay = () => {
       dom_diff(templateHTML, shadow_html);
       isEqual_fn([...$(templateHTML, "*")], [...$(shadow_html, "*")]);
   }
+  function apply_events(this_ref, attr, el, i) {
+      let attr_name = attr.name;
+      if (attr_name.indexOf(data_attr) > -1) {
+          let custom_event = attr_name.indexOf(`-custom-`) > -1;
+          if (custom_event) {
+              attr_name = attr_name.replace(`custom-`, "");
+          }
+          if (attr_name.indexOf(`${data_attr}style`) > -1) {
+              if (el.style !== attr.value) {
+                  el.style = attr.value;
+              }
+          }
+          else {
+              const attr_data = attr.value.replaceAll("window.bay", `${local_name}`);
+              if (this_ref.newEvents.indexOf(`${local_name}.events = new Map();\n`) ===
+                  -1) {
+                  this_ref.newEvents += `${local_name}.events = new Map();\n`;
+              }
+              this_ref.newEvents += `${local_name}.events.set('${attr_name}-${i}', function(e) {${attr_data}});\n`;
+              const handle = (e) => {
+                  if (window.bay[this_ref.uniqid].events)
+                      window.bay[this_ref.uniqid].events.get(`${attr_name}-${i}`)(e);
+              };
+              const handler_id = `${this_ref.uniqid}${i}${attr_name}`;
+              const handler_event = attr_name.split(data_attr)[1];
+              if (this_ref.eventHandlers.has(handler_id)) {
+                  el.removeEventListener(handler_event, this_ref.eventHandlers.get(handler_id));
+                  this_ref.eventHandlers.delete(handler_id);
+              }
+              this_ref.eventHandlers.set(handler_id, handle);
+              el.addEventListener(handler_event, this_ref.eventHandlers.get(handler_id));
+          }
+      }
+  }
   function add_events(this_ref, elements) {
       if (!elements)
           return;
       this_ref.newEvents = ``;
-      this_ref.newEventsArray = [];
       elements.forEach((el, i) => {
           // elements are the elements that have been added to the DOM
           [...el.attributes].forEach((attr) => apply_events(this_ref, attr, el, i));
       });
-      this_ref.oldEventsArray.forEach((id) => {
-          if (this_ref.newEventsArray.indexOf(id) === -1) {
-              delete window.bay[this_ref.uniqid][id];
-          }
-      });
       if (this_ref.newEvents && this_ref.oldEvents !== this_ref.newEvents) {
           this_ref.oldEvents = this_ref.newEvents;
-          this_ref.oldEventsArray = this_ref.newEventsArray;
           addBlob_event(this_ref, this_ref.newEvents);
       }
   }
@@ -423,40 +449,6 @@ const bay = () => {
               const blobUrl = URL.createObjectURL(blob);
               this_ref.styleLinkUpdate.href = blobUrl;
               URL.revokeObjectURL(blobUrl);
-          }
-      }
-  }
-  function apply_events(this_ref, attr, el, i) {
-      let attr_name = attr.name;
-      if (attr_name.indexOf(data_attr) > -1) {
-          let custom_event = attr_name.indexOf(`-custom-`) > -1;
-          if (custom_event) {
-              attr_name = attr_name.replace(`custom-`, "");
-          }
-          if (attr_name.indexOf(`${data_attr}style`) > -1) {
-              if (el.style !== attr.value) {
-                  el.style = attr.value;
-              }
-          }
-          else {
-              const attr_data = attr.value.replaceAll("window.bay", `${local_name}`);
-              if (this_ref.newEvents.indexOf(`${local_name}.events = new Map();\n`) === -1) {
-                  this_ref.newEvents += `${local_name}.events = new Map();\n`;
-                  this_ref.newEventsArray.push(i);
-              }
-              this_ref.newEvents += `${local_name}.events.set('${attr_name}-${i}', function(e) {${attr_data}});\n`;
-              const handle = (e) => {
-                  if (window.bay[this_ref.uniqid].events)
-                      window.bay[this_ref.uniqid].events.get(`${attr_name}-${i}`)(e);
-              };
-              const handler_id = `${this_ref.uniqid}${i}${attr_name}`;
-              const handler_event = attr_name.split(data_attr)[1];
-              if (this_ref.eventHandlers.has(handler_id)) {
-                  el.removeEventListener(handler_event, this_ref.eventHandlers.get(handler_id));
-                  this_ref.eventHandlers.delete(handler_id);
-              }
-              this_ref.eventHandlers.set(handler_id, handle);
-              el.addEventListener(handler_event, this_ref.eventHandlers.get(handler_id));
           }
       }
   }
@@ -518,8 +510,7 @@ const bay = () => {
   function after_blob_loaded(this_ref) {
       if (!this_ref.dsd) {
           this_ref.tmp = window.bay[this_ref.uniqid].template();
-          this_ref.shadowDom.getElementById("bay").innerHTML =
-              this_ref.tmp;
+          this_ref.shadowDom.getElementById("bay").innerHTML = this_ref.tmp;
       }
       render_debouncer(this_ref);
       if (this_ref.CSP) {
@@ -1003,7 +994,6 @@ const bay = () => {
       customElements.define(tag, class extends HTMLElement {
           constructor() {
               super();
-              this.oldEventsArray = [];
               this.newEventsArray = [];
               this.eventHandlers = new Map();
               this.mounted = false;
@@ -1070,7 +1060,6 @@ const bay = () => {
               });
               window.bay[this.uniqid][element_name] = this;
               this.oldEvents = ``;
-              this.oldEventsArray = [];
               // blob strings setup ============================================
               if (!script) {
                   script = "/* No script tag found */";

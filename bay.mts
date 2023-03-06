@@ -303,8 +303,10 @@ const bay: any = () => {
     if (template_string.indexOf("<style>") > -1) {
       styles_text = template_string.split("<style>")[1].split("</style>")[0];
     }
-    template_string = template_string
-      .replaceAll(`<style>${styles_text}</style>`, "");
+    template_string = template_string.replaceAll(
+      `<style>${styles_text}</style>`,
+      ""
+    );
     let html = doc.parseFromString(template_string, "text/html");
     if (html) {
       if (!customElements.get(element_tagname.toLowerCase())) {
@@ -429,22 +431,57 @@ const bay: any = () => {
     isEqual_fn([...$(templateHTML, "*")], [...$(shadow_html, "*")]);
   }
 
+  function apply_events(this_ref: any, attr: any, el: any, i: number) {
+    let attr_name = attr.name;
+    if (attr_name.indexOf(data_attr) > -1) {
+      let custom_event = attr_name.indexOf(`-custom-`) > -1;
+      if (custom_event) {
+        attr_name = attr_name.replace(`custom-`, "");
+      }
+      if (attr_name.indexOf(`${data_attr}style`) > -1) {
+        if (el.style !== attr.value) {
+          el.style = attr.value;
+        }
+      } else {
+        const attr_data = attr.value.replaceAll("window.bay", `${local_name}`);
+        if (
+          this_ref.newEvents.indexOf(`${local_name}.events = new Map();\n`) ===
+          -1
+        ) {
+          this_ref.newEvents += `${local_name}.events = new Map();\n`;
+        }
+        this_ref.newEvents += `${local_name}.events.set('${attr_name}-${i}', function(e) {${attr_data}});\n`;
+        const handle = (e: Event) => {
+          if (window.bay[this_ref.uniqid].events)
+            window.bay[this_ref.uniqid].events.get(`${attr_name}-${i}`)(e);
+        };
+        const handler_id = `${this_ref.uniqid}${i}${attr_name}`;
+        const handler_event = attr_name.split(data_attr)[1];
+        if (this_ref.eventHandlers.has(handler_id)) {
+          el.removeEventListener(
+            handler_event,
+            this_ref.eventHandlers.get(handler_id)
+          );
+          this_ref.eventHandlers.delete(handler_id);
+        }
+        this_ref.eventHandlers.set(handler_id, handle);
+        el.addEventListener(
+          handler_event,
+          this_ref.eventHandlers.get(handler_id)
+        );
+      }
+    }
+  }
+
   function add_events(this_ref: any, elements: any) {
     if (!elements) return;
     this_ref.newEvents = ``;
-    this_ref.newEventsArray = [];
     elements.forEach((el: Element, i: number) => {
       // elements are the elements that have been added to the DOM
       [...el.attributes].forEach((attr) => apply_events(this_ref, attr, el, i));
     });
-    this_ref.oldEventsArray.forEach((id: any) => {
-      if (this_ref.newEventsArray.indexOf(id) === -1) {
-        delete window.bay[this_ref.uniqid][id];
-      }
-    });
     if (this_ref.newEvents && this_ref.oldEvents !== this_ref.newEvents) {
       this_ref.oldEvents = this_ref.newEvents;
-      this_ref.oldEventsArray = this_ref.newEventsArray;
       addBlob_event(this_ref, this_ref.newEvents);
     }
   }
@@ -464,45 +501,6 @@ const bay: any = () => {
         const blobUrl = URL.createObjectURL(blob);
         this_ref.styleLinkUpdate.href = blobUrl;
         URL.revokeObjectURL(blobUrl);
-      }
-    }
-  }
-
-  function apply_events(this_ref: any, attr: any, el: any, i: number) {
-    let attr_name = attr.name;
-    if (attr_name.indexOf(data_attr) > -1) {
-      let custom_event = attr_name.indexOf(`-custom-`) > -1;
-      if (custom_event) {
-        attr_name = attr_name.replace(`custom-`, "");
-      }
-      if (attr_name.indexOf(`${data_attr}style`) > -1) {
-        if (el.style !== attr.value) {
-          el.style = attr.value;
-        }
-      } else {
-        const attr_data = attr.value.replaceAll("window.bay", `${local_name}`);
-        if (this_ref.newEvents.indexOf(`${local_name}.events = new Map();\n`) === -1) {
-          this_ref.newEvents += `${local_name}.events = new Map();\n`;
-          this_ref.newEventsArray.push(i);
-        }
-        this_ref.newEvents += `${local_name}.events.set('${attr_name}-${i}', function(e) {${attr_data}});\n`;
-        const handle = (e: Event) => {
-          if (window.bay[this_ref.uniqid].events) window.bay[this_ref.uniqid].events.get(`${attr_name}-${i}`)(e);
-        };
-        const handler_id = `${this_ref.uniqid}${i}${attr_name}`;
-        const handler_event = attr_name.split(data_attr)[1];
-        if (this_ref.eventHandlers.has(handler_id)) {
-          el.removeEventListener(
-            handler_event,
-            this_ref.eventHandlers.get(handler_id)
-          );
-          this_ref.eventHandlers.delete(handler_id);
-        }
-        this_ref.eventHandlers.set(handler_id, handle);
-        el.addEventListener(
-          handler_event,
-          this_ref.eventHandlers.get(handler_id)
-        );
       }
     }
   }
@@ -577,8 +575,7 @@ const bay: any = () => {
   function after_blob_loaded(this_ref: any) {
     if (!this_ref.dsd) {
       this_ref.tmp = window.bay[this_ref.uniqid].template();
-      this_ref.shadowDom.getElementById("bay").innerHTML =
-        this_ref.tmp;
+      this_ref.shadowDom.getElementById("bay").innerHTML = this_ref.tmp;
     }
     render_debouncer(this_ref);
     if (this_ref.CSP) {
@@ -1160,7 +1157,6 @@ const bay: any = () => {
         shadowDom: any;
         shadowRootHTML: any;
         oldEvents: string;
-        oldEventsArray: number[] = [];
         update_evt: CustomEvent;
         local_evt: CustomEvent | any;
         hasAdopted: boolean;
@@ -1186,9 +1182,7 @@ const bay: any = () => {
             if ($(document, inner_el)[0]) {
               this.inner_el = $(document, inner_el)[0];
             } else {
-              console.error(
-                "inner-html target " + inner_el + " not found."
-              );
+              console.error("inner-html target " + inner_el + " not found.");
             }
           } else {
             this.inner_el = this;
@@ -1243,7 +1237,6 @@ const bay: any = () => {
 
           window.bay[this.uniqid][element_name] = this;
           this.oldEvents = ``;
-          this.oldEventsArray = [];
 
           // blob strings setup ============================================
           if (!script) {
