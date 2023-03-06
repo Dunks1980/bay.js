@@ -475,14 +475,13 @@ const bay: any = () => {
         }
       } else {
         const attr_data = attr.value.replaceAll("window.bay", `${local_name}`);
-        if (this_ref.newEvents.indexOf(`${local_name}[${i}] = {};`) === -1) {
-          this_ref.newEvents += `${local_name}[${i}] = {};`;
+        if (this_ref.newEvents.indexOf(`${local_name}.events = new Map();\n`) === -1) {
+          this_ref.newEvents += `${local_name}.events = new Map();\n`;
           this_ref.newEventsArray.push(i);
         }
-        this_ref.newEvents += `${local_name}[${i}]['${attr_name}'] = function(e) {${attr_data}};\n`;
+        this_ref.newEvents += `${local_name}.events.set('${attr_name}-${i}', function(e) {${attr_data}});\n`;
         const handle = (e: Event) => {
-          const f = window.bay[this_ref.uniqid][i];
-          if (f && f[attr_name]) f[attr_name](e);
+          if (window.bay[this_ref.uniqid].events) window.bay[this_ref.uniqid].events.get(`${attr_name}-${i}`)(e);
         };
         const handler_id = `${this_ref.uniqid}${i}${attr_name}`;
         const handler_event = attr_name.split(data_attr)[1];
