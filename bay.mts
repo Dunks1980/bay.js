@@ -19,7 +19,7 @@ const bay: any = () => {
   let file_name = "";
   let to_fetch: string[] = [];
   let already_fetched: string[] = [];
-  let blobs_obj: any = {};
+  let blobs = new Map();
 
   /**
    * Used to attach shadow roots to templates with the shadowroot attribute
@@ -38,19 +38,6 @@ const bay: any = () => {
       }
     );
   })(document);
-  // ------------------------------
-
-  /**
-   * Tells other components using $global that the global data has changed.
-   */
-  function dispatch_global_event() {
-    window.dispatchEvent(new CustomEvent("bay_global_event"));
-  }
-  // ------------------------------
-
-  function dispatch_route_event() {
-    window.dispatchEvent(new CustomEvent("bay_route_event"));
-  }
 
   /**
    * Escapes HTML characters in a string to prevent XSS attacks when added data to proxys.
@@ -136,7 +123,7 @@ const bay: any = () => {
       window.cancelAnimationFrame(dispatch_debounced);
     }
     dispatch_debounced = window.requestAnimationFrame(() => {
-      dispatch_global_event();
+      window.dispatchEvent(new CustomEvent("bay_global_event"));
     });
   });
 
@@ -147,7 +134,7 @@ const bay: any = () => {
       window.cancelAnimationFrame(route_debounced);
     }
     route_debounced = window.requestAnimationFrame(() => {
-      dispatch_route_event();
+      window.dispatchEvent(new CustomEvent("bay_route_event"));
     });
   });
 
@@ -197,21 +184,17 @@ const bay: any = () => {
    * @param {number} length length of the string to be generated
    */
   function makeid(length: number) {
-    if (typeof crypto.randomUUID === "function") {
-      return crypto.randomUUID().replaceAll("-", "").substring(0, length);
-    } else {
-      const uuidv4 = () => {
-        return ([1e7].toString() + -1e3 + -4e3 + -8e3 + -1e11).replace(
-          /[018]/g,
-          (c: any) =>
-            (
-              c ^
-              (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))
-            ).toString(16)
-        );
-      };
-      return uuidv4().replaceAll("-", "").substring(0, length);
-    }
+    const uuidv4 = () => {
+      return ([1e7].toString() + -1e3 + -4e3 + -8e3 + -1e11).replace(
+        /[018]/g,
+        (c: any) =>
+          (
+            c ^
+            (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))
+          ).toString(16)
+      );
+    };
+    return uuidv4().replaceAll("-", "").substring(0, length);
   }
   const bay_instance_id = makeid(8);
   // ------------------------------
@@ -222,13 +205,11 @@ const bay: any = () => {
    * @param {HTMLElement} element root element
    */
   function get_all_bays(element: Element | Document) {
-    const bays = [...$(element, "[bay]")];
-    bays.forEach((el: any, i) => {
+    [...$(element, "[bay]")].forEach((el: any, i) => {
       if (el.getAttribute("bay") === "dsd") {
         el.setAttribute("bay", `dsd-${i}`);
       }
-      const attr = el.getAttribute("bay") || "";
-      if (to_fetch.indexOf(attr) === -1) {
+      if (to_fetch.indexOf(el.getAttribute("bay") || "") === -1) {
         to_fetch.push(el);
       }
     });
@@ -341,16 +322,14 @@ const bay: any = () => {
         }
         modify_template(template_el.innerHTML, bay);
       } else {
-        const request = new XMLHttpRequest();
-        request.open("GET", location);
-        request.setRequestHeader("Content-Type", "text/plain");
-        request.addEventListener("load", (event: EventTarget | any) => {
-          modify_template(event.target.responseText, bay);
-        });
-        request.addEventListener("error", (error) => {
-          console.error(error);
-        });
-        request.send();
+        fetch(location)
+          .then((res) => res.text())
+          .then((html) => {
+            modify_template(html, bay);
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+          });
       }
     } catch (error) {
       console.error(error);
@@ -469,12 +448,11 @@ const bay: any = () => {
       } else {
         const attr_data = attr.value.replaceAll("window.bay", `${local_name}`);
         if (
-          this_ref.newEvents.indexOf(`${local_name}.events = new Map();\n`) ===
-          -1
+          this_ref.newEvents.indexOf(`${local_name}.events=new Map();\n`) === -1
         ) {
-          this_ref.newEvents += `${local_name}.events = new Map();\n`;
+          this_ref.newEvents += `${local_name}.events=new Map();\n`;
         }
-        this_ref.newEvents += `${local_name}.events.set('${attr_name}-${i}', function(e) {${attr_data}});\n`;
+        this_ref.newEvents += `${local_name}.events.set('${attr_name}-${i}',function(e){${attr_data}});\n`;
         const handle = (e: Event) => {
           if (window.bay[this_ref.uniqid].events)
             window.bay[this_ref.uniqid].events.get(`${attr_name}-${i}`)(e);
@@ -512,15 +490,16 @@ const bay: any = () => {
    */
 
   async function addBlob_event(this_ref: any, text: string) {
-    const blob = new Blob(
-      [
-        `export default () => {"use strict";\n${this_ref.evt_prefixes}${text}};`,
-      ],
-      {
-        type: "text/javascript",
-      }
+    const blobUrl = URL.createObjectURL(
+      new Blob(
+        [
+          `export default ()=>{"use strict";\n${this_ref.evt_prefixes}${text}};`,
+        ],
+        {
+          type: "text/javascript",
+        }
+      )
     );
-    const blobUrl = URL.createObjectURL(blob);
     const code = await import(blobUrl);
     code.default();
     URL.revokeObjectURL(blobUrl);
@@ -540,26 +519,27 @@ const bay: any = () => {
     text: string,
     parent_uniqid: string
   ) {
-    if (!blobs_obj[element_tagname]) {
-      const blob = new Blob(
-        [
-          `export default (bay_uniqid, parent_uniqid) => {"use strict";\n${text}};`,
-        ],
-        { type: "text/javascript" }
+    if (blobs.has(element_tagname)) {
+      await import(blobs.get(element_tagname)).then((code) => {
+        code.default(this_ref.uniqid, parent_uniqid);
+        after_blob_loaded(this_ref);
+      });
+    } else {
+      const blobUrl = URL.createObjectURL(
+        new Blob(
+          [
+            `export default (bay_uniqid,parent_uniqid)=>{"use strict";\n${text}};`,
+          ],
+          { type: "text/javascript" }
+        )
       );
-      const blobUrl = URL.createObjectURL(blob);
-      blobs_obj[element_tagname] = blobUrl;
+      blobs.set(element_tagname, blobUrl);
       await import(blobUrl).then((code) => {
         code.default(this_ref.uniqid, parent_uniqid);
         after_blob_loaded(this_ref);
         if (revoke_blob) {
           URL.revokeObjectURL(blobUrl);
         }
-      });
-    } else {
-      await import(blobs_obj[element_tagname]).then((code) => {
-        code.default(this_ref.uniqid, parent_uniqid);
-        after_blob_loaded(this_ref);
       });
     }
   }
@@ -726,22 +706,7 @@ const bay: any = () => {
     while (el.attributes.length > 0) el.removeAttribute(el.attributes[0].name);
   }
 
-  const show_element = /*HTML*/ `
-    <div id="show" :style="\${this.style()}"><slot></slot></div>
-    <script update>$bay.getElementById('show').ontransitionend = () => this.end();</script>
-    <script props>this.slide(this.open);</script>
-    <script mounted>this.slide(this.open);</script>
-    <script>
-      this.opacity = 0;
-      this.display = 'none';
-      this.slide = (open) => {
-        let opacity = 0;
-        if (open === 'true') {opacity = 1; this.display = 'block';}
-        requestAnimationFrame(() => {this.opacity = opacity;});};
-      this.end = () => {if (this.open === 'false') { this.display = 'none';}}
-      this.style = () => {return \`display:\${this.display}; opacity:\${this.opacity}; transition: opacity \${this.transition || '0s'};\`;};
-    </script>
-  `;
+  const show_element = /*HTML*/ `<div id="show" :style="\${this.style()}"><slot></slot></div><script update>$bay.getElementById('show').ontransitionend=()=>this.end();</script><script props>this.slide(this.open);</script><script mounted>this.slide(this.open);</script><script>this.opacity=0;this.display='none';this.slide=(open)=>{let opacity=0;if(open==='true'){opacity=1;this.display='block';};requestAnimationFrame(()=>{this.opacity=opacity;});};this.end=()=>{if(this.open==='false'){this.display='none';}};this.style=()=>{return \`display:\${this.display};opacity:\${this.opacity};transition:opacity \${this.transition || '0s'};\`;};</script>`;
 
   /**
    * Create a custom element from a template.
@@ -835,7 +800,7 @@ const bay: any = () => {
           const next_el = tag_el.nextElementSibling
             ? tag_el.nextElementSibling.tagName.toLowerCase()
             : "";
-          let close_func = `\` } return '' })() }`;
+          let close_func = `\`}return ''})()}`;
           const break_prop = tag_el.hasAttribute("break") ? "break;" : "";
           const shared_case = tag_el.innerHTML.length === 0;
           const script_type = tag_el.attributes.length
@@ -846,6 +811,11 @@ const bay: any = () => {
           const tag_el_attributes = [...tag_el.attributes];
           removeAttributes(tag_el);
           let outer_html = tag_el.outerHTML;
+          const rep = (open: string, close: string) => {
+            tag_el.outerHTML = outer_html
+              .replace(open_tag, open)
+              .replace(close_tag, close);
+          };
           switch (tagname_str) {
             case "dsd":
               tag_el.remove();
@@ -856,106 +826,78 @@ const bay: any = () => {
                 .replaceAll(close_tag, "");
               break;
             case "map":
-              outer_html = outer_html
-                .replace(
-                  open_tag,
-                  `\${ ${tag_array}.${tagname_str}((${tag_params}) => { return \``
-                )
-                .replace(close_tag, `\`}).join('${tag_join}')}`);
-              tag_el.outerHTML = outer_html;
+              rep(
+                `\${ ${tag_array}.${tagname_str}((${tag_params})=>{return \``,
+                `\`}).join('${tag_join}')}`
+              );
               break;
             case "for":
               const this_for = `bay_${tagname_str}_${makeid(8)}`;
               if (tag_array.length) {
-                outer_html = outer_html
-                  .replace(
-                    open_tag,
-                    `\${(() => { let ${this_for} = ''; ${tag_array}.forEach((${tag_params}) => { ${this_for} += \``
-                  )
-                  .replace(close_tag, `\`}); return ${this_for}; })() }`);
+                rep(
+                  `\${(()=>{let ${this_for}='';${tag_array}.forEach((${tag_params})=>{${this_for}+=\``,
+                  `\`});return ${this_for};})()}`
+                );
               } else {
-                outer_html = outer_html
-                  .replace(
-                    open_tag,
-                    `\${(() => { let ${this_for} = ''; ${tagname_str} (${tag_statement}) { ${this_for} += \``
-                  )
-                  .replace(close_tag, `\`}; return ${this_for}; })() }`);
+                rep(
+                  `\${(()=>{let ${this_for}=''; ${tagname_str} (${tag_statement}) { ${this_for} += \``,
+                  `\`};return ${this_for};})() }`
+                );
               }
-              tag_el.outerHTML = outer_html;
               break;
             case "if":
               if (next_el === "else-if" || next_el === "else") {
-                close_func = `\` }`;
+                close_func = `\`}`;
               }
-              tag_el.outerHTML = outer_html
-                .replace(
-                  open_tag,
-                  `\${(() => { ${tagname_str} (${tag_statement}) { return \``
-                )
-                .replace(close_tag, close_func);
+              rep(
+                `\${(()=>{ ${tagname_str} (${tag_statement}) {return \``,
+                close_func
+              );
               break;
             case "else-if":
               if (next_el === "else-if" || next_el === "else") {
-                close_func = `\` }`;
+                close_func = `\`}`;
               }
-              tag_el.outerHTML = outer_html
-                .replace(open_tag, `\ else if (${tag_statement}) { return \``)
-                .replace(close_tag, close_func);
+              rep(`\ else if (${tag_statement}) {return \``, close_func);
               break;
             case "else":
-              tag_el.outerHTML = outer_html
-                .replace(open_tag, `\ ${tagname_str} { return \``)
-                .replace(close_tag, close_func);
+              rep(`\ ${tagname_str} {return \``, close_func);
               break;
             case "show":
               if (!tag_duration) {
-                tag_el.outerHTML = outer_html
-                  .replace(
-                    open_tag,
-                    `<div class="\${(${tag_statement}) ? 'bay-show' : 'bay-show bay-hide'}">`
-                  )
-                  .replace(close_tag, `</div>`);
+                rep(
+                  `<div class="\${(${tag_statement})?'bay-show':'bay-show bay-hide'}">`,
+                  `</div>`
+                );
               } else {
-                tag_el.outerHTML = outer_html
-                  .replace(
-                    open_tag,
-                    `<show-${bay_instance_id} class="bay-show" open="\${${tag_statement}}" transition="${tag_duration} ease-in-out">`
-                  )
-                  .replace(close_tag, `</show-${bay_instance_id}>`);
+                rep(
+                  `<show-${bay_instance_id} class="bay-show" open="\${${tag_statement}}" transition="${tag_duration} ease-in-out">`,
+                  `</show-${bay_instance_id}>`
+                );
               }
               break;
             case "switch":
-              tag_el.outerHTML = outer_html
-                .replace(
-                  open_tag,
-                  `\${(() => { ${tagname_str} (${tag_statement}) { `
-                )
-                .replace(close_tag, ` }; return '' })() }`);
+              rep(
+                `\${(()=>{ ${tagname_str} (${tag_statement}) { `,
+                ` };return ''})() }`
+              );
               break;
             case "case":
               if (shared_case) {
-                tag_el.outerHTML = outer_html
-                  .replace(open_tag, `${tagname_str} ${tag_statement}:`)
-                  .replace(close_tag, ` ` + break_prop);
+                rep(`${tagname_str} ${tag_statement}:`, ` ` + break_prop);
               } else {
-                tag_el.outerHTML = outer_html
-                  .replace(
-                    open_tag,
-                    `${tagname_str} ${tag_statement}: return \``
-                  )
-                  .replace(close_tag, `\`; ` + break_prop);
+                rep(
+                  `${tagname_str} ${tag_statement}: return \``,
+                  `\`; ` + break_prop
+                );
               }
               break;
             case "default":
-              tag_el.outerHTML = outer_html
-                .replace(open_tag, `${tagname_str}: return \``)
-                .replace(close_tag, `\`;`);
+              rep(`${tagname_str}: return \``, `\`;`);
               break;
             case "inner-html":
               has_inner_html = true;
-              tag_el.outerHTML = outer_html
-                .replace(open_tag, "${ (() => { $bay_inner_html += `")
-                .replace(close_tag, "`; return ''} )()}");
+              rep("${ (()=>{$bay_inner_html+=`", "`;return ''})()}");
               tag_el.remove();
               break;
             case "route":
@@ -963,55 +905,43 @@ const bay: any = () => {
               tag_el_attributes.forEach((attr) => {
                 attrs_str += ` ${attr.name}="${attr.value}"`;
               });
-              tag_el.outerHTML = outer_html
-                .replace(
-                  open_tag,
-                  `<a bay-route :click="e.preventDefault();history.pushState({},'',e.target.getAttribute('href'));window.bay.update_route();"${attrs_str}>`
-                )
-                .replace(close_tag, `</a>`);
+              rep(
+                `<a bay-route :click="e.preventDefault();history.pushState({},'',e.target.getAttribute('href'));window.bay.update_route();"${attrs_str}>`,
+                `</a>`
+              );
               break;
             case "router":
-              tag_el.outerHTML = outer_html
-                .replace(
-                  open_tag,
-                  `\${(() => { let $path = window.bay.router(window.bay.route.path,'${tag_statement}'); if ($path) { return \``
-                )
-                .replace(close_tag, close_func);
+              rep(
+                `\${(()=>{let $path=window.bay.router(window.bay.route.path,'${tag_statement}');if($path){return \``,
+                close_func
+              );
               break;
             case "script":
               // ------------------ SCRIPT TAGS ------------------
               switch (script_type) {
                 case "update":
-                  outer_html = outer_html
-                    .replace(
-                      open_tag,
-                      "${/*update*/ (() => {setTimeout(() => {"
-                    )
-                    .replace(close_tag, "}, 0); return ``})()}");
+                  rep(
+                    "${/*update*/(()=>{setTimeout(()=>{",
+                    "}, 0);return ``})()}"
+                  );
                   break;
                 case "props":
-                  outer_html = outer_html
-                    .replace(
-                      open_tag,
-                      "${ /*props updates*/ (() => {$props = () => {"
-                    )
-                    .replace(close_tag, "};return ``})()}");
+                  rep(
+                    "${/*props updates*/(()=>{$props=()=>{",
+                    "};return ``})()}"
+                  );
                   break;
                 case "render":
-                  outer_html = outer_html
-                    .replace(open_tag, "${ /*render*/ (() => {")
-                    .replace(close_tag, "})()}");
+                  rep("${/*render*/(()=>{", "})()}");
                   break;
                 case "slotchange":
-                  outer_html = outer_html
-                    .replace(
-                      open_tag,
-                      "${ /*slotchange updates*/ (() => {$slotchange = (e) => { $details = e.detail;\n"
-                    )
-                    .replace(close_tag, "};return ``})()}");
+                  rep(
+                    "${/*slotchange updates*/(()=>{$slotchange=(e)=>{$details=e.detail;\n",
+                    "};return ``})()}"
+                  );
                   break;
                 case "mounted":
-                  script_text += `$bay['$mounted'] = () => {${tag_el.innerText}};`;
+                  script_text += `$bay['$mounted']=()=>{${tag_el.innerText}};`;
                   tag_el.remove();
                   break;
                 default:
@@ -1075,7 +1005,7 @@ const bay: any = () => {
               el.setAttribute(`multiple`, "true");
             }
             el.removeAttribute(attr.name);
-            el.innerHTML = `\${${attr.value}.map((item) => { return \`&lt;option \${ (() => {return Object.entries(item).map((o) => \`\${o[0]}="\${o[1]}"\` ).join(' ')})() }>\${item.text}&lt;/option>\`}).join('')}`;
+            el.innerHTML = `\${${attr.value}.map((item)=>{return \`&lt;option \${(()=>{return Object.entries(item).map((o)=> \`\${o[0]}="\${o[1]}"\` ).join(' ')})()}>\${item.text}&lt;/option>\`}).join('')}`;
             has_select_bind = true;
           } else if (bind && (input || textarea)) {
             el.setAttribute(
@@ -1155,7 +1085,6 @@ const bay: any = () => {
         sheet: CSSStyleSheet | any;
         styleLinkUpdate: string | any;
         newEvents: string | any;
-        newEventsArray: number[] = [];
         oldStyles: string | any;
         eventHandlers = new Map();
         constructor() {
@@ -1182,15 +1111,12 @@ const bay: any = () => {
 
           document.addEventListener("securitypolicyviolation", (e) => {
             e.preventDefault();
-            if (e.violatedDirective.indexOf("script-src") > -1) {
+            if (
+              e.violatedDirective.indexOf("script-src") > -1 ||
+              e.violatedDirective.indexOf("style-src") > -1
+            ) {
               if (e.blockedURI === "blob") {
-                console.warn("blob: needed in script-src CSP");
-                this.CSP = true;
-              }
-            }
-            if (e.violatedDirective.indexOf("style-src") > -1) {
-              if (e.blockedURI === "blob") {
-                console.warn("blob: needed in style-src CSP");
+                console.warn("blob: needed in script-src/style-src CSP");
                 this.CSP = true;
               }
             }
@@ -1242,16 +1168,16 @@ const bay: any = () => {
           let parent_event_var = ``;
           let parent_uniqid = ``;
           if (rootNode.host) {
-            parent_var = `const $parent = window.bay[parent_uniqid]['proxy'];\n`;
-            parent_event_var = `const $parent = window.bay['${rootNode.host.uniqid}']['proxy'];\n`;
+            parent_var = `const $parent=window.bay[parent_uniqid]['proxy'];\n`;
+            parent_event_var = `const $parent=window.bay['${rootNode.host.uniqid}']['proxy'];\n`;
             parent_uniqid = rootNode.host.uniqid;
           }
 
-          const local_var = `const ${local_name} = window.bay[bay_uniqid];\n`;
-          const local_evevt_var = `const ${local_name} = window.bay['${this.uniqid}'];\n`;
-          const global_var = `const ${store_name} = window.bay.global;\n`;
-          const route_var = `const ${route_name} = window.bay.route;\n`;
-          const element_var = `const ${element_name} = ${local_name}['${element_name}'];\n`;
+          const local_var = `const ${local_name}=window.bay[bay_uniqid];\n`;
+          const local_evevt_var = `const ${local_name}=window.bay['${this.uniqid}'];\n`;
+          const global_var = `const ${store_name}=window.bay.global;\n`;
+          const route_var = `const ${route_name}=window.bay.route;\n`;
+          const element_var = `const ${element_name}=${local_name}['${element_name}'];\n`;
 
           // add update function ===========================================
           this.update_evt = new CustomEvent(
@@ -1259,27 +1185,27 @@ const bay: any = () => {
           );
           let update_func = ``;
           if (this.tmp.indexOf(`/*props updates*/`) > -1) {
-            update_func = `let $props;\nwindow.addEventListener(\`bay_local_update_event_\${bay_uniqid}\`, () => $props());\n`;
+            update_func = `let $props;\nwindow.addEventListener(\`bay_local_update_event_\${bay_uniqid}\`,()=>$props());\n`;
           }
 
           // add slotchange function =======================================
           let slotchange_func = ``;
           if (this.tmp.indexOf(`/*slotchange updates*/`) > -1) {
-            update_func = `let $slotchange = () => {};\nlet $details = {'element': '', 'changed': ''};\nwindow.addEventListener(\`bay_slotchange_event_\${bay_uniqid}\`, (e) => $slotchange(e));\n`;
+            update_func = `let $slotchange=()=>{};\nlet $details={'element':'','changed':''};\nwindow.addEventListener(\`bay_slotchange_event_\${bay_uniqid}\`,(e)=>$slotchange(e));\n`;
           }
 
           // add decode & encode functions =================================
           window.bay.decode = decodeHtml;
-          const decode_var = `$bay.decode = window.bay.decode;\n`;
+          const decode_var = `$bay.decode=window.bay.decode;\n`;
 
           window.bay.encode = escapeHTML;
-          const encode_var = `$bay.encode = window.bay.encode;\n`;
+          const encode_var = `$bay.encode=window.bay.encode;\n`;
 
           // add update route function =====================================
           window.bay.update_route = update_route;
           let route_update_var = ``;
           if (has_route) {
-            route_update_var = `$bay.update_route = window.bay.update_route;\n`;
+            route_update_var = `$bay.update_route=window.bay.update_route;\n`;
           }
 
           // add slotchange event ==========================================
@@ -1317,25 +1243,25 @@ const bay: any = () => {
           let inner_html_reset = ``;
           let inner_html_fn = ``;
           if (has_inner_html) {
-            inner_html_var = `let $bay_inner_html = '';\n`;
-            inner_html_reset = ` $bay_inner_html = ''; `;
-            inner_html_fn = `\n$bay.inner_html = () => { return $bay_inner_html; };`;
+            inner_html_var = `let $bay_inner_html='';\n`;
+            inner_html_reset = ` $bay_inner_html=''; `;
+            inner_html_fn = `\n$bay.inner_html=()=>{return $bay_inner_html;};`;
           }
 
           // add select bind ==============================================
           let select_bind_var = ``;
           if (has_select_bind) {
-            select_bind_var = `const $bay_select_bind = window.bay.apply_select;\n`;
+            select_bind_var = `const $bay_select_bind=window.bay.apply_select;\n`;
           }
 
           // add on ==========================================
           let on_var = ``;
           if (has_on) {
-            on_var = `$bay.on = (name, callback) => {window.addEventListener(name, e => callback(e));};\n`;
+            on_var = `$bay.on=(name,callback)=>{window.addEventListener(name,e=>callback(e));};\n`;
           }
 
           // add emit ==========================================
-          let emit_var = `$bay.emit = window.bay.emit;\n$bay.receive = window.bay.receive;\n${on_var}function bay_receive_fn(e) {$bay.receive($bay, $el, e.detail.name, e.detail.data);}\nwindow.removeEventListener('bay_emit', bay_receive_fn);\nwindow.addEventListener('bay_emit', bay_receive_fn);\n`;
+          let emit_var = `$bay.emit=window.bay.emit;\n$bay.receive=window.bay.receive;\n${on_var}function bay_receive_fn(e){$bay.receive($bay,$el,e.detail.name,e.detail.data);}\nwindow.removeEventListener('bay_emit',bay_receive_fn);\nwindow.addEventListener('bay_emit',bay_receive_fn);\n`;
 
           this.prefixes = `${local_var}${global_var}${route_var}${element_var}${parent_var}${inner_html_var}${encode_var}${decode_var}${update_func}${slotchange_func}${route_update_var}${emit_var}`;
 
@@ -1368,7 +1294,7 @@ const bay: any = () => {
             this,
             revoke_blob,
             element_tagname,
-            `${proxy_script}\n${local_name}.template = () => {${inner_html_reset}return \`${proxy_html}\`;};\n${local_name}.styles = () => { return \`${proxy_css}\`;};${inner_html_fn}`,
+            `${proxy_script}\n${local_name}.template=()=>{${inner_html_reset}return \`${proxy_html}\`;};\n${local_name}.styles=()=>{return \`${proxy_css}\`;};${inner_html_fn}`,
             parent_uniqid
           );
 
