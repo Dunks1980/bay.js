@@ -1,13 +1,27 @@
 # <img src="https://unpkg.com/@dunks1980/bay.js/favicon.svg?v=1" width="40"> bay.js
-<br />
-
 [![npm version](https://img.shields.io/npm/v/@dunks1980/bay.js)](https://npmjs.org/package/@dunks1980/bay.js) 
-[![Known Vulnerabilities](https://snyk.io/test/github/dunks1980/bay.js/badge.svg?targetFile=package.json)](https://snyk.io/test/github/dunks1980/bay.js?targetFile=package.json) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://raw.githubusercontent.com/Dunks1980/bay.js/main/LICENSE)
+[![Known Vulnerabilities](https://snyk.io/test/github/dunks1980/bay.js/badge.svg?targetFile=package.json)](https://snyk.io/test/github/dunks1980/bay.js?targetFile=package.json) 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://raw.githubusercontent.com/Dunks1980/bay.js/main/LICENSE)
 <br />
+<hr />
 
-An easy to use, lightweight library for web-components. It doesn't need a build step but can be included in a build step if you want to. It's a great way to create reusable components for your projects. It's available as a NPM package and doesn't use any dependencies and also doesn't use eval or new Function so can be used in strict CSP polices without a build step. For documentation and demos go to [Bayjs.org](https://bayjs.org/examples/index.html).
-<br />
-<br />
+## What is bay.js?
+A frontend library to create reusable web-components for your projects.
+You can try it out at [Bayjs.org](https://bayjs.org/examples/index.html).
+<hr />
+
+## Key features
+
+- Build step optional, can just add script tag and go.
+- Inline JS & CSS can be used with strict CSP even with no build step.
+- 0 dependencies.
+- Can bundle a component into a single file.
+- Can be used in frameworks that are setup to render web-components.
+- Use a URL for its template, so you can SSR or PHP a template.
+- Use a `<template>` in the DOM as a template.
+- Create a component from a string using JS.
+- Easy Syntax.
+<hr />
 
 ## Installation
 
@@ -41,9 +55,10 @@ bay();
 
 ## Usage
 
-There are 3 ways to define a component in bay.js: <br> 
+There are 3 ways to define a component in bay.js:<br> 
 
-1. In your html create an inline template and supply bay.js the templates id.<br>
+### 1. Template in the DOM. 
+In your html create an inline template and supply bay.js the templates id:<br>
 ```html
 <template id="my-template">
   <h1>${this.message}</h1>
@@ -51,8 +66,10 @@ There are 3 ways to define a component in bay.js: <br>
 
 <my-component bay="#my-template" message="Hello world!"></my-component>
 ```
+<hr/>
 
-2. Create a file and supply bay.js the url (don't wrap file contents in template). The file extension can be anything you like as long as its contents are in the HTML format.<br>
+### 2. Template in a file.
+Create a file and supply bay.js the url (don't wrap file contents in template). The file extension can be anything you like as long as its contents are in the HTML format:<br>
 
 ```html
 <my-component bay="/url/to/my/components.html" message="Hello world!"></my-component>
@@ -64,13 +81,22 @@ There are 3 ways to define a component in bay.js: <br>
 <!-- in component file -->
 <h1>${this.message}</h1>
 ```
+<hr/>
 
-3. Pass bay.js the template<br>
+### 3. Create a template with JS.
+Pass bay.js the imported template:<br>
 ```js
 import my_component from "./../component_imports/my_component.html?raw";
 import bay from "@dunks1980/bay.js";
 bay();
 bay.create("my-component", my_component, ["message"]);
+```
+
+Or create template and pass it: ( $ and ` within the string will need \ escaping if string literal)<br>
+```js
+import bay from "@dunks1980/bay.js";
+bay();
+bay.create("my-component", `<h1>\${this.message}</h1>`, ["message"]);
 ```
 
 ```html
