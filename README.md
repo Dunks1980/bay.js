@@ -13,7 +13,7 @@ You can try it out at [Bayjs.org](https://bayjs.org/examples/index.html).
 ## Key features
 
 - Build step optional, can just add script tag and go.
-- Inline JS & CSS can be used with strict CSP even with no build step.
+- Can be used with strict CSP even with no build step.
 - 0 dependencies.
 - Can bundle a component into a single file.
 - Can be used in frameworks that are setup to render web-components.
