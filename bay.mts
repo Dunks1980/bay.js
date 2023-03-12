@@ -4,7 +4,7 @@ declare global {
   }
 }
 
-const bay: any = () => {
+const bay:any = () => {
   "use strict";
   if (!window.bay) {
     window.bay = {};
@@ -22,8 +22,7 @@ const bay: any = () => {
   let blobs = new Map();
 
   /**
-   * Used to attach shadow roots to templates with the shadowroot attribute
-   * @param {HTMLElement} root
+   * Used to attach shadow roots to templates with the shadowroot or shadowrootmode attribute
    */
   (function attachShadowRoots(root) {
     $(root, "template[shadowrootmode], template[shadowroot]").forEach(
@@ -269,7 +268,7 @@ const bay: any = () => {
   function create_template_fn(
     element_tagname: string,
     template_string: string,
-    attributes_array: Array<any>
+    attributes_array: Array<string>
   ) {
     const doc = new DOMParser();
     const passed_attributes = attributes_array || [];
@@ -486,14 +485,15 @@ const bay: any = () => {
 
   /**
    * this will create a blob file with all the events on the html (:click)
-   * and add and is used to add the js in the attribute to memory
+   * and add, is used to add the js in the attribute to memory
    */
-
   async function addBlob_event(this_ref: any, text: string) {
     const blobUrl = URL.createObjectURL(
       new Blob(
         [
-          `export default ()=>{"use strict";\n${this_ref.evt_prefixes}${text}};`,
+          `export default ()=>{"use strict";\n${this_ref.evt_prefixes.join(
+            ""
+          )}${text}};`,
         ],
         {
           type: "text/javascript",
@@ -511,7 +511,6 @@ const bay: any = () => {
    * the template function will return the html and the styles function will return the styles
    * this is used by the diff function to compare the old and new html and styles with updated data
    */
-
   async function addBlob(
     this_ref: any,
     revoke_blob: boolean,
@@ -722,22 +721,21 @@ const bay: any = () => {
     styles_text: string,
     revoke_blob: boolean
   ) {
-    let tag = "";
+    let tag: string = "";
     let c_html: EventTarget | any = null;
     let script: string = "";
     let observedAttributes_from_element: Array<string> = [];
-    let has_globals = false;
-    let has_route = false;
-    let has_inner_html = false;
-    let has_select_bind = false;
-    let has_on = false;
+    let has_globals:Boolean = false;
+    let has_route:Boolean = false;
+    let has_inner_html:Boolean = false;
+    let has_select_bind:Boolean = false;
+    let has_on:Boolean = false;
     try {
       // css ======================================================
       const fouc_styles =
         "*:not(:defined){opacity:0;max-width:0px;max-height:0px}" +
         "*:not(:defined)*{opacity:0;max-width:0px;max-height:0px}" +
         ".bay-hide{display:none}";
-
       styles_text = fouc_styles + (styles_text || "");
 
       // html ====================================================
@@ -1063,369 +1061,381 @@ const bay: any = () => {
       return;
     }
 
-    // create the component
-    customElements.define(
-      tag,
-      class extends HTMLElement {
-        mounted;
-        tmp;
-        uniqid;
-        CSP;
-        dsd;
-        debouncer: Function | any;
-        prefixes;
-        evt_prefixes;
-        inner_el: any;
-        shadowDom: any;
-        shadowRootHTML: any;
-        oldEvents: string;
-        update_evt: CustomEvent;
-        local_evt: CustomEvent | any;
-        hasAdopted: boolean;
-        sheet: CSSStyleSheet | any;
-        styleLinkUpdate: string | any;
-        newEvents: string | any;
-        oldStyles: string | any;
-        eventHandlers = new Map();
-        constructor() {
-          super();
-          this.mounted = false;
-          this.tmp = `${c_html.innerHTML}`;
-          this.uniqid = makeid(8);
-          this.CSP = false;
-          this.dsd = false;
-          this.debouncer = false;
-          this.prefixes = "";
-          this.evt_prefixes = "";
+    class BAY extends HTMLElement {
+      mounted: Boolean = false;
+      tmp: string = `${c_html.innerHTML}`;
+      uniqid: string = makeid(8);
+      CSP: Boolean = false;
+      dsd: Boolean = false;
+      debouncer: Function | any = false;
+      prefixes: string[] = [];
+      evt_prefixes: string[] = [];
+      inner_el: any;
+      shadowDom: any;
+      shadowRootHTML: any;
+      oldEvents: string;
+      update_evt: CustomEvent;
+      local_evt: CustomEvent | any;
+      hasAdopted: boolean;
+      sheet: CSSStyleSheet | any;
+      styleLinkUpdate: string | any;
+      newEvents: string | any;
+      oldStyles: string | any;
+      eventHandlers = new Map();
+      constructor() {
+        super();
 
-          const inner_el = this.getAttribute("inner-html");
-          if (inner_el) {
-            if ($(document, inner_el)[0]) {
-              this.inner_el = $(document, inner_el)[0];
-            } else {
-              console.error("inner-html target " + inner_el + " not found.");
-            }
+        const inner_el = this.getAttribute("inner-html");
+        if (inner_el) {
+          if ($(document, inner_el)[0]) {
+            this.inner_el = $(document, inner_el)[0];
           } else {
-            this.inner_el = this;
+            console.error("inner-html target " + inner_el + " not found.");
           }
+        } else {
+          this.inner_el = this;
+        }
 
-          document.addEventListener("securitypolicyviolation", (e) => {
-            e.preventDefault();
-            if (
-              e.violatedDirective.indexOf("script-src") > -1 ||
-              e.violatedDirective.indexOf("style-src") > -1
-            ) {
-              if (e.blockedURI === "blob") {
-                console.warn("blob: needed in script-src/style-src CSP");
-                this.CSP = true;
-              }
+        document.addEventListener("securitypolicyviolation", (e) => {
+          e.preventDefault();
+          if (
+            e.violatedDirective.indexOf("script-src") > -1 ||
+            e.violatedDirective.indexOf("style-src") > -1
+          ) {
+            if (e.blockedURI === "blob") {
+              console.warn("blob: needed in script-src/style-src CSP");
+              this.CSP = true;
             }
-          });
-
-          // shadow dom setup ===============================================
-          if (this.shadowRoot) {
-            this.shadowDom = this.shadowRoot;
-            const wrapper = document.createElement("div");
-            wrapper.id = "bay";
-            [...this.shadowDom.children].map((node) =>
-              wrapper.appendChild(node)
-            );
-            this.shadowRoot.appendChild(wrapper);
-            this.dsd = true;
-          } else {
-            this.attachShadow({
-              mode: "open",
-            });
-            this.shadowDom = this.shadowRoot;
-            let template = document.createElement("template");
-            template.innerHTML = /*HTML*/ `<div id="bay"></div>`;
-            this.shadowDom.appendChild(template.content.cloneNode(true));
           }
+        });
 
-          // local proxy setup =============================================
-          this.shadowDom.proxy = make_proxy_object({}, () => {
-            render_debouncer(this);
+        // shadow dom setup ===============================================
+        if (this.shadowRoot) {
+          this.shadowDom = this.shadowRoot;
+          const wrapper = document.createElement("div");
+          wrapper.id = "bay";
+          [...this.shadowDom.children].map((node) => wrapper.appendChild(node));
+          this.shadowRoot.appendChild(wrapper);
+          this.dsd = true;
+        } else {
+          this.attachShadow({
+            mode: "open",
           });
-          this.shadowRootHTML = $(this.shadowDom, "#bay")[0];
+          this.shadowDom = this.shadowRoot;
+          let template = document.createElement("template");
+          template.innerHTML = /*HTML*/ `<div id="bay"></div>`;
+          this.shadowDom.appendChild(template.content.cloneNode(true));
+        }
 
-          window.bay[this.uniqid] = this.shadowDom;
-          [...attrs].forEach((attr: any) => {
-            this.shadowDom.proxy[attr.att] = attr.value;
-          });
+        // local proxy setup =============================================
+        this.shadowDom.proxy = make_proxy_object({}, () => {
+          render_debouncer(this);
+        });
+        this.shadowRootHTML = $(this.shadowDom, "#bay")[0];
 
-          window.bay[this.uniqid][element_name] = this;
-          this.oldEvents = ``;
+        window.bay[this.uniqid] = this.shadowDom;
+        [...attrs].forEach((attr: any) => {
+          this.shadowDom.proxy[attr.att] = attr.value;
+        });
 
-          // blob strings setup ============================================
-          if (!script) {
-            script = "/* No script tag found */";
-          }
+        window.bay[this.uniqid][element_name] = this;
+        this.oldEvents = ``;
 
-          // for getting the component's root element ======================
-          this.shadowDom.uniqid = this.uniqid;
-          const rootNode: any = this.getRootNode();
-          let parent_var = ``;
-          let parent_event_var = ``;
-          let parent_uniqid = ``;
-          if (rootNode.host) {
-            parent_var = `const $parent=window.bay[parent_uniqid]['proxy'];\n`;
-            parent_event_var = `const $parent=window.bay['${rootNode.host.uniqid}']['proxy'];\n`;
-            parent_uniqid = rootNode.host.uniqid;
-          }
+        // blob strings setup ============================================
+        if (!script) {
+          script = "/* No script tag found */";
+        }
 
-          const local_var = `const ${local_name}=window.bay[bay_uniqid];\n`;
-          const local_evevt_var = `const ${local_name}=window.bay['${this.uniqid}'];\n`;
-          const global_var = `const ${store_name}=window.bay.global;\n`;
-          const route_var = `const ${route_name}=window.bay.route;\n`;
-          const element_var = `const ${element_name}=${local_name}['${element_name}'];\n`;
+        // for getting the component's root element ======================
+        this.shadowDom.uniqid = this.uniqid;
+        const rootNode: any = this.getRootNode();
+        let parent_var = ``;
+        let parent_event_var = ``;
+        let parent_uniqid = ``;
+        if (rootNode.host) {
+          parent_var = `const $parent=window.bay[parent_uniqid]['proxy'];\n`;
+          parent_event_var = `const $parent=window.bay['${rootNode.host.uniqid}']['proxy'];\n`;
+          parent_uniqid = rootNode.host.uniqid;
+        }
 
-          // add update function ===========================================
-          this.update_evt = new CustomEvent(
-            `bay_local_update_event_${this.uniqid}`
+        const local_var = `const ${local_name}=window.bay[bay_uniqid];\n`;
+        const local_evevt_var = `const ${local_name}=window.bay['${this.uniqid}'];\n`;
+        const global_var = `const ${store_name}=window.bay.global;\n`;
+        const route_var = `const ${route_name}=window.bay.route;\n`;
+        const element_var = `const ${element_name}=${local_name}['${element_name}'];\n`;
+
+        // add update function ===========================================
+        this.update_evt = new CustomEvent(
+          `bay_local_update_event_${this.uniqid}`
+        );
+        let update_func = ``;
+        if (this.tmp.indexOf(`/*props updates*/`) > -1) {
+          update_func = `let $props;\nwindow.addEventListener(\`bay_local_update_event_\${bay_uniqid}\`,()=>$props());\n`;
+        }
+
+        // add slotchange function =======================================
+        let slotchange_func = ``;
+        if (this.tmp.indexOf(`/*slotchange updates*/`) > -1) {
+          update_func = `let $slotchange=()=>{};\nlet $details={'element':'','changed':''};\nwindow.addEventListener(\`bay_slotchange_event_\${bay_uniqid}\`,(e)=>$slotchange(e));\n`;
+        }
+
+        // add decode & encode functions =================================
+        window.bay.decode = decodeHtml;
+        const decode_var = `$bay.decode=window.bay.decode;\n`;
+
+        window.bay.encode = escapeHTML;
+        const encode_var = `$bay.encode=window.bay.encode;\n`;
+
+        // add update route function =====================================
+        window.bay.update_route = update_route;
+        let route_update_var = ``;
+        if (has_route) {
+          route_update_var = `$bay.update_route=window.bay.update_route;\n`;
+        }
+
+        // add slotchange event ==========================================
+        window.bay[this.uniqid].addEventListener("slotchange", (e: Event) => {
+          this.local_evt = new CustomEvent(
+            `bay_slotchange_event_${this.uniqid}`,
+            { detail: { element: e.target, changed: "slotchange" } }
           );
-          let update_func = ``;
-          if (this.tmp.indexOf(`/*props updates*/`) > -1) {
-            update_func = `let $props;\nwindow.addEventListener(\`bay_local_update_event_\${bay_uniqid}\`,()=>$props());\n`;
-          }
-
-          // add slotchange function =======================================
-          let slotchange_func = ``;
-          if (this.tmp.indexOf(`/*slotchange updates*/`) > -1) {
-            update_func = `let $slotchange=()=>{};\nlet $details={'element':'','changed':''};\nwindow.addEventListener(\`bay_slotchange_event_\${bay_uniqid}\`,(e)=>$slotchange(e));\n`;
-          }
-
-          // add decode & encode functions =================================
-          window.bay.decode = decodeHtml;
-          const decode_var = `$bay.decode=window.bay.decode;\n`;
-
-          window.bay.encode = escapeHTML;
-          const encode_var = `$bay.encode=window.bay.encode;\n`;
-
-          // add update route function =====================================
-          window.bay.update_route = update_route;
-          let route_update_var = ``;
-          if (has_route) {
-            route_update_var = `$bay.update_route=window.bay.update_route;\n`;
-          }
-
-          // add slotchange event ==========================================
-          window.bay[this.uniqid].addEventListener("slotchange", (e: Event) => {
-            this.local_evt = new CustomEvent(
-              `bay_slotchange_event_${this.uniqid}`,
-              { detail: { element: e.target, changed: "slotchange" } }
-            );
-            window.dispatchEvent(this.local_evt);
-          });
-          let bay_slots = $(this, "*");
-          bay_slots.forEach((slot) => {
-            const slot_observer = new MutationObserver((mutations) => {
-              mutations.forEach((mutation) => {
-                if (mutation.type === "attributes") {
-                  this.local_evt = new CustomEvent(
-                    `bay_slotchange_event_${this.uniqid}`,
-                    { detail: { element: slot, changed: "attributes" } }
-                  );
-                  window.dispatchEvent(this.local_evt);
-                } else if (mutation.type === "childList") {
-                  this.local_evt = new CustomEvent(
-                    `bay_slotchange_event_${this.uniqid}`,
-                    { detail: { element: slot, changed: "childList" } }
-                  );
-                  window.dispatchEvent(this.local_evt);
-                }
-              });
+          window.dispatchEvent(this.local_evt);
+        });
+        let bay_slots = $(this, "*");
+        bay_slots.forEach((slot) => {
+          const slot_observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+              if (mutation.type === "attributes") {
+                this.local_evt = new CustomEvent(
+                  `bay_slotchange_event_${this.uniqid}`,
+                  { detail: { element: slot, changed: "attributes" } }
+                );
+                window.dispatchEvent(this.local_evt);
+              } else if (mutation.type === "childList") {
+                this.local_evt = new CustomEvent(
+                  `bay_slotchange_event_${this.uniqid}`,
+                  { detail: { element: slot, changed: "childList" } }
+                );
+                window.dispatchEvent(this.local_evt);
+              }
             });
-            slot_observer.observe(slot, { attributes: true, childList: true });
           });
+          slot_observer.observe(slot, { attributes: true, childList: true });
+        });
 
-          // add inner-html vars ==========================================
-          let inner_html_var = ``;
-          let inner_html_reset = ``;
-          let inner_html_fn = ``;
-          if (has_inner_html) {
-            inner_html_var = `let $bay_inner_html='';\n`;
-            inner_html_reset = ` $bay_inner_html=''; `;
-            inner_html_fn = `\n$bay.inner_html=()=>{return $bay_inner_html;};`;
-          }
+        // add inner-html vars ==========================================
+        let inner_html_var = ``;
+        let inner_html_reset = ``;
+        let inner_html_fn = ``;
+        if (has_inner_html) {
+          inner_html_var = `let $bay_inner_html='';\n`;
+          inner_html_reset = ` $bay_inner_html=''; `;
+          inner_html_fn = `\n$bay.inner_html=()=>{return $bay_inner_html;};`;
+        }
 
-          // add select bind ==============================================
-          let select_bind_var = ``;
-          if (has_select_bind) {
-            select_bind_var = `const $bay_select_bind=window.bay.apply_select;\n`;
-          }
+        // add select bind ==============================================
+        let select_bind_var = ``;
+        if (has_select_bind) {
+          select_bind_var = `const $bay_select_bind=window.bay.apply_select;\n`;
+        }
 
-          // add on ==========================================
-          let on_var = ``;
-          if (has_on) {
-            on_var = `$bay.on=(name,callback)=>{window.addEventListener(name,e=>callback(e));};\n`;
-          }
+        // add on ==========================================
+        let on_var = ``;
+        if (has_on) {
+          on_var = `$bay.on=(name,callback)=>{window.addEventListener(name,e=>callback(e));};\n`;
+        }
 
-          // add emit ==========================================
-          let emit_var = `$bay.emit=window.bay.emit;\n$bay.receive=window.bay.receive;\n${on_var}function bay_receive_fn(e){$bay.receive($bay,$el,e.detail.name,e.detail.data);}\nwindow.removeEventListener('bay_emit',bay_receive_fn);\nwindow.addEventListener('bay_emit',bay_receive_fn);\n`;
+        // add emit ==========================================
+        let emit_var = `$bay.emit=window.bay.emit;\n$bay.receive=window.bay.receive;\n${on_var}function bay_receive_fn(e){$bay.receive($bay,$el,e.detail.name,e.detail.data);}\nwindow.removeEventListener('bay_emit',bay_receive_fn);\nwindow.addEventListener('bay_emit',bay_receive_fn);\n`;
 
-          this.prefixes = `${local_var}${global_var}${route_var}${element_var}${parent_var}${inner_html_var}${encode_var}${decode_var}${update_func}${slotchange_func}${route_update_var}${emit_var}`;
+        this.prefixes = [
+          local_var,
+          global_var,
+          route_var,
+          element_var,
+          parent_var,
+          inner_html_var,
+          encode_var,
+          decode_var,
+          update_func,
+          slotchange_func,
+          route_update_var,
+          emit_var,
+        ];
 
-          this.evt_prefixes = `${local_evevt_var}${global_var}${route_var}${element_var}${parent_event_var}${encode_var}${decode_var}${route_update_var}${select_bind_var}`;
+        this.evt_prefixes = [
+          local_evevt_var,
+          global_var,
+          route_var,
+          element_var,
+          parent_event_var,
+          encode_var,
+          decode_var,
+          route_update_var,
+          select_bind_var,
+        ];
 
-          const proxy_script =
-            `${this.prefixes}` +
-            decodeHtml(script)
-              .replaceAll("this[", `${local_name}.proxy[`)
-              .replaceAll("this.", `${local_name}.proxy.`)
-              .replace(/(^[ \t]*\n)/gm, "");
-          const proxy_html = decodeHtml(this.tmp)
+        const proxy_script =
+          this.prefixes.join("") +
+          decodeHtml(script)
             .replaceAll("this[", `${local_name}.proxy[`)
             .replaceAll("this.", `${local_name}.proxy.`)
             .replace(/(^[ \t]*\n)/gm, "");
-          let proxy_css = "";
-          if (styles_text) {
-            proxy_css = decodeHtml(styles_text)
-              .replaceAll('"${', "${")
-              .replaceAll("'${", "${")
-              .replaceAll(`}"`, `}`)
-              .replaceAll(`}'`, `}`)
-              .replaceAll("this[", `${local_name}.proxy[`)
-              .replaceAll("this.", `${local_name}.proxy.`)
-              .replaceAll(`  `, ``)
-              .replaceAll("\n", ``);
-          }
-
-          addBlob(
-            this,
-            revoke_blob,
-            element_tagname,
-            `${proxy_script}\n${local_name}.template=()=>{${inner_html_reset}return \`${proxy_html}\`;};\n${local_name}.styles=()=>{return \`${proxy_css}\`;};${inner_html_fn}`,
-            parent_uniqid
-          );
-
-          this.hasAdopted = false;
-          if ("adoptedStyleSheets" in document) {
-            this.hasAdopted = true;
-          }
-          if (this.hasAdopted) {
-            this.sheet = new CSSStyleSheet();
-            this.sheet.replaceSync(proxy_css);
-            this.shadowDom.adoptedStyleSheets = [this.sheet];
-          } else {
-            const blob = new Blob([proxy_css], {
-              type: "text/css",
-            });
-            const blobUrl = URL.createObjectURL(blob);
-            const styleLink = document.createElement("link");
-            styleLink.rel = "stylesheet";
-            styleLink.href = blobUrl;
-            this.shadowDom.appendChild(styleLink);
-            styleLink.id = "bay-style";
-            const styleLinkUpdate = document.createElement("link");
-            styleLinkUpdate.id = "bay-style-update";
-            styleLinkUpdate.href = blobUrl;
-            styleLinkUpdate.rel = "stylesheet";
-            this.shadowDom.appendChild(styleLinkUpdate);
-            this.styleLinkUpdate = styleLinkUpdate;
-          }
+        const proxy_html = decodeHtml(this.tmp)
+          .replaceAll("this[", `${local_name}.proxy[`)
+          .replaceAll("this.", `${local_name}.proxy.`)
+          .replace(/(^[ \t]*\n)/gm, "");
+        let proxy_css = "";
+        if (styles_text) {
+          proxy_css = decodeHtml(styles_text)
+            .replaceAll('"${', "${")
+            .replaceAll("'${", "${")
+            .replaceAll(`}"`, `}`)
+            .replaceAll(`}'`, `}`)
+            .replaceAll("this[", `${local_name}.proxy[`)
+            .replaceAll("this.", `${local_name}.proxy.`)
+            .replaceAll(`  `, ``)
+            .replaceAll("\n", ``);
         }
 
-        /**
-         * Renders the component from proxy data changes
-         */
+        addBlob(
+          this,
+          revoke_blob,
+          element_tagname,
+          `${proxy_script}\n${local_name}.template=()=>{${inner_html_reset}return \`${proxy_html}\`;};\n${local_name}.styles=()=>{return \`${proxy_css}\`;};${inner_html_fn}`,
+          parent_uniqid
+        );
 
-        render() {
-          if (this.CSP) {
-            this.shadowDom.innerHTML = "";
-            return;
-          }
-          if (!this.tmp || !this.shadowRootHTML.innerHTML) {
-            return;
-          }
-          if (typeof window.bay[this.uniqid].template !== "function") {
-            return;
-          }
-          try {
-            // Diff the DOM and template
-            if (has_inner_html) {
-              render_innerHTML(this.uniqid, this.inner_el);
-            }
-            render_shadowDOM(this.uniqid, this.shadowRootHTML);
-
-            // Events and Styles
-            if (has_inner_html) {
-              add_events(this, [
-                ...$(this.inner_el, "*"),
-                ...$(this.shadowRootHTML, "*"),
-              ]);
-            } else {
-              add_events(this, [...$(this.shadowRootHTML, "*")]);
-            }
-
-            set_styles(this);
-
-            if (has_select_bind) {
-              const attr_name = `[data-bay-custom-select-${bay_instance_id}]`;
-              let els = [];
-              if (has_inner_html) {
-                els = [
-                  ...$(this.inner_el, attr_name),
-                  ...$(this.shadowRootHTML, attr_name),
-                ];
-              } else {
-                els = [...$(this.shadowRootHTML, attr_name)];
-              }
-              els.forEach((el) => {
-                el.dispatchEvent(new CustomEvent(`select-${bay_instance_id}`));
-              });
-            }
-
-            if (this.mounted === false && window.bay[this.uniqid]["$mounted"]) {
-              this.mounted = true;
-              setTimeout(() => {
-                window.bay[this.uniqid]["$mounted"]();
-              }, 14);
-            }
-
-            if ($(this.shadowDom, "[bay]")[0]) {
-              get_all_bays(this.shadowDom);
-            }
-
-            if (this.hasAttribute("fouc")) {
-              this.removeAttribute("fouc");
-            }
-          } catch (error) {
-            console.error(error);
-          }
+        this.hasAdopted = false;
+        if ("adoptedStyleSheets" in document) {
+          this.hasAdopted = true;
         }
-
-        connectedCallback() {
-          try {
-            if (has_globals) {
-              window.addEventListener("bay_global_event", (e) => {
-                render_debouncer(this);
-              });
-            }
-            if (has_route) {
-              window.addEventListener("bay_route_event", (e) => {
-                render_debouncer(this);
-              });
-            }
-          } catch (error) {
-            console.error(error);
-          }
-        }
-        static get observedAttributes() {
-          return observedAttributes_from_element;
-        }
-        attributeChangedCallback(
-          name: string,
-          oldValue: string,
-          newValue: string
-        ) {
-          if (oldValue !== newValue) {
-            this.shadowDom.proxy[name] = newValue;
-            // trigger an event for the bay with uniqid
-            window.dispatchEvent(this.update_evt);
-          }
+        if (this.hasAdopted) {
+          this.sheet = new CSSStyleSheet();
+          this.sheet.replaceSync(proxy_css);
+          this.shadowDom.adoptedStyleSheets = [this.sheet];
+        } else {
+          const blob = new Blob([proxy_css], {
+            type: "text/css",
+          });
+          const blobUrl = URL.createObjectURL(blob);
+          const styleLink = document.createElement("link");
+          styleLink.rel = "stylesheet";
+          styleLink.href = blobUrl;
+          this.shadowDom.appendChild(styleLink);
+          styleLink.id = "bay-style";
+          const styleLinkUpdate = document.createElement("link");
+          styleLinkUpdate.id = "bay-style-update";
+          styleLinkUpdate.href = blobUrl;
+          styleLinkUpdate.rel = "stylesheet";
+          this.shadowDom.appendChild(styleLinkUpdate);
+          this.styleLinkUpdate = styleLinkUpdate;
         }
       }
-    );
+
+      /**
+       * Renders the component from proxy data changes
+       */
+
+      render() {
+        if (this.CSP) {
+          this.shadowDom.innerHTML = "";
+          return;
+        }
+        if (!this.tmp || !this.shadowRootHTML.innerHTML) {
+          return;
+        }
+        if (typeof window.bay[this.uniqid].template !== "function") {
+          return;
+        }
+        try {
+          // Diff the DOM and template
+          if (has_inner_html) {
+            render_innerHTML(this.uniqid, this.inner_el);
+          }
+          render_shadowDOM(this.uniqid, this.shadowRootHTML);
+
+          // Events and Styles
+          if (has_inner_html) {
+            add_events(this, [
+              ...$(this.inner_el, "*"),
+              ...$(this.shadowRootHTML, "*"),
+            ]);
+          } else {
+            add_events(this, [...$(this.shadowRootHTML, "*")]);
+          }
+
+          set_styles(this);
+
+          if (has_select_bind) {
+            const attr_name = `[data-bay-custom-select-${bay_instance_id}]`;
+            let els = [];
+            if (has_inner_html) {
+              els = [
+                ...$(this.inner_el, attr_name),
+                ...$(this.shadowRootHTML, attr_name),
+              ];
+            } else {
+              els = [...$(this.shadowRootHTML, attr_name)];
+            }
+            els.forEach((el) => {
+              el.dispatchEvent(new CustomEvent(`select-${bay_instance_id}`));
+            });
+          }
+
+          if (this.mounted === false && window.bay[this.uniqid]["$mounted"]) {
+            this.mounted = true;
+            setTimeout(() => {
+              window.bay[this.uniqid]["$mounted"]();
+            }, 14);
+          }
+
+          if ($(this.shadowDom, "[bay]")[0]) {
+            get_all_bays(this.shadowDom);
+          }
+
+          if (this.hasAttribute("fouc")) {
+            this.removeAttribute("fouc");
+          }
+        } catch (error) {
+          console.error(error);
+        }
+      }
+
+      connectedCallback() {
+        try {
+          if (has_globals) {
+            window.addEventListener("bay_global_event", (e) => {
+              render_debouncer(this);
+            });
+          }
+          if (has_route) {
+            window.addEventListener("bay_route_event", (e) => {
+              render_debouncer(this);
+            });
+          }
+        } catch (error) {
+          console.error(error);
+        }
+      }
+      static get observedAttributes() {
+        return observedAttributes_from_element;
+      }
+      attributeChangedCallback(
+        name: string,
+        oldValue: string,
+        newValue: string
+      ) {
+        if (oldValue !== newValue) {
+          this.shadowDom.proxy[name] = newValue;
+          // trigger an event for the bay with uniqid
+          window.dispatchEvent(this.update_evt);
+        }
+      }
+    }
+
+    // define the component
+    customElements.define(tag, BAY);
   }
   // ------------------------------
 
@@ -1436,8 +1446,10 @@ const bay: any = () => {
   bay.refresh = () => {
     get_all_bays(document);
   };
+  window.bay.refresh = bay.refresh;
 
   bay.create = create_template_fn;
+  window.bay.create = bay.create;
 };
 
 //bay();

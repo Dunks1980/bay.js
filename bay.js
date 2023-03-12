@@ -23,8 +23,7 @@ const bay = () => {
   let already_fetched = [];
   let blobs = new Map();
   /**
-   * Used to attach shadow roots to templates with the shadowroot attribute
-   * @param {HTMLElement} root
+   * Used to attach shadow roots to templates with the shadowroot or shadowrootmode attribute
    */
   (function attachShadowRoots(root) {
       $(root, "template[shadowrootmode], template[shadowroot]").forEach((template) => {
@@ -436,12 +435,12 @@ const bay = () => {
   }
   /**
    * this will create a blob file with all the events on the html (:click)
-   * and add and is used to add the js in the attribute to memory
+   * and add, is used to add the js in the attribute to memory
    */
   function addBlob_event(this_ref, text) {
       return __awaiter(this, void 0, void 0, function* () {
           const blobUrl = URL.createObjectURL(new Blob([
-              `export default ()=>{"use strict";\n${this_ref.evt_prefixes}${text}};`,
+              `export default ()=>{"use strict";\n${this_ref.evt_prefixes.join("")}${text}};`,
           ], {
               type: "text/javascript",
           }));
@@ -912,19 +911,18 @@ const bay = () => {
           console.error("Something went wrong loading file " + file_name + ".");
           return;
       }
-      // create the component
-      customElements.define(tag, class extends HTMLElement {
+      class BAY extends HTMLElement {
           constructor() {
               super();
-              this.eventHandlers = new Map();
               this.mounted = false;
               this.tmp = `${c_html.innerHTML}`;
               this.uniqid = makeid(8);
               this.CSP = false;
               this.dsd = false;
               this.debouncer = false;
-              this.prefixes = "";
-              this.evt_prefixes = "";
+              this.prefixes = [];
+              this.evt_prefixes = [];
+              this.eventHandlers = new Map();
               const inner_el = this.getAttribute("inner-html");
               if (inner_el) {
                   if ($(document, inner_el)[0]) {
@@ -1060,9 +1058,32 @@ const bay = () => {
               }
               // add emit ==========================================
               let emit_var = `$bay.emit=window.bay.emit;\n$bay.receive=window.bay.receive;\n${on_var}function bay_receive_fn(e){$bay.receive($bay,$el,e.detail.name,e.detail.data);}\nwindow.removeEventListener('bay_emit',bay_receive_fn);\nwindow.addEventListener('bay_emit',bay_receive_fn);\n`;
-              this.prefixes = `${local_var}${global_var}${route_var}${element_var}${parent_var}${inner_html_var}${encode_var}${decode_var}${update_func}${slotchange_func}${route_update_var}${emit_var}`;
-              this.evt_prefixes = `${local_evevt_var}${global_var}${route_var}${element_var}${parent_event_var}${encode_var}${decode_var}${route_update_var}${select_bind_var}`;
-              const proxy_script = `${this.prefixes}` +
+              this.prefixes = [
+                  local_var,
+                  global_var,
+                  route_var,
+                  element_var,
+                  parent_var,
+                  inner_html_var,
+                  encode_var,
+                  decode_var,
+                  update_func,
+                  slotchange_func,
+                  route_update_var,
+                  emit_var,
+              ];
+              this.evt_prefixes = [
+                  local_evevt_var,
+                  global_var,
+                  route_var,
+                  element_var,
+                  parent_event_var,
+                  encode_var,
+                  decode_var,
+                  route_update_var,
+                  select_bind_var,
+              ];
+              const proxy_script = this.prefixes.join("") +
                   decodeHtml(script)
                       .replaceAll("this[", `${local_name}.proxy[`)
                       .replaceAll("this.", `${local_name}.proxy.`)
@@ -1202,7 +1223,9 @@ const bay = () => {
                   window.dispatchEvent(this.update_evt);
               }
           }
-      });
+      }
+      // define the component
+      customElements.define(tag, BAY);
   }
   // ------------------------------
   window.addEventListener("load", () => {
@@ -1211,7 +1234,9 @@ const bay = () => {
   bay.refresh = () => {
       get_all_bays(document);
   };
+  window.bay.refresh = bay.refresh;
   bay.create = create_template_fn;
+  window.bay.create = bay.create;
 };
 bay();
 //export default bay;
