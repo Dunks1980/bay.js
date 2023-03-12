@@ -9,7 +9,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 const bay = () => {
     "use strict";
-    if (!window.bay) {
+    if (window.bay) {
+        return;
+    }
+    else {
         window.bay = {};
     }
     const $ = (el, selector) => el.querySelectorAll(selector);

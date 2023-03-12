@@ -6,7 +6,9 @@ declare global {
 
 const bay:any = () => {
   "use strict";
-  if (!window.bay) {
+  if (window.bay) {
+    return;
+  } else {
     window.bay = {};
   }
   const $ = (el: HTMLElement | Element | Document, selector: string) =>
