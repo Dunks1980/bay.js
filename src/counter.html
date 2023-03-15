@@ -1,0 +1,23 @@
+<button :click="this.number--">-</button>
+<span :style="font-size: calc(1rem + ${this.number / 10}rem)">${this.number}</span>
+<button :click="this.number++">+</button>
+<script>
+  this.number = this.number || 0;
+</script>
+<style>
+  #bay {
+    padding: 1rem 1rem 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  button {
+    width: 1rem;
+    padding: 0.5rem;
+    cursor: pointer;
+    box-sizing: content-box;
+  }
+  span {
+    padding: 1rem;
+  }
+</style>

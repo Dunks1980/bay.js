@@ -188,6 +188,14 @@ const bay = () => {
      * @param {HTMLElement} element root element
      */
     function get_all_bays(element) {
+        [...document.querySelectorAll("[bay-hydrate]")].forEach((el, i) => {
+            el.id = "bay-hydrate-" + i;
+            let html_content = el.querySelector("template").innerHTML;
+            let component = document.createElement("bay-hydrate-" + i);
+            component.setAttribute("inner-html", "#bay-hydrate-" + i);
+            document.body.appendChild(component);
+            window.bay.create("bay-hydrate-" + i, "<inner-html>" + html_content + "</inner-html>");
+        });
         [...$(element, "[bay]")].forEach((el, i) => {
             if (el.getAttribute("bay") === "dsd") {
                 el.setAttribute("bay", `dsd-${i}`);

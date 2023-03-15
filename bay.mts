@@ -4,7 +4,7 @@ declare global {
   }
 }
 
-const bay:any = () => {
+const bay: any = () => {
   "use strict";
   if (window.bay) {
     return;
@@ -206,6 +206,17 @@ const bay:any = () => {
    * @param {HTMLElement} element root element
    */
   function get_all_bays(element: Element | Document) {
+    [...document.querySelectorAll("[bay-hydrate]")].forEach((el: any, i) => {
+      el.id = "bay-hydrate-" + i;
+      let html_content = el.querySelector("template").innerHTML;
+      let component = document.createElement("bay-hydrate-" + i);
+      component.setAttribute("inner-html", "#bay-hydrate-" + i);
+      document.body.appendChild(component);
+      window.bay.create(
+        "bay-hydrate-" + i,
+        "<inner-html>" + html_content + "</inner-html>"
+      );
+    });
     [...$(element, "[bay]")].forEach((el: any, i) => {
       if (el.getAttribute("bay") === "dsd") {
         el.setAttribute("bay", `dsd-${i}`);
@@ -727,11 +738,11 @@ const bay:any = () => {
     let c_html: EventTarget | any = null;
     let script: string = "";
     let observedAttributes_from_element: Array<string> = [];
-    let has_globals:Boolean = false;
-    let has_route:Boolean = false;
-    let has_inner_html:Boolean = false;
-    let has_select_bind:Boolean = false;
-    let has_on:Boolean = false;
+    let has_globals: Boolean = false;
+    let has_route: Boolean = false;
+    let has_inner_html: Boolean = false;
+    let has_select_bind: Boolean = false;
+    let has_on: Boolean = false;
     try {
       // css ======================================================
       const fouc_styles =
