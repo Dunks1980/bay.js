@@ -1,4 +1,4 @@
-# <img src="https://unpkg.com/@dunks1980/bay.js/favicon.svg?v=1" width="40"> bay.js
+# <img src="https://cdn.jsdelivr.net/npm/@dunks1980/bay.js/favicon.svg?v=1" width="40"> bay.js
 [![npm version](https://img.shields.io/npm/v/@dunks1980/bay.js)](https://npmjs.org/package/@dunks1980/bay.js) 
 [![Known Vulnerabilities](https://snyk.io/test/github/dunks1980/bay.js/badge.svg?targetFile=package.json)](https://snyk.io/test/github/dunks1980/bay.js?targetFile=package.json) 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://raw.githubusercontent.com/Dunks1980/bay.js/main/LICENSE)
@@ -30,7 +30,7 @@ Bay.js can be used via a script tag or importing as a module.
 
 #### Script tag:
 ```html
-<script src="//unpkg.com/@dunks1980/bay.js/bay.min.js"></script>
+<script src="//cdn.jsdelivr.net/npm/@dunks1980/bay.js/bay.min.js"></script>
 ```
 <hr />
 
@@ -40,10 +40,10 @@ Bay.js can be used via a script tag or importing as a module.
 ```
 ```javascript
 // In main.js
-import bay from '//unpkg.com/@dunks1980/bay.js/bay.min.mjs';
+import bay from '//cdn.jsdelivr.net/npm/@dunks1980/bay.js/bay.min.mjs';
 bay();
 ```
-You may want to add a version number like this to prevent breaking changes: '//unpkg.com/@dunks1980/bay.js@< VERSION >/bay.min.mjs' the version number is optional and can be acquired from going to the npm package page. Or if using node_modules: './node_modules/@dunks1980/bay.js/bay.min.mjs';
+You may want to add a version number like this to prevent breaking changes: '//cdn.jsdelivr.net/npm/@dunks1980/bay.js@< VERSION >/bay.min.mjs' the version number is optional and can be acquired from going to the npm package page. Or if using node_modules: './node_modules/@dunks1980/bay.js/bay.min.mjs';
 <hr />
 
 #### Module NPM:
