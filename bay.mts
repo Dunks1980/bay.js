@@ -86,31 +86,118 @@ const bay: any = () => {
   }
   window.bay.receive = receive;
 
-  /**
-   * Creates a proxy and fires the callback when the data changes.
-   * @param {object} obj proxy object can be empty or have some default data
-   * @param {function} callback function to be called when the data changes
-   */
-  function make_proxy_object(obj: any, callback: Function) {
+  type Callback = () => void;
+
+  function make_map_proxy<K, V>(map: Map<K, V>, callback: Callback): Map<K, V> {
+    return new Proxy(map, {
+      get(target, key) {
+        if (key === "set") {
+          return function (k: K, v: V) {
+            target.set(k, escapeHTML(v));
+            if (callback) callback();
+            return target;
+          };
+        } else if (["get", "has", "delete", "clear"].includes(key as string)) {
+          return function (...args: any[]) {
+            return (target as any)[key].apply(target, args);
+          };
+        } else {
+          return (target as any)[key];
+        }
+      },
+    });
+  }
+  
+  function make_weakmap_proxy<K extends object, V>(map: WeakMap<K, V>, callback: Callback): WeakMap<K, V> {
+    return new Proxy(map, {
+      get(target, key) {
+        if (key === "set") {
+          return function (k: K, v: V) {
+            target.set(k, escapeHTML(v));
+            if (callback) callback();
+            return target;
+          };
+        } else if (["get", "has", "delete"].includes(key as string)) {
+          return function (...args: any[]) {
+            return (target as any)[key].apply(target, args);
+          };
+        } else {
+          return (target as any)[key];
+        }
+      },
+    });
+  }
+  
+  function make_set_proxy<V>(set: Set<V>, callback: Callback): Set<V> {
+    return new Proxy(set, {
+      get(target, key) {
+        if (key === "add") {
+          return function (v: V) {
+            target.add(escapeHTML(v));
+            if (callback) callback();
+            return target;
+          };
+        } else if (["has", "delete", "clear"].includes(key as string)) {
+          return function (...args: any[]) {
+            return (target as any)[key].apply(target, args);
+          };
+        } else {
+          return (target as any)[key];
+        }
+      },
+    });
+  }
+  
+  function make_weakset_proxy<V extends object>(set: WeakSet<V>, callback: Callback): WeakSet<V> {
+    return new Proxy(set, {
+      get(target, key) {
+        if (key === "add") {
+          return function (v: V) {
+            target.add(escapeHTML(v));
+            if (callback) callback();
+            return target;
+          };
+        } else if (["has", "delete"].includes(key as string)) {
+          return function (...args: any[]) {
+            return (target as any)[key].apply(target, args);
+          };
+        } else {
+          return (target as any)[key];
+        }
+      },
+    });
+  }
+  
+  function make_proxy_object<T extends object>(obj: T, callback: Callback): T {
     return new Proxy(obj, {
-      get(target, key: any) {
-        if (key == "isProxy") {
+      get(target, key: string | symbol) {
+        if (key === "isProxy") {
           return true;
         }
-        const prop = target[key];
-        if (typeof prop == "undefined") {
+        const prop = (target as any)[key];
+        if (typeof prop === "undefined") {
           return "";
         }
-        if (prop == null) {
+        if (prop === null) {
           return;
         }
         if (!prop.isProxy && typeof prop === "object") {
-          target[key] = make_proxy_object(prop, callback);
+          if (prop instanceof Map) {
+            (target as any)[key] = make_map_proxy(prop, callback);
+          } else if (prop instanceof WeakMap) {
+            (target as any)[key] = make_weakmap_proxy(prop, callback);
+          } else if (prop instanceof Set) {
+            (target as any)[key] = make_set_proxy(prop, callback);
+          } else if (prop instanceof WeakSet) {
+            (target as any)[key] = make_weakset_proxy(prop, callback);
+          } else {
+            (target as any)[key] = make_proxy_object(prop, callback);
+          }
         }
-        return target[key];
+        return (target as any)[key];
       },
       set: (target, key, value) => {
-        target[key] = escapeHTML(value);
+        (target as any)[key] = escapeHTML(value);
         if (callback) callback();
         return true;
       },

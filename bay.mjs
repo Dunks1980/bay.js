@@ -80,26 +80,123 @@ const bay = () => {
         });
     }
     window.bay.receive = receive;
-    /**
-     * Creates a proxy and fires the callback when the data changes.
-     * @param {object} obj proxy object can be empty or have some default data
-     * @param {function} callback function to be called when the data changes
-     */
+    function make_map_proxy(map, callback) {
+        return new Proxy(map, {
+            get(target, key) {
+                if (key === "set") {
+                    return function (k, v) {
+                        target.set(k, escapeHTML(v));
+                        if (callback)
+                            callback();
+                        return target;
+                    };
+                }
+                else if (["get", "has", "delete", "clear"].includes(key)) {
+                    return function (...args) {
+                        return target[key].apply(target, args);
+                    };
+                }
+                else {
+                    return target[key];
+                }
+            },
+        });
+    }
+    function make_weakmap_proxy(map, callback) {
+        return new Proxy(map, {
+            get(target, key) {
+                if (key === "set") {
+                    return function (k, v) {
+                        target.set(k, escapeHTML(v));
+                        if (callback)
+                            callback();
+                        return target;
+                    };
+                }
+                else if (["get", "has", "delete"].includes(key)) {
+                    return function (...args) {
+                        return target[key].apply(target, args);
+                    };
+                }
+                else {
+                    return target[key];
+                }
+            },
+        });
+    }
+    function make_set_proxy(set, callback) {
+        return new Proxy(set, {
+            get(target, key) {
+                if (key === "add") {
+                    return function (v) {
+                        target.add(escapeHTML(v));
+                        if (callback)
+                            callback();
+                        return target;
+                    };
+                }
+                else if (["has", "delete", "clear"].includes(key)) {
+                    return function (...args) {
+                        return target[key].apply(target, args);
+                    };
+                }
+                else {
+                    return target[key];
+                }
+            },
+        });
+    }
+    function make_weakset_proxy(set, callback) {
+        return new Proxy(set, {
+            get(target, key) {
+                if (key === "add") {
+                    return function (v) {
+                        target.add(escapeHTML(v));
+                        if (callback)
+                            callback();
+                        return target;
+                    };
+                }
+                else if (["has", "delete"].includes(key)) {
+                    return function (...args) {
+                        return target[key].apply(target, args);
+                    };
+                }
+                else {
+                    return target[key];
+                }
+            },
+        });
+    }
     function make_proxy_object(obj, callback) {
         return new Proxy(obj, {
             get(target, key) {
-                if (key == "isProxy") {
+                if (key === "isProxy") {
                     return true;
                 }
                 const prop = target[key];
-                if (typeof prop == "undefined") {
+                if (typeof prop === "undefined") {
                     return "";
                 }
-                if (prop == null) {
+                if (prop === null) {
                     return;
                 }
                 if (!prop.isProxy && typeof prop === "object") {
-                    target[key] = make_proxy_object(prop, callback);
+                    if (prop instanceof Map) {
+                        target[key] = make_map_proxy(prop, callback);
+                    }
+                    else if (prop instanceof WeakMap) {
+                        target[key] = make_weakmap_proxy(prop, callback);
+                    }
+                    else if (prop instanceof Set) {
+                        target[key] = make_set_proxy(prop, callback);
+                    }
+                    else if (prop instanceof WeakSet) {
+                        target[key] = make_weakset_proxy(prop, callback);
+                    }
+                    else {
+                        target[key] = make_proxy_object(prop, callback);
+                    }
                 }
                 return target[key];
             },
