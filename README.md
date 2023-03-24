@@ -13,16 +13,16 @@ You can try it out at [Bayjs.org](https://bayjs.org/examples/index.html).
 
 ## Key features
 
-- Build step optional, can just add script tag and go.
-- Can be used with strict CSP even with no build step.
-- Can render to the regular DOM or as a web-component.
-- 0 dependencies.
-- Can bundle a component into a single file.
-- Can be used in frameworks that are setup to render web-components.
-- Use a URL for its template, so you can SSR or PHP a template.
-- Use a `<template>` in the DOM as a template.
-- Create a component from a string using JS.
-- Easy Syntax.
+- Optional build step: Simply add a script tag to get started.
+- Strict Content Security Policy (CSP) compatibility, even without a build step.
+- Versatile rendering: Regular DOM or web-component formats.
+- Zero dependencies for lightweight implementation.
+- Single-file bundling capability for streamlined components.
+- Seamless integration with frameworks designed for rendering web-components.
+- URL-based templates: Enable server-side rendering (SSR) or PHP-based templates.
+- Utilize `<template>` in the DOM as a template source.
+- Component creation from JavaScript strings for dynamic customization.
+- User-friendly syntax for effortless development.
 <hr />
 
 ## Installation
