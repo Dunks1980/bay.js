@@ -5,6 +5,7 @@
 <br />
 <hr />
 
+
 ## What is bay.js?
 A frontend library to create reusable web-components for your projects.
 You can try it out at [Bayjs.org](https://bayjs.org/examples/index.html).
