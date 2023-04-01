@@ -1,6 +1,6 @@
 {
   "name": "@dunks1980/bay.js",
-  "version": "2.9.10",
+  "version": "2.9.11",
   "description": "Web component library",
   "main": "bay.js",
   "module": "bay.mjs",
