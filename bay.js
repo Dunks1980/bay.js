@@ -792,6 +792,7 @@ const bay = () => {
           }
           const default_params = "element, index, array";
           let script_text = "";
+          let current_switch_id = "";
           const tag_changer = (tag_el, tagname_str) => {
               const has_children = $(tag_el, tagname_str)[0];
               if (!has_children) {
@@ -866,18 +867,19 @@ const bay = () => {
                           }
                           break;
                       case "switch":
-                          rep(`\${(()=>{ ${tagname_str} (${tag_statement}) { `, ` };return ''})() }`);
+                          current_switch_id = makeid(8);
+                          rep(`\${(()=>{let bay_switch=''; ${tagname_str} (${tag_statement}) { `, ` };return bay_switch;})() }`);
                           break;
                       case "case":
                           if (shared_case) {
                               rep(`${tagname_str} ${tag_statement}:`, ` ` + break_prop);
                           }
                           else {
-                              rep(`${tagname_str} ${tag_statement}: return \``, `\`; ` + break_prop);
+                              rep(`${tagname_str} ${tag_statement}: bay_switch += \``, `\`; ` + break_prop);
                           }
                           break;
                       case "default":
-                          rep(`${tagname_str}: return \``, `\`;`);
+                          rep(`${tagname_str}: bay_switch += \``, `\`;`);
                           break;
                       case "inner-html":
                           has_inner_html = true;
