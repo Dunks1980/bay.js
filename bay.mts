@@ -884,7 +884,6 @@ const bay: any = () => {
 
       const default_params = "element, index, array";
       let script_text = "";
-      let current_switch_id = "";
 
       const tag_changer = (tag_el: HTMLElement, tagname_str: string) => {
         const has_children = $(tag_el, tagname_str)[0];
@@ -976,7 +975,6 @@ const bay: any = () => {
               }
               break;
             case "switch":
-              current_switch_id = makeid(8);
               rep(
                 `\${(()=>{let bay_switch=''; ${tagname_str} (${tag_statement}) { `,
                 ` };return bay_switch;})() }`
