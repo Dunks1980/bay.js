@@ -333,11 +333,41 @@ const bay = () => {
       }
       template_el = template_el.replaceAll(/<!--[\s\S]*?-->/g, "");
       html = doc.parseFromString(template_el, "text/html");
-      if (html) {
-          if (!customElements.get(tagname)) {
-              create_component(html, tagname, getAttributes(bay), styles_string, false);
+      //console.log(html);
+      function continue_to_create() {
+          if (html && [...html.querySelectorAll("include")].length === 0) {
+              if (!customElements.get(tagname)) {
+                  create_component(html, tagname, getAttributes(bay), styles_string, false);
+              }
           }
       }
+      const incudes = [...html.querySelectorAll("include")];
+      incudes.forEach((include) => {
+          const src = include.attributes[0];
+          if (src && src.value) {
+              fetch(src.value)
+                  .then((res) => {
+                  if (!res.ok) {
+                      throw new Error(`HTTP error ${res.status}: ${res.statusText}`);
+                  }
+                  return res.text();
+              })
+                  .then((text) => {
+                  while (text.indexOf("<style>") > -1) {
+                      const styles_text = text.split("<style>")[1].split("</style>")[0];
+                      text = text.replaceAll(`<style>${styles_text}</style>`, "");
+                      styles_string += styles_text;
+                  }
+                  text = text.replaceAll(/<!--[\s\S]*?-->/g, "");
+                  include.outerHTML = text;
+                  continue_to_create();
+              })
+                  .catch((error) => {
+                  console.error('Error fetching:', error);
+              });
+          }
+      });
+      continue_to_create();
   }
   // ------------------------------
   /**
