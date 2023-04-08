@@ -616,7 +616,8 @@ const bay: any = () => {
     revoke_blob: boolean,
     element_tagname: string,
     text: string,
-    parent_uniqid: string
+    parent_uniqid: string,
+    import_script: string,
   ) {
     if (blobs.has(element_tagname)) {
       await import(blobs.get(element_tagname)).then((code) => {
@@ -627,7 +628,7 @@ const bay: any = () => {
       const blobUrl = URL.createObjectURL(
         new Blob(
           [
-            `export default (bay_uniqid,parent_uniqid)=>{"use strict";\n${text}};`,
+            `${import_script}export default (bay_uniqid,parent_uniqid)=>{"use strict";\n${text}};`,
           ],
           { type: "text/javascript" }
         )
@@ -824,6 +825,7 @@ const bay: any = () => {
     let tag: string = "";
     let c_html: EventTarget | any = null;
     let script: string = "";
+    let import_script: string = "";
     let observedAttributes_from_element: Array<string> = [];
     let has_globals: Boolean = false;
     let has_route: Boolean = false;
@@ -1017,6 +1019,10 @@ const bay: any = () => {
             case "script":
               // ------------------ SCRIPT TAGS ------------------
               switch (script_type) {
+                case "imports":
+                  import_script += tag_el.innerText.trim() + "\n";
+                  tag_el.remove();
+                  break;
                 case "update":
                   rep(
                     "${/*update*/(()=>{setTimeout(()=>{",
@@ -1403,7 +1409,8 @@ const bay: any = () => {
           revoke_blob,
           element_tagname,
           `${proxy_script}\n${local_name}.template=()=>{${inner_html_reset}return \`${proxy_html}\`;};\n${local_name}.styles=()=>{return \`${proxy_css}\`;};${inner_html_fn}`,
-          parent_uniqid
+          parent_uniqid,
+          import_script
         );
 
         this.hasAdopted = false;

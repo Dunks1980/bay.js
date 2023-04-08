@@ -563,7 +563,7 @@ const bay = () => {
    * the template function will return the html and the styles function will return the styles
    * this is used by the diff function to compare the old and new html and styles with updated data
    */
-  function addBlob(this_ref, revoke_blob, element_tagname, text, parent_uniqid) {
+  function addBlob(this_ref, revoke_blob, element_tagname, text, parent_uniqid, import_script) {
       return __awaiter(this, void 0, void 0, function* () {
           if (blobs.has(element_tagname)) {
               yield import(blobs.get(element_tagname)).then((code) => {
@@ -573,7 +573,7 @@ const bay = () => {
           }
           else {
               const blobUrl = URL.createObjectURL(new Blob([
-                  `export default (bay_uniqid,parent_uniqid)=>{"use strict";\n${text}};`,
+                  `${import_script}export default (bay_uniqid,parent_uniqid)=>{"use strict";\n${text}};`,
               ], { type: "text/javascript" }));
               blobs.set(element_tagname, blobUrl);
               yield import(blobUrl).then((code) => {
@@ -744,6 +744,7 @@ const bay = () => {
       let tag = "";
       let c_html = null;
       let script = "";
+      let import_script = "";
       let observedAttributes_from_element = [];
       let has_globals = false;
       let has_route = false;
@@ -897,6 +898,10 @@ const bay = () => {
                       case "script":
                           // ------------------ SCRIPT TAGS ------------------
                           switch (script_type) {
+                              case "imports":
+                                  import_script += tag_el.innerText.trim() + "\n";
+                                  tag_el.remove();
+                                  break;
                               case "update":
                                   rep("${/*update*/(()=>{setTimeout(()=>{", "}, 0);return ``})()}");
                                   break;
@@ -1212,7 +1217,7 @@ const bay = () => {
                       .replaceAll(`  `, ``)
                       .replaceAll("\n", ``);
               }
-              addBlob(this, revoke_blob, element_tagname, `${proxy_script}\n${local_name}.template=()=>{${inner_html_reset}return \`${proxy_html}\`;};\n${local_name}.styles=()=>{return \`${proxy_css}\`;};${inner_html_fn}`, parent_uniqid);
+              addBlob(this, revoke_blob, element_tagname, `${proxy_script}\n${local_name}.template=()=>{${inner_html_reset}return \`${proxy_html}\`;};\n${local_name}.styles=()=>{return \`${proxy_css}\`;};${inner_html_fn}`, parent_uniqid, import_script);
               this.hasAdopted = false;
               if ("adoptedStyleSheets" in document) {
                   this.hasAdopted = true;
