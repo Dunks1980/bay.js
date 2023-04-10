@@ -22,6 +22,7 @@ const bay: any = () => {
   let to_fetch: string[] = [];
   let already_fetched: string[] = [];
   let blobs = new Map();
+  let styles_string = "";
 
   /**
    * Used to attach shadow roots to templates with the shadowroot or shadowrootmode attribute
@@ -321,46 +322,7 @@ const bay: any = () => {
   }
   // ------------------------------
 
-  /**
-   * makes changes to the template before its passed to create_component.
-   * @param {HTMLElement} template_el template element
-   * @param {HTMLElement} bay bay custom element tag
-   */
-  function modify_template(template_el: string, bay: Element) {
-    const doc = new DOMParser();
-    const tagname = bay.tagName.toLowerCase();
-    const start_split = "export default /*HTML*/`";
-    let html: any;
-    let styles_string = "";
-    if (template_el.startsWith(start_split)) {
-      template_el = template_el.trim();
-      template_el = template_el.split(start_split)[1];
-      template_el = template_el.substring(0, template_el.length - 2);
-      template_el = template_el.replaceAll("\\${", "${").replaceAll("\\`", "`");
-    }
-    while (template_el.indexOf("<style>") > -1) {
-      const styles_text = template_el.split("<style>")[1].split("</style>")[0];
-      template_el = template_el.replaceAll(`<style>${styles_text}</style>`, "");
-      styles_string += styles_text;
-    }
-    template_el = template_el.replaceAll(/<!--[\s\S]*?-->/g, "");
-
-    html = doc.parseFromString(template_el, "text/html");
-
-    //console.log(html);
-    function continue_to_create() {
-      if (html && [...html.querySelectorAll("include")].length === 0) {
-        if (!customElements.get(tagname)) {
-          create_component(
-            html,
-            tagname,
-            getAttributes(bay),
-            styles_string,
-            false
-          );
-        }
-      }
-    }
+  function fetch_includes(html:any, callback:()=>void) {
     const incudes = [...html.querySelectorAll("include")];
     incudes.forEach((include) => {
       const src = include.attributes[0];
@@ -380,13 +342,56 @@ const bay: any = () => {
             }
             text = text.replaceAll(/<!--[\s\S]*?-->/g, "");
             include.outerHTML = text;
-            continue_to_create();
+            callback();
           })
           .catch((error) => {
             console.error('Error fetching:', error);
           });
       }
     });
+  }
+
+  /**
+   * makes changes to the template before its passed to create_component.
+   * @param {HTMLElement} template_el template element
+   * @param {HTMLElement} bay bay custom element tag
+   */
+  function modify_template(template_el: string, bay: Element) {
+    const doc = new DOMParser();
+    const tagname = bay.tagName.toLowerCase();
+    const start_split = "export default /*HTML*/`";
+    let html: any;
+    styles_string = "";
+    if (template_el.startsWith(start_split)) {
+      template_el = template_el.trim();
+      template_el = template_el.split(start_split)[1];
+      template_el = template_el.substring(0, template_el.length - 2);
+      template_el = template_el.replaceAll("\\${", "${").replaceAll("\\`", "`");
+    }
+    while (template_el.indexOf("<style>") > -1) {
+      const styles_text = template_el.split("<style>")[1].split("</style>")[0];
+      template_el = template_el.replaceAll(`<style>${styles_text}</style>`, "");
+      styles_string += styles_text;
+    }
+    template_el = template_el.replaceAll(/<!--[\s\S]*?-->/g, "");
+    template_el = '<div id="bay-temporary-compile-element"></div>' + template_el;
+    html = doc.parseFromString(template_el, "text/html");
+    html.getElementById('bay-temporary-compile-element').remove();
+    //console.log(html);
+    function continue_to_create() {
+      if (html && [...html.querySelectorAll("include")].length === 0) {
+        if (!customElements.get(tagname)) {
+          create_component(
+            html,
+            tagname,
+            getAttributes(bay),
+            styles_string,
+            false
+          );
+        }
+      }
+    }
+    fetch_includes(html, continue_to_create);
     continue_to_create();
   }
   // ------------------------------
@@ -394,35 +399,41 @@ const bay: any = () => {
   /**
    * Creates a custom element from a template invoked via function.
    * @param {String} element_tagname custom element tagname
-   * @param {String} template_string template string
+   * @param {String} template_el template string
    * @param {Array} attributes_array array of attributes to be added to the custom element
    */
   function create_template_fn(
     element_tagname: string,
-    template_string: string,
+    template_el: string,
     attributes_array: Array<string>
   ) {
     const doc = new DOMParser();
     const passed_attributes = attributes_array || [];
-    let styles_text = "";
-    if (template_string.indexOf("<style>") > -1) {
-      styles_text = template_string.split("<style>")[1].split("</style>")[0];
+    styles_string = "";
+    while (template_el.indexOf("<style>") > -1) {
+      const styles_text = template_el.split("<style>")[1].split("</style>")[0];
+      template_el = template_el.replaceAll(`<style>${styles_text}</style>`, "");
+      styles_string += styles_text;
     }
-    template_string = template_string
-      .replaceAll(/<!--[\s\S]*?-->/g, "")
-      .replaceAll(`<style>${styles_text}</style>`, "");
-    let html = doc.parseFromString(template_string, "text/html");
-    if (html) {
-      if (!customElements.get(element_tagname.toLowerCase())) {
-        create_component(
-          html,
-          element_tagname.toLowerCase(),
-          passed_attributes,
-          styles_text,
-          true
-        );
+    template_el = template_el.replaceAll(/<!--[\s\S]*?-->/g, "");
+    template_el = '<div id="bay-temporary-compile-element"></div>' + template_el;
+    let html:any = doc.parseFromString(template_el, "text/html");
+    html.getElementById('bay-temporary-compile-element').remove();
+    function continue_to_create() {
+      if (html && [...html.querySelectorAll("include")].length === 0) {
+        if (!customElements.get(element_tagname.toLowerCase())) {
+          create_component(
+            html,
+            element_tagname.toLowerCase(),
+            passed_attributes,
+            styles_string,
+            true
+          );
+        }
       }
     }
+    fetch_includes(html, continue_to_create);
+    continue_to_create();
   }
   // ------------------------------
 
@@ -1052,6 +1063,7 @@ const bay: any = () => {
               // ------------------ SCRIPT TAGS ------------------
               switch (script_type) {
                 case "imports":
+                  console.log('sees imports');
                   import_script += tag_el.innerText.trim() + "\n";
                   tag_el.remove();
                   break;
