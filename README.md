@@ -116,19 +116,19 @@ A component can be used anywhere in the HTML but inline templates must be in the
 
 | Syntax | Description | Example |
 |--- |--- |--- |
-| \<if this="this.xxx">...\</if> | If statement, renders only the content between \<if> tags if its this attribute is true. | [Conditionals](https://bayjs.org/examples?tab=tags&item=example_tags_conditionals) |
-| \<else-if this="this.xxx">...\</else-if> | Else if, renders only the content between \<else-if> tags if its this attribute is true and previous \<if> \ \<else-if> is false. | [Conditionals](https://bayjs.org/examples?tab=tags&item=example_tags_conditionals) |
-| \<else>...\</else> | Else, renders only the content between \<else> tags if all previous \<if> \ \<else-if> tags are false. | [Conditionals](https://bayjs.org/examples?tab=tags&item=example_tags_conditionals) |
-| \<show this="this.xxx">...\</else> | Show, when you need to keep the code in the DOM and toggle its display. Add duration  \<show this="this.xxx" duration=".5s"> for a fade effect. | [Show](https://bayjs.org/examples?tab=tags&item=example_tags_show) |
-| \<switch this="this.xxx"><br />\<case this="xxx" break>...\</case><br />\<default>...\</default><br />\</switch> | Switch statement, for more complex conditionals. | [Switch](https://bayjs.org/examples?tab=tags&item=example_tags_conditionals2) |
-| \<map array="this.arr">...\</map> | Map, to iterate over an array \<map params="item, i, array" array="this.arr" join="\<hr>"> params and join are optional, default params are: element, index, array. | [Iterations](https://bayjs.org/examples?tab=tags&item=example_tags_iterations) |
-| \<for array="this.arr">...\</for> | Foreach loop, to iterate over an array \<for params="item, i, array" array="this.arr"> params are optional, default params are: element, index, array. | [Iterations](https://bayjs.org/examples?tab=tags&item=example_tags_iterations) |
-| \<for this="let i = 0; i < this.arr.length; i++">...\</for> | For loop, to iterate with conditions. | [Iterations](https://bayjs.org/examples?tab=tags&item=example_tags_iterations) |
-| \<inner-html>...\</inner-html> | To render to the Light DOM. If inner-html attribute is present on the component it will render inside that element:<br /> \<my-comp bay="..." inner-html="#render-target">. If inner-html attribute is not present on the component you can use a slot to see the inner-html content. | [Inner HTML](https://bayjs.org/examples?tab=tags&item=example_tags_innerhtml) |
-| \<slot name="slot1">...\</slot> | Used to define a slot as per standard web-component. | [Slots](https://bayjs.org/examples?tab=tags&item=example_tags_slots) |
-| \<route href="/xxx/var">...\</route> | Route creates the route for the router tag, is intended for a single page application (SPA). | [Route](https://bayjs.org/examples?tab=router&item=component_route) |
-| \<router this="/xxx/:xxx">...\</router> | Router matches the current url, :xxx are used for variables. | [Route](https://bayjs.org/examples?tab=router&item=component_route) |
-| \<include this="https://..."></include> | Include code into template from a URL. | [Include](https://bayjs.org/examples?tab=tags&item=example_tags_include) |
+| ```<if this="this.xxx">...</if>``` | If statement, renders only the content between ```<if>``` tags if its this attribute is true. | [Conditionals](https://bayjs.org/examples?tab=tags&item=example_tags_conditionals) |
+| ```<else-if this="this.xxx">...</else-if>``` | Else if, renders only the content between ```<else-if>``` tags if its this attribute is true and previous ```<if>  <else-if>``` is false. | [Conditionals](https://bayjs.org/examples?tab=tags&item=example_tags_conditionals) |
+| ```<else>...</else>``` | Else, renders only the content between ```<else>``` tags if all previous ```<if> <else-if>``` tags are false. | [Conditionals](https://bayjs.org/examples?tab=tags&item=example_tags_conditionals) |
+| ```<show this="this.xxx">...</else>``` | Show, when you need to keep the code in the DOM and toggle its display. Add duration ```<show this="this.xxx" duration=".5s">``` for a fade effect. | [Show](https://bayjs.org/examples?tab=tags&item=example_tags_show) |
+| ```<switch this="this.xxx"> <case this="xxx" break>...</case> <default>...</default> </switch>``` | Switch statement, for more complex conditionals. | [Switch](https://bayjs.org/examples?tab=tags&item=example_tags_conditionals2) |
+| ```<map array="this.arr">...</map>``` | Map, to iterate over an array ```<map params="item, i, array" array="this.arr" join="<hr>">``` params and join are optional, default params are: ```element, index, array```. | [Iterations](https://bayjs.org/examples?tab=tags&item=example_tags_iterations) |
+| ```<for array="this.arr">...</for>``` | Foreach loop, to iterate over an array ```<for params="item, i, array" array="this.arr">``` params are optional, default params are: ```element, index, array```. | [Iterations](https://bayjs.org/examples?tab=tags&item=example_tags_iterations) |
+| ```<for this="let i = 0; i < this.arr.length; i++">...</for>``` | For loop, to iterate with conditions. | [Iterations](https://bayjs.org/examples?tab=tags&item=example_tags_iterations) |
+| ```<inner-html>...</inner-html>``` | To render to the Light DOM. If ```inner-html``` attribute is present on the component it will render inside that element:<br /> ```<my-comp bay="..." inner-html="#render-target">```. If inner-html attribute is not present on the component you can use a slot to see the inner-html content. | [Inner HTML](https://bayjs.org/examples?tab=tags&item=example_tags_innerhtml) |
+| ```<slot name="slot1">...</slot>``` | Used to define a slot as per standard web-component. | [Slots](https://bayjs.org/examples?tab=tags&item=example_tags_slots) |
+| ```<route href="/xxx/var">...</route>``` | Route creates the route for the router tag, is intended for a single page application (SPA). | [Route](https://bayjs.org/examples?tab=router&item=component_route) |
+| ```<router this="/xxx/:xxx">...</router>``` | Router matches the current url, ```:xxx``` are used for variables. | [Route](https://bayjs.org/examples?tab=router&item=component_route) |
+| ```<include this="https://..."></include>``` | Include code into template from a URL. | [Include](https://bayjs.org/examples?tab=tags&item=example_tags_include) |
 
 <br />
 <hr />
@@ -138,14 +138,14 @@ A component can be used anywhere in the HTML but inline templates must be in the
 
 | Syntax | Description | Example |
 |--- |--- |--- |
-| this.xxx = 'xxx'; | Assigning this.xxx a value will trigger a bay component render. <br>To get/set this value from outside the component: <br>document.getElementById('my-el').shadowRoot.proxy.xxx = 'xxx';  | [Local](https://bayjs.org/examples?tab=state&item=example_local) |
-| $global = 'xxx'; | Assigning $global.xxx a value will trigger render on all bay components that contain $global. <br>To get/set this value from outside the components: <br>bay.global.xxx = 'hello'; console.log(bay.global); | [Global](https://bayjs.org/examples?tab=state&item=example_global) |
-| $bay.querySelector('xxx'); | Use $bay to target the Shadow DOM. [Shadow DOM vs. Light DOM](https://fai.agency/blog/web-components-dom/) | [Variables](https://bayjs.org/examples?tab=template&item=example_template_variables) |
-| $el.querySelector('xxx'); | Use $el to target the Light DOM. [Shadow DOM vs. Light DOM](https://fai.agency/blog/web-components-dom/) | [Variables](https://bayjs.org/examples?tab=template&item=example_template_variables) |
-| $parent.xxx = 'xxx'; | Assigning $parent.xxx a value will update this.xxx in parent if the parent is another bay component and inturn triggers a render. | [Parent](https://bayjs.org/examples?tab=state&item=example_parent) |
-| $details.changed; <br> $details.element; | Details from the slotchange script attribute as to what changed. | [Slots](https://bayjs.org/examples?tab=tags&item=example_tags_slots) |
-| $route | Details from the window location. | [Router](https://bayjs.org/examples?tab=router&item=component_route) |
-| $path | :variables from the search path :xxx/:xxx. | [Router](https://bayjs.org/examples?tab=router&item=component_route) |
+| ```this.xxx = 'xxx';``` | Assigning ```this.xxx``` a value will trigger a bay component render. <br>To get/set this value from outside the component: <br>```document.getElementById('my-el').shadowRoot.proxy.xxx = 'xxx';```  | [Local](https://bayjs.org/examples?tab=state&item=example_local) |
+| ```$global = 'xxx';``` | Assigning ```$global.xxx``` a value will trigger render on all bay components that contain ```$global```. <br>To get/set this value from outside the components: <br>```bay.global.xxx = 'hello'; console.log(bay.global);``` | [Global](https://bayjs.org/examples?tab=state&item=example_global) |
+| ```$bay.querySelector('xxx');``` | Use ```$bay``` to target the Shadow DOM. [Shadow DOM vs. Light DOM](https://fai.agency/blog/web-components-dom/) | [Variables](https://bayjs.org/examples?tab=template&item=example_template_variables) |
+| ```$el.querySelector('xxx');``` | Use ```$el``` to target the Light DOM. [Shadow DOM vs. Light DOM](https://fai.agency/blog/web-components-dom/) | [Variables](https://bayjs.org/examples?tab=template&item=example_template_variables) |
+| ```$parent.xxx = 'xxx';``` | Assigning ```$parent.xxx``` a value will update ```this.xxx``` in parent if the parent is another bay component and inturn triggers a render. | [Parent](https://bayjs.org/examples?tab=state&item=example_parent) |
+| ```$details.changed;``` <br> ```$details.element;``` | Details from the slotchange script attribute as to what changed. | [Slots](https://bayjs.org/examples?tab=tags&item=example_tags_slots) |
+| ```$route``` | Details from the window location. | [Router](https://bayjs.org/examples?tab=router&item=component_route) |
+| ```$path``` | :variables from the search path ```:xxx/:xxx```. | [Router](https://bayjs.org/examples?tab=router&item=component_route) |
 
 <br />
 <hr />
@@ -155,10 +155,10 @@ A component can be used anywhere in the HTML but inline templates must be in the
 
 | Syntax | Description | Example |
 |--- |--- |--- |
-| bay="#my-template" <br> bay="/my-template.html" <br> bay="dsd" | The template to use, can be a templates id or a path to a file, dsd is experimental. | [DSD](https://bayjs.org/examples?tab=template&item=example_template_dsd) |
-| fouc | Used to hide the Light DOM within the component until it is fully loaded. | [FOUC](https://bayjs.org/examples?tab=attributes&item=example_attrs_fouc) |
-| inner-html="#render-target" | Used to tell the component where it should render \<inner-html>\</inner-html> content. | [Inner HTML](https://bayjs.org/examples?tab=tags&item=example_tags_innerhtml_render) |
-| xxx="value" | Any other attributes are passed into the component and become props that can be accessed via this.xxx, xxx being the attribute name. | [Props](https://bayjs.org/examples?tab=state&item=example_props) |
+| ```bay="#my-template"``` <br> ```bay="/my-template.html"``` <br> ```bay="dsd"``` | The template to use, can be a templates id or a path to a file, dsd is experimental. | [DSD](https://bayjs.org/examples?tab=template&item=example_template_dsd) |
+| ```fouc``` | Used to hide the Light DOM within the component until it is fully loaded. | [FOUC](https://bayjs.org/examples?tab=attributes&item=example_attrs_fouc) |
+| ```inner-html="#render-target"``` | Used to tell the component where it should render ```<inner-html>...</inner-html>``` content. | [Inner HTML](https://bayjs.org/examples?tab=tags&item=example_tags_innerhtml_render) |
+| ```xxx="value"``` | Any other attributes are passed into the component and become props that can be accessed via ```this.xxx```, xxx being the attribute name. | [Props](https://bayjs.org/examples?tab=state&item=example_props) |
 
 
 <br />
@@ -169,11 +169,11 @@ A component can be used anywhere in the HTML but inline templates must be in the
 
 | Syntax | Description | Example |
 |--- |--- |--- |
-| :style="color: red; display: ${this.display}" | Apply inlined data driven styles. | [Styles](https://bayjs.org/examples?tab=attributes&item=example_attrs_styles) |
-| :click="console.log('clicked')" | Any javascript event that begins with on (onclick in this example) just replace on with : (oninput="xxx" -> :input="xxx"). | [Events](https://bayjs.org/examples?tab=attributes&item=example_attrs_events) |
-| :my-event="console.log('my custom event')" | Listens for any custom event and triggers code when it detects that event has been triggered from anywhere. | [Custom event](https://bayjs.org/examples?tab=state&item=example_emit) |
-| bind="this.xxx" | Used for 2-way data binding on \<inputs>, \<selects> and \<textareas>. | [Bind](https://bayjs.org/examples?tab=state&item=example_bind) |
-| slot="slot-name" | Used to define a slot as per standard web-component. | [Slots](https://bayjs.org/examples?tab=tags&item=example_tags_slots) |
+| ```:style="color: red; display: ${this.display}"``` | Apply inlined data driven styles. | [Styles](https://bayjs.org/examples?tab=attributes&item=example_attrs_styles) |
+| ```:click="console.log('clicked')"``` | Any javascript event that begins with on (onclick in this example) just replace on with : (```oninput="xxx"``` -> ```:input="xxx"```). | [Events](https://bayjs.org/examples?tab=attributes&item=example_attrs_events) |
+| ```:my-event="console.log('my custom event')"``` | Listens for any custom event and triggers code when it detects that event has been triggered from anywhere. | [Custom event](https://bayjs.org/examples?tab=state&item=example_emit) |
+| ```bind="this.xxx"``` | Used for 2-way data binding on ```<inputs>```, ```<selects>``` and ```<textareas>```. | [Bind](https://bayjs.org/examples?tab=state&item=example_bind) |
+| ```slot="slot-name"``` | Used to define a slot as per standard web-component. | [Slots](https://bayjs.org/examples?tab=tags&item=example_tags_slots) |
 
 
 <br />
@@ -184,12 +184,12 @@ A component can be used anywhere in the HTML but inline templates must be in the
 
 | Syntax | Description | Example |
 |--- |--- |--- |
-| \<script imports>...\</script> | Define module import scripts. | [Imports](https://bayjs.org/examples?tab=lifecycle&item=example_lifecycle_imports) |
-| \<script mounted>...\</script> | Script runs after template is mounted to DOM. | [Mounted](https://bayjs.org/examples?tab=lifecycle&item=example_lifecycle_mounted) |
-| \<script props>...\</script> | Script that runs when props change. | [Props](https://bayjs.org/examples?tab=lifecycle&item=example_lifecycle_props) |
-| \<script render>...\</script> | Script that renders its return value in place. | [Render](https://bayjs.org/examples?tab=lifecycle&item=example_lifecycle_render) |
-| \<script slotchange>...\</script> | Script that runs on slot content changes. | [Slot Change](https://bayjs.org/examples?tab=lifecycle&item=example_lifecycle_slotchange) |
-| \<script update>...\</script> | Script that runs on every update. | [Update](https://bayjs.org/examples?tab=lifecycle&item=example_lifecycle_update) |
+| ```<script imports>...</script>``` | Define module import scripts. | [Imports](https://bayjs.org/examples?tab=lifecycle&item=example_lifecycle_imports) |
+| ```<script mounted>...</script>``` | Script runs after template is mounted to DOM. | [Mounted](https://bayjs.org/examples?tab=lifecycle&item=example_lifecycle_mounted) |
+| ```<script props>...</script>``` | Script that runs when props change. | [Props](https://bayjs.org/examples?tab=lifecycle&item=example_lifecycle_props) |
+| ```<script render>...\</script>``` | Script that renders its return value in place. | [Render](https://bayjs.org/examples?tab=lifecycle&item=example_lifecycle_render) |
+| ```<script slotchange>...</script>``` | Script that runs on slot content changes. | [Slot Change](https://bayjs.org/examples?tab=lifecycle&item=example_lifecycle_slotchange) |
+| ```<script update>...</script>``` | Script that runs on every update. | [Update](https://bayjs.org/examples?tab=lifecycle&item=example_lifecycle_update) |
 
 
 <br />
@@ -200,9 +200,9 @@ A component can be used anywhere in the HTML but inline templates must be in the
 
 | Syntax | Description | Example |
 |--- |--- |--- |
-| bay(); | Used to initialise bay.js if imported module. | [Installation](https://bayjs.org/examples?tab=installation&item=installation_esmodule) |
-| bay.create('component-name', '\<h1>test\</h1>', ["prop-1", "prop-2"]); | Create a component. | [Create](https://bayjs.org/examples?tab=functions&item=example_functions_create) |
-| bay.refresh(); | Refresh bay after a new custom element is dynamically applied to the DOM. | [Refresh](https://bayjs.org/examples?tab=functions&item=example_functions_refresh) |
+| ```bay();``` | Used to initialise bay.js if imported module. | [Installation](https://bayjs.org/examples?tab=installation&item=installation_esmodule) |
+| ```bay.create('component-name', '<h1>test</h1>', ["prop-1", "prop-2"]);``` | Create a component. | [Create](https://bayjs.org/examples?tab=functions&item=example_functions_create) |
+| ```bay.refresh();``` | Refresh bay after a new custom element is dynamically applied to the DOM. | [Refresh](https://bayjs.org/examples?tab=functions&item=example_functions_refresh) |
 
 <br />
 <hr />
@@ -212,10 +212,10 @@ A component can be used anywhere in the HTML but inline templates must be in the
 
 | Syntax | Description | Example |
 |--- |--- |--- |
-| $bay.encode('string'); | Encode/escape a string. | [Encode](https://bayjs.org/examples?tab=functions&item=example_functions_encode) |
-| $bay.decode('string'); | Decode/un-escape a string. | [Decode](https://bayjs.org/examples?tab=functions&item=example_functions_decode) |
-| $bay.emit('custom-event', {key: value}); | Emit a custom event. (across all components) | [Emit](https://bayjs.org/examples?tab=state&item=example_emit) |
-| $bay.on('custom-event', (e) => {console.log(e.detail);}); | Listen for a custom event. (across all components) | [Emit](https://bayjs.org/examples?tab=state&item=example_emit) |
+| ```$bay.encode('string');``` | Encode/escape a string. | [Encode](https://bayjs.org/examples?tab=functions&item=example_functions_encode) |
+| ```$bay.decode('string');``` | Decode/un-escape a string. | [Decode](https://bayjs.org/examples?tab=functions&item=example_functions_decode) |
+| ```$bay.emit('custom-event', {key: value});``` | Emit a custom event. (across all components) | [Emit](https://bayjs.org/examples?tab=state&item=example_emit) |
+| ```$bay.on('custom-event', (e) => {console.log(e.detail);});``` | Listen for a custom event. (across all components) | [Emit](https://bayjs.org/examples?tab=state&item=example_emit) |
 
 <br />
 <hr />
