@@ -189,7 +189,7 @@ A component can be used anywhere in the HTML but inline templates must be in the
 | \<script props>...\</script> | Script that runs when props change. | [Props](https://bayjs.org/examples?tab=lifecycle&item=example_lifecycle_props) |
 | \<script render>...\</script> | Script that renders its return value in place. | [Render](https://bayjs.org/examples?tab=lifecycle&item=example_lifecycle_render) |
 | \<script slotchange>...\</script> | Script that runs on slot content changes. | [Slot Change](https://bayjs.org/examples?tab=lifecycle&item=example_lifecycle_slotchange) |
-| \<script update>...\</script> | Script that runs on every update. | [Slot Change](https://bayjs.org/examples?tab=lifecycle&item=example_lifecycle_slotchange) |
+| \<script update>...\</script> | Script that runs on every update. | [Update](https://bayjs.org/examples?tab=lifecycle&item=example_lifecycle_update) |
 
 
 <br />
