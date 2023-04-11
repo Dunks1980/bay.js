@@ -128,6 +128,7 @@ A component can be used anywhere in the HTML but inline templates must be in the
 | \<slot name="slot1">...\</slot> | Used to define a slot as per standard web-component. | [Slots](https://bayjs.org/examples?tab=tags&item=example_tags_slots) |
 | \<route href="/xxx/var">...\</route> | Route creates the route for the router tag, is intended for a single page application (SPA). | [Route](https://bayjs.org/examples?tab=router&item=component_route) |
 | \<router this="/xxx/:xxx">...\</router> | Router matches the current url, :xxx are used for variables. | [Route](https://bayjs.org/examples?tab=router&item=component_route) |
+| \<include this="https://..."></include> | Include code into template from a URL. | [Include](https://bayjs.org/examples?tab=tags&item=example_tags_include) |
 
 <br />
 <hr />
@@ -173,6 +174,22 @@ A component can be used anywhere in the HTML but inline templates must be in the
 | :my-event="console.log('my custom event')" | Listens for any custom event and triggers code when it detects that event has been triggered from anywhere. | [Custom event](https://bayjs.org/examples?tab=state&item=example_emit) |
 | bind="this.xxx" | Used for 2-way data binding on \<inputs>, \<selects> and \<textareas>. | [Bind](https://bayjs.org/examples?tab=state&item=example_bind) |
 | slot="slot-name" | Used to define a slot as per standard web-component. | [Slots](https://bayjs.org/examples?tab=tags&item=example_tags_slots) |
+
+
+<br />
+<hr />
+<br />
+
+## Script Lifecycle:
+
+| Syntax | Description | Example |
+|--- |--- |--- |
+| \<script imports>...\</script> | Define module import scripts. | [Imports](https://bayjs.org/examples?tab=lifecycle&item=example_lifecycle_imports) |
+| \<script mounted>...\</script> | Script runs after template is mounted to DOM. | [Mounted](https://bayjs.org/examples?tab=lifecycle&item=example_lifecycle_mounted) |
+| \<script props>...\</script> | Script that runs when props change. | [Props](https://bayjs.org/examples?tab=lifecycle&item=example_lifecycle_props) |
+| \<script render>...\</script> | Script that renders its return value in place. | [Render](https://bayjs.org/examples?tab=lifecycle&item=example_lifecycle_render) |
+| \<script slotchange>...\</script> | Script that runs on slot content changes. | [Slot Change](https://bayjs.org/examples?tab=lifecycle&item=example_lifecycle_slotchange) |
+| \<script update>...\</script> | Script that runs on every update. | [Slot Change](https://bayjs.org/examples?tab=lifecycle&item=example_lifecycle_slotchange) |
 
 
 <br />
