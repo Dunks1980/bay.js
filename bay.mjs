@@ -941,7 +941,6 @@ const bay = () => {
                             // ------------------ SCRIPT TAGS ------------------
                             switch (script_type) {
                                 case "imports":
-                                    console.log('sees imports');
                                     import_script += tag_el.innerText.trim() + "\n";
                                     tag_el.remove();
                                     break;

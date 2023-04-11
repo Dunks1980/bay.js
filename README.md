@@ -35,7 +35,7 @@ Bay.js can be used via a script tag or importing as a module.
 ```
 <hr />
 
-#### Module Script tag:
+#### ES Module:
 ```html
 <script type="module" src="main.js"></script>
 ```
@@ -47,7 +47,7 @@ bay();
 You may want to add a version number like this to prevent breaking changes: '//cdn.jsdelivr.net/npm/@dunks1980/bay.js@< VERSION >/bay.min.mjs' the version number is optional and can be acquired from going to the npm package page. Or if using node_modules: './node_modules/@dunks1980/bay.js/bay.min.mjs';
 <hr />
 
-#### Module NPM:
+#### NPM Module:
 ```javascript
 npm i @dunks1980/bay.js
 import bay from '@dunks1980/bay.js';
