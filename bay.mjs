@@ -362,6 +362,8 @@ const bay = (settings) => {
         const tagname = bay.tagName.toLowerCase();
         const start_split = "export default /*HTML*/`";
         let html;
+        template_el = template_el.replaceAll(/<!--[\s\S]*?-->/g, "");
+        template_el = apply_settings(template_el);
         styles_string = "";
         if (template_el.startsWith(start_split)) {
             template_el = template_el.trim();
@@ -374,8 +376,6 @@ const bay = (settings) => {
             template_el = template_el.replaceAll(`<style>${styles_text}</style>`, "");
             styles_string += styles_text;
         }
-        template_el = template_el.replaceAll(/<!--[\s\S]*?-->/g, "");
-        template_el = apply_settings(template_el);
         template_el = '<div id="bay-temporary-compile-element"></div>' + template_el;
         html = doc.parseFromString(template_el, "text/html");
         html.getElementById('bay-temporary-compile-element').remove();
@@ -400,14 +400,14 @@ const bay = (settings) => {
     function create_template_fn(element_tagname, template_el, attributes_array) {
         const doc = new DOMParser();
         const passed_attributes = attributes_array || [];
+        template_el = template_el.replaceAll(/<!--[\s\S]*?-->/g, "");
+        template_el = apply_settings(template_el);
         styles_string = "";
         while (template_el.indexOf("<style>") > -1) {
             const styles_text = template_el.split("<style>")[1].split("</style>")[0];
             template_el = template_el.replaceAll(`<style>${styles_text}</style>`, "");
             styles_string += styles_text;
         }
-        template_el = template_el.replaceAll(/<!--[\s\S]*?-->/g, "");
-        template_el = apply_settings(template_el);
         template_el = '<div id="bay-temporary-compile-element"></div>' + template_el;
         let html = doc.parseFromString(template_el, "text/html");
         html.getElementById('bay-temporary-compile-element').remove();
