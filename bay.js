@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
       step((generator = generator.apply(thisArg, _arguments || [])).next());
   });
 };
-const bay = () => {
+const bay = (settings) => {
   "use strict";
   if (window.bay) {
       return;
@@ -310,6 +310,20 @@ const bay = () => {
       });
   }
   // ------------------------------
+  function apply_settings(template_el) {
+      if (!settings) {
+          return template_el;
+      }
+      else {
+          Object.entries(settings).forEach(([key, value]) => {
+              if (typeof value === 'string') {
+                  let var_for_replace = `%{${key}}`;
+                  template_el = template_el.replaceAll(var_for_replace, value);
+              }
+          });
+      }
+      return template_el;
+  }
   function fetch_includes(html, callback) {
       const incudes = [...html.querySelectorAll("include")];
       incudes.forEach((include) => {
@@ -361,6 +375,7 @@ const bay = () => {
           styles_string += styles_text;
       }
       template_el = template_el.replaceAll(/<!--[\s\S]*?-->/g, "");
+      template_el = apply_settings(template_el);
       template_el = '<div id="bay-temporary-compile-element"></div>' + template_el;
       html = doc.parseFromString(template_el, "text/html");
       html.getElementById('bay-temporary-compile-element').remove();
@@ -392,6 +407,7 @@ const bay = () => {
           styles_string += styles_text;
       }
       template_el = template_el.replaceAll(/<!--[\s\S]*?-->/g, "");
+      template_el = apply_settings(template_el);
       template_el = '<div id="bay-temporary-compile-element"></div>' + template_el;
       let html = doc.parseFromString(template_el, "text/html");
       html.getElementById('bay-temporary-compile-element').remove();

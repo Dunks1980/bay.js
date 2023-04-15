@@ -33,6 +33,7 @@ Bay.js can be used via a script tag or importing as a module.
 ```html
 <script src="//cdn.jsdelivr.net/npm/@dunks1980/bay.js/bay.min.js"></script>
 ```
+[Script tag example](https://bayjs.org/examples?tab=installation&item=installation_scripttag)
 <hr />
 
 #### ES Module:
@@ -44,7 +45,8 @@ Bay.js can be used via a script tag or importing as a module.
 import bay from '//cdn.jsdelivr.net/npm/@dunks1980/bay.js/bay.min.mjs';
 bay();
 ```
-You may want to add a version number like this to prevent breaking changes: '//cdn.jsdelivr.net/npm/@dunks1980/bay.js@< VERSION >/bay.min.mjs' the version number is optional and can be acquired from going to the npm package page. Or if using node_modules: './node_modules/@dunks1980/bay.js/bay.min.mjs';
+You may want to add a version number like this to prevent breaking changes: '//cdn.jsdelivr.net/npm/@dunks1980/bay.js@< VERSION >/bay.min.mjs' the version number is optional and can be acquired from going to the npm package page. Or if using node_modules: './node_modules/@dunks1980/bay.js/bay.min.mjs'; <br>
+[ES Module example](https://bayjs.org/examples?tab=installation&item=installation_esmodule)
 <hr />
 
 #### NPM Module:
@@ -53,6 +55,26 @@ npm i @dunks1980/bay.js
 import bay from '@dunks1980/bay.js';
 bay();
 ```
+[NPM example](https://bayjs.org/examples?tab=installation&item=installation_npm)
+<hr />
+
+#### Settings:
+```javascript
+import bay from ...
+
+bay({
+  text: `<h1 :style="margin: 1rem;">Settings</h1>`,
+});
+```
+```html
+<template id="my-template">
+  %{text} <!-- becomes: --> <h1 :style="margin: 1rem;">Settings</h1> 
+</template>
+
+<my-component bay="#my-template" message="Hello world!"></my-component>
+```
+Settings can only be set with ES or NPM modules, must be strings, and they can only be set once before creating components. Settings variables can be used anywhere within the templates. <br>
+[Settings example](https://bayjs.org/examples?tab=installation&item=installation_settings)
 <hr />
 
 ## Usage
