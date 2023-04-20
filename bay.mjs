@@ -316,7 +316,7 @@ const bay = (settings) => {
         }
         else {
             Object.entries(settings).forEach(([key, value]) => {
-                if (typeof value === 'string') {
+                if (typeof value === "string") {
                     let var_for_replace = `%{${key}}`;
                     template_el = template_el.replaceAll(var_for_replace, value);
                 }
@@ -347,7 +347,7 @@ const bay = (settings) => {
                     callback();
                 })
                     .catch((error) => {
-                    console.error('Error fetching:', error);
+                    console.error("Error fetching:", error);
                 });
             }
         });
@@ -376,9 +376,10 @@ const bay = (settings) => {
             template_el = template_el.replaceAll(`<style>${styles_text}</style>`, "");
             styles_string += styles_text;
         }
-        template_el = '<div id="bay-temporary-compile-element"></div>' + template_el;
+        template_el =
+            '<div id="bay-temporary-compile-element"></div>' + template_el;
         html = doc.parseFromString(template_el, "text/html");
-        html.getElementById('bay-temporary-compile-element').remove();
+        html.getElementById("bay-temporary-compile-element").remove();
         //console.log(html);
         function continue_to_create() {
             if (html && [...html.querySelectorAll("include")].length === 0) {
@@ -408,9 +409,10 @@ const bay = (settings) => {
             template_el = template_el.replaceAll(`<style>${styles_text}</style>`, "");
             styles_string += styles_text;
         }
-        template_el = '<div id="bay-temporary-compile-element"></div>' + template_el;
+        template_el =
+            '<div id="bay-temporary-compile-element"></div>' + template_el;
         let html = doc.parseFromString(template_el, "text/html");
-        html.getElementById('bay-temporary-compile-element').remove();
+        html.getElementById("bay-temporary-compile-element").remove();
         function continue_to_create() {
             if (html && [...html.querySelectorAll("include")].length === 0) {
                 if (!customElements.get(element_tagname.toLowerCase())) {
@@ -526,7 +528,7 @@ const bay = (settings) => {
         dom_diff(templateHTML, shadow_html);
         isEqual_fn([...$(templateHTML, "*")], [...$(shadow_html, "*")]);
     }
-    function add_events(this_ref, elements) {
+    function add_events(this_ref, elements, import_script) {
         if (!elements)
             return;
         this_ref.newEvents = ``;
@@ -536,7 +538,7 @@ const bay = (settings) => {
         });
         if (this_ref.newEvents && this_ref.oldEvents !== this_ref.newEvents) {
             this_ref.oldEvents = this_ref.newEvents;
-            addBlob_event(this_ref, this_ref.newEvents);
+            addBlob_event(this_ref, this_ref.newEvents, import_script);
         }
     }
     // constructed styles
@@ -575,7 +577,7 @@ const bay = (settings) => {
                 if (this_ref.newEvents.indexOf(`${local_name}.events=new Map();\n`) === -1) {
                     this_ref.newEvents += `${local_name}.events=new Map();\n`;
                 }
-                this_ref.newEvents += `${local_name}.events.set('${attr_name}-${i}',function(e){${attr_data}});\n`;
+                this_ref.newEvents += `${local_name}.events.set('${attr_name}-${i}',(e)=>{${attr_data}});\n`;
                 const handle = (e) => {
                     if (window.bay[this_ref.uniqid].events)
                         window.bay[this_ref.uniqid].events.get(`${attr_name}-${i}`)(e);
@@ -603,15 +605,15 @@ const bay = (settings) => {
      * this will create a blob file with all the events on the html (:click)
      * and add, is used to add the js in the attribute to memory
      */
-    function addBlob_event(this_ref, text) {
+    function addBlob_event(this_ref, text, import_script) {
         return __awaiter(this, void 0, void 0, function* () {
             const blobUrl = URL.createObjectURL(new Blob([
-                `export default ()=>{"use strict";\n${this_ref.evt_prefixes.join("")}${text}};`,
+                `${import_script}export default function() {"use strict";\n${this_ref.evt_prefixes.join("")}${text}};`,
             ], {
                 type: "text/javascript",
             }));
             const code = yield import(blobUrl);
-            code.default();
+            code.default.call(window.bay[this_ref.uniqid].proxy);
             URL.revokeObjectURL(blobUrl);
         });
     }
@@ -625,17 +627,17 @@ const bay = (settings) => {
         return __awaiter(this, void 0, void 0, function* () {
             if (blobs.has(element_tagname)) {
                 yield import(blobs.get(element_tagname)).then((code) => {
-                    code.default(this_ref.uniqid, parent_uniqid);
+                    code.default.call(window.bay[this_ref.uniqid].proxy, this_ref.uniqid, parent_uniqid);
                     after_blob_loaded(this_ref);
                 });
             }
             else {
                 const blobUrl = URL.createObjectURL(new Blob([
-                    `${import_script}export default (bay_uniqid,parent_uniqid)=>{"use strict";\n${text}};`,
+                    `${import_script}export default function (bay_uniqid,parent_uniqid) {"use strict";\n${text}};`,
                 ], { type: "text/javascript" }));
                 blobs.set(element_tagname, blobUrl);
                 yield import(blobUrl).then((code) => {
-                    code.default(this_ref.uniqid, parent_uniqid);
+                    code.default.call(window.bay[this_ref.uniqid].proxy, this_ref.uniqid, parent_uniqid);
                     after_blob_loaded(this_ref);
                     if (revoke_blob) {
                         URL.revokeObjectURL(blobUrl);
@@ -1255,14 +1257,8 @@ const bay = (settings) => {
                     select_bind_var,
                 ];
                 const proxy_script = this.prefixes.join("") +
-                    decodeHtml(script)
-                        .replaceAll("this[", `${local_name}.proxy[`)
-                        .replaceAll("this.", `${local_name}.proxy.`)
-                        .replace(/(^[ \t]*\n)/gm, "");
-                const proxy_html = decodeHtml(this.tmp)
-                    .replaceAll("this[", `${local_name}.proxy[`)
-                    .replaceAll("this.", `${local_name}.proxy.`)
-                    .replace(/(^[ \t]*\n)/gm, "");
+                    decodeHtml(script).replace(/(^[ \t]*\n)/gm, "");
+                const proxy_html = decodeHtml(this.tmp).replace(/(^[ \t]*\n)/gm, "");
                 let proxy_css = "";
                 if (styles_text) {
                     proxy_css = decodeHtml(styles_text)
@@ -1270,8 +1266,6 @@ const bay = (settings) => {
                         .replaceAll("'${", "${")
                         .replaceAll(`}"`, `}`)
                         .replaceAll(`}'`, `}`)
-                        .replaceAll("this[", `${local_name}.proxy[`)
-                        .replaceAll("this.", `${local_name}.proxy.`)
                         .replaceAll(`  `, ``)
                         .replaceAll("\n", ``);
                 }
@@ -1328,10 +1322,10 @@ const bay = (settings) => {
                         add_events(this, [
                             ...$(this.inner_el, "*"),
                             ...$(this.shadowRootHTML, "*"),
-                        ]);
+                        ], import_script);
                     }
                     else {
-                        add_events(this, [...$(this.shadowRootHTML, "*")]);
+                        add_events(this, [...$(this.shadowRootHTML, "*")], import_script);
                     }
                     set_styles(this);
                     if (has_select_bind) {

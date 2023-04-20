@@ -4,7 +4,7 @@ declare global {
   }
 }
 
-const bay: any = (settings:any) => {
+const bay: any = (settings: any) => {
   "use strict";
   if (window.bay) {
     return;
@@ -108,8 +108,11 @@ const bay: any = (settings:any) => {
       },
     });
   }
-  
-  function make_weakmap_proxy<K extends object, V>(map: WeakMap<K, V>, callback: Callback): WeakMap<K, V> {
+
+  function make_weakmap_proxy<K extends object, V>(
+    map: WeakMap<K, V>,
+    callback: Callback
+  ): WeakMap<K, V> {
     return new Proxy(map, {
       get(target, key) {
         if (key === "set") {
@@ -128,7 +131,7 @@ const bay: any = (settings:any) => {
       },
     });
   }
-  
+
   function make_set_proxy<V>(set: Set<V>, callback: Callback): Set<V> {
     return new Proxy(set, {
       get(target, key) {
@@ -148,8 +151,11 @@ const bay: any = (settings:any) => {
       },
     });
   }
-  
-  function make_weakset_proxy<V extends object>(set: WeakSet<V>, callback: Callback): WeakSet<V> {
+
+  function make_weakset_proxy<V extends object>(
+    set: WeakSet<V>,
+    callback: Callback
+  ): WeakSet<V> {
     return new Proxy(set, {
       get(target, key) {
         if (key === "add") {
@@ -168,7 +174,7 @@ const bay: any = (settings:any) => {
       },
     });
   }
-  
+
   function make_proxy_object<T extends object>(obj: T, callback: Callback): T {
     return new Proxy(obj, {
       get(target, key: string | symbol) {
@@ -327,7 +333,7 @@ const bay: any = (settings:any) => {
       return template_el;
     } else {
       Object.entries(settings).forEach(([key, value]) => {
-        if (typeof value === 'string') {
+        if (typeof value === "string") {
           let var_for_replace = `%{${key}}`;
           template_el = template_el.replaceAll(var_for_replace, value);
         }
@@ -336,7 +342,7 @@ const bay: any = (settings:any) => {
     return template_el;
   }
 
-  function fetch_includes(html:any, callback:()=>void) {
+  function fetch_includes(html: any, callback: () => void) {
     const incudes = [...html.querySelectorAll("include")];
     incudes.forEach((include) => {
       const src = include.attributes[0];
@@ -359,7 +365,7 @@ const bay: any = (settings:any) => {
             callback();
           })
           .catch((error) => {
-            console.error('Error fetching:', error);
+            console.error("Error fetching:", error);
           });
       }
     });
@@ -389,9 +395,10 @@ const bay: any = (settings:any) => {
       template_el = template_el.replaceAll(`<style>${styles_text}</style>`, "");
       styles_string += styles_text;
     }
-    template_el = '<div id="bay-temporary-compile-element"></div>' + template_el;
+    template_el =
+      '<div id="bay-temporary-compile-element"></div>' + template_el;
     html = doc.parseFromString(template_el, "text/html");
-    html.getElementById('bay-temporary-compile-element').remove();
+    html.getElementById("bay-temporary-compile-element").remove();
     //console.log(html);
     function continue_to_create() {
       if (html && [...html.querySelectorAll("include")].length === 0) {
@@ -432,9 +439,10 @@ const bay: any = (settings:any) => {
       template_el = template_el.replaceAll(`<style>${styles_text}</style>`, "");
       styles_string += styles_text;
     }
-    template_el = '<div id="bay-temporary-compile-element"></div>' + template_el;
-    let html:any = doc.parseFromString(template_el, "text/html");
-    html.getElementById('bay-temporary-compile-element').remove();
+    template_el =
+      '<div id="bay-temporary-compile-element"></div>' + template_el;
+    let html: any = doc.parseFromString(template_el, "text/html");
+    html.getElementById("bay-temporary-compile-element").remove();
     function continue_to_create() {
       if (html && [...html.querySelectorAll("include")].length === 0) {
         if (!customElements.get(element_tagname.toLowerCase())) {
@@ -560,7 +568,7 @@ const bay: any = (settings:any) => {
     isEqual_fn([...$(templateHTML, "*")], [...$(shadow_html, "*")]);
   }
 
-  function add_events(this_ref: any, elements: any) {
+  function add_events(this_ref: any, elements: any, import_script: string) {
     if (!elements) return;
     this_ref.newEvents = ``;
     elements.forEach((el: Element, i: number) => {
@@ -569,7 +577,7 @@ const bay: any = (settings:any) => {
     });
     if (this_ref.newEvents && this_ref.oldEvents !== this_ref.newEvents) {
       this_ref.oldEvents = this_ref.newEvents;
-      addBlob_event(this_ref, this_ref.newEvents);
+      addBlob_event(this_ref, this_ref.newEvents, import_script);
     }
   }
 
@@ -610,7 +618,7 @@ const bay: any = (settings:any) => {
         ) {
           this_ref.newEvents += `${local_name}.events=new Map();\n`;
         }
-        this_ref.newEvents += `${local_name}.events.set('${attr_name}-${i}',function(e){${attr_data}});\n`;
+        this_ref.newEvents += `${local_name}.events.set('${attr_name}-${i}',(e)=>{${attr_data}});\n`;
         const handle = (e: Event) => {
           if (window.bay[this_ref.uniqid].events)
             window.bay[this_ref.uniqid].events.get(`${attr_name}-${i}`)(e);
@@ -646,11 +654,11 @@ const bay: any = (settings:any) => {
    * this will create a blob file with all the events on the html (:click)
    * and add, is used to add the js in the attribute to memory
    */
-  async function addBlob_event(this_ref: any, text: string) {
+  async function addBlob_event(this_ref: any, text: string, import_script: string) {
     const blobUrl = URL.createObjectURL(
       new Blob(
         [
-          `export default ()=>{"use strict";\n${this_ref.evt_prefixes.join(
+          `${import_script}export default function() {"use strict";\n${this_ref.evt_prefixes.join(
             ""
           )}${text}};`,
         ],
@@ -660,7 +668,7 @@ const bay: any = (settings:any) => {
       )
     );
     const code = await import(blobUrl);
-    code.default();
+    code.default.call(window.bay[this_ref.uniqid].proxy);
     URL.revokeObjectURL(blobUrl);
   }
 
@@ -676,25 +684,33 @@ const bay: any = (settings:any) => {
     element_tagname: string,
     text: string,
     parent_uniqid: string,
-    import_script: string,
+    import_script: string
   ) {
     if (blobs.has(element_tagname)) {
       await import(blobs.get(element_tagname)).then((code) => {
-        code.default(this_ref.uniqid, parent_uniqid);
+        code.default.call(
+          window.bay[this_ref.uniqid].proxy,
+          this_ref.uniqid,
+          parent_uniqid
+        );
         after_blob_loaded(this_ref);
       });
     } else {
       const blobUrl = URL.createObjectURL(
         new Blob(
           [
-            `${import_script}export default (bay_uniqid,parent_uniqid)=>{"use strict";\n${text}};`,
+            `${import_script}export default function (bay_uniqid,parent_uniqid) {"use strict";\n${text}};`,
           ],
           { type: "text/javascript" }
         )
       );
       blobs.set(element_tagname, blobUrl);
       await import(blobUrl).then((code) => {
-        code.default(this_ref.uniqid, parent_uniqid);
+        code.default.call(
+          window.bay[this_ref.uniqid].proxy,
+          this_ref.uniqid,
+          parent_uniqid
+        );
         after_blob_loaded(this_ref);
         if (revoke_blob) {
           URL.revokeObjectURL(blobUrl);
@@ -1442,14 +1458,8 @@ const bay: any = (settings:any) => {
 
         const proxy_script =
           this.prefixes.join("") +
-          decodeHtml(script)
-            .replaceAll("this[", `${local_name}.proxy[`)
-            .replaceAll("this.", `${local_name}.proxy.`)
-            .replace(/(^[ \t]*\n)/gm, "");
-        const proxy_html = decodeHtml(this.tmp)
-          .replaceAll("this[", `${local_name}.proxy[`)
-          .replaceAll("this.", `${local_name}.proxy.`)
-          .replace(/(^[ \t]*\n)/gm, "");
+          decodeHtml(script).replace(/(^[ \t]*\n)/gm, "");
+        const proxy_html = decodeHtml(this.tmp).replace(/(^[ \t]*\n)/gm, "");
         let proxy_css = "";
         if (styles_text) {
           proxy_css = decodeHtml(styles_text)
@@ -1457,8 +1467,6 @@ const bay: any = (settings:any) => {
             .replaceAll("'${", "${")
             .replaceAll(`}"`, `}`)
             .replaceAll(`}'`, `}`)
-            .replaceAll("this[", `${local_name}.proxy[`)
-            .replaceAll("this.", `${local_name}.proxy.`)
             .replaceAll(`  `, ``)
             .replaceAll("\n", ``);
         }
@@ -1526,9 +1534,9 @@ const bay: any = (settings:any) => {
             add_events(this, [
               ...$(this.inner_el, "*"),
               ...$(this.shadowRootHTML, "*"),
-            ]);
+            ], import_script);
           } else {
-            add_events(this, [...$(this.shadowRootHTML, "*")]);
+            add_events(this, [...$(this.shadowRootHTML, "*")], import_script);
           }
 
           set_styles(this);

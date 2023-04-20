@@ -29,7 +29,6 @@ export default /*HTML*/`
       display: \${this.display};
       transition: all \${this.duration} \${this.curve};\`;
   }
-  this.transitionCounter = 0;
   this.transition_start = () => {
     this.transitionCounter++;
   }
@@ -53,22 +52,7 @@ export default /*HTML*/`
       $parent[this.closed]();
     }
   }
-  this.open = this.open || false;
-  this.closed = this.closed || false;
-  this.bg = '';
-  this['bg-color'] = this['bg-color'] || 'rgba(0,0,0,.5)';
-  this.position = this.position || 'center';
-  this.translateX = pos_fn().close_x || '0%';
-  this.translateY = pos_fn().close_y || '0%';
-  this.scale = pos_fn().close_scale || '1';
-  this.opacity = pos_fn().close_opacity || '1';
-  this.left = pos_fn().left || '0%';
-  this.top = pos_fn().top || '0%';
-  this.display = 'none';
-  this.displaybg = 'none';
-  this.duration = this.duration || '.25s';
-  this.curve = this.curve || 'ease';
-  function pos_fn() {
+  const pos_fn = () => {
     let pos_obj = {};
     switch (this.position) {
       case 'left':
@@ -137,7 +121,22 @@ export default /*HTML*/`
     this.scale = el_scale;
     this.opacity = el_opacity;
   };
-
+  this.transitionCounter = 0;
+  this.open = this.open || false;
+  this.closed = this.closed || false;
+  this.bg = '';
+  this['bg-color'] = this['bg-color'] || 'rgba(0,0,0,.5)';
+  this.position = this.position || 'center';
+  this.translateX = pos_fn().close_x || '0%';
+  this.translateY = pos_fn().close_y || '0%';
+  this.scale = pos_fn().close_scale || '1';
+  this.opacity = pos_fn().close_opacity || '1';
+  this.left = pos_fn().left || '0%';
+  this.top = pos_fn().top || '0%';
+  this.display = 'none';
+  this.displaybg = 'none';
+  this.duration = this.duration || '.25s';
+  this.curve = this.curve || 'ease';
   this.refresh = 0;
 </script>
 <script props>
