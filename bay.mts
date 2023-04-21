@@ -14,8 +14,6 @@ const bay: any = (settings: any) => {
   const $ = (el: HTMLElement | Element | Document, selector: string) =>
     el.querySelectorAll(selector);
   const local_name = "$bay";
-  const store_name = "$global";
-  const route_name = "$route";
   const element_name = "$el";
   const data_attr = `data-bay-`;
   let file_name = "";
@@ -568,7 +566,12 @@ const bay: any = (settings: any) => {
     isEqual_fn([...$(templateHTML, "*")], [...$(shadow_html, "*")]);
   }
 
-  function add_events(this_ref: any, elements: any, import_script: string) {
+  function add_events(
+    this_ref: any,
+    elements: any,
+    import_script: string,
+    parent_uniqid: string
+  ) {
     if (!elements) return;
     this_ref.newEvents = ``;
     elements.forEach((el: Element, i: number) => {
@@ -577,7 +580,7 @@ const bay: any = (settings: any) => {
     });
     if (this_ref.newEvents && this_ref.oldEvents !== this_ref.newEvents) {
       this_ref.oldEvents = this_ref.newEvents;
-      addBlob_event(this_ref, this_ref.newEvents, import_script);
+      addBlob_event(this_ref, this_ref.newEvents, import_script, parent_uniqid);
     }
   }
 
@@ -654,13 +657,16 @@ const bay: any = (settings: any) => {
    * this will create a blob file with all the events on the html (:click)
    * and add, is used to add the js in the attribute to memory
    */
-  async function addBlob_event(this_ref: any, text: string, import_script: string) {
+  async function addBlob_event(
+    this_ref: any,
+    text: string,
+    import_script: string,
+    parent_uniqid: string
+  ) {
     const blobUrl = URL.createObjectURL(
       new Blob(
         [
-          `${import_script}export default function() {"use strict";\n${this_ref.evt_prefixes.join(
-            ""
-          )}${text}};`,
+          `${import_script}export default function($bay,$global,$route,$el,$parent,$bay_select_bind){"use strict";\n${text}};`,
         ],
         {
           type: "text/javascript",
@@ -668,7 +674,15 @@ const bay: any = (settings: any) => {
       )
     );
     const code = await import(blobUrl);
-    code.default.call(window.bay[this_ref.uniqid].proxy);
+    code.default.call(
+      window.bay[this_ref.uniqid].proxy, // this
+      window.bay[this_ref.uniqid], // $bay
+      window.bay.global, // $global
+      window.bay.route, // $route
+      window.bay[this_ref.uniqid]["$el"], // $el
+      window.bay[parent_uniqid] ? window.bay[parent_uniqid].proxy : null, // $parent
+      window.bay.apply_select // $bay_select_bind
+    );
     URL.revokeObjectURL(blobUrl);
   }
 
@@ -689,9 +703,13 @@ const bay: any = (settings: any) => {
     if (blobs.has(element_tagname)) {
       await import(blobs.get(element_tagname)).then((code) => {
         code.default.call(
-          window.bay[this_ref.uniqid].proxy,
-          this_ref.uniqid,
-          parent_uniqid
+          window.bay[this_ref.uniqid].proxy, // this
+          this_ref.uniqid, // $bay_uniqid
+          window.bay[this_ref.uniqid], // $bay
+          window.bay.global, // $global
+          window.bay.route, // $route
+          window.bay[this_ref.uniqid]["$el"], // $el
+          window.bay[parent_uniqid] ? window.bay[parent_uniqid].proxy : null // $parent
         );
         after_blob_loaded(this_ref);
       });
@@ -699,7 +717,7 @@ const bay: any = (settings: any) => {
       const blobUrl = URL.createObjectURL(
         new Blob(
           [
-            `${import_script}export default function (bay_uniqid,parent_uniqid) {"use strict";\n${text}};`,
+            `${import_script}export default function ($bay_uniqid,$bay,$global,$route,$el,$parent) {"use strict";\n${text}};`,
           ],
           { type: "text/javascript" }
         )
@@ -707,9 +725,13 @@ const bay: any = (settings: any) => {
       blobs.set(element_tagname, blobUrl);
       await import(blobUrl).then((code) => {
         code.default.call(
-          window.bay[this_ref.uniqid].proxy,
-          this_ref.uniqid,
-          parent_uniqid
+          window.bay[this_ref.uniqid].proxy, // this
+          this_ref.uniqid, // $bay_uniqid
+          window.bay[this_ref.uniqid], // $bay
+          window.bay.global, // $global
+          window.bay.route, // $route
+          window.bay[this_ref.uniqid]["$el"], // $el
+          window.bay[parent_uniqid] ? window.bay[parent_uniqid].proxy : null // $parent
         );
         after_blob_loaded(this_ref);
         if (revoke_blob) {
@@ -1250,7 +1272,6 @@ const bay: any = (settings: any) => {
       dsd: Boolean = false;
       debouncer: Function | any = false;
       prefixes: string[] = [];
-      evt_prefixes: string[] = [];
       inner_el: any;
       shadowDom: any;
       shadowRootHTML: any;
@@ -1263,6 +1284,7 @@ const bay: any = (settings: any) => {
       newEvents: string | any;
       oldStyles: string | any;
       eventHandlers = new Map();
+      parent_uniqid: string | any;
       constructor() {
         super();
 
@@ -1330,20 +1352,10 @@ const bay: any = (settings: any) => {
         // for getting the component's root element ======================
         this.shadowDom.uniqid = this.uniqid;
         const rootNode: any = this.getRootNode();
-        let parent_var = ``;
-        let parent_event_var = ``;
-        let parent_uniqid = ``;
+        this.parent_uniqid = ``;
         if (rootNode.host) {
-          parent_var = `const $parent=window.bay[parent_uniqid]['proxy'];\n`;
-          parent_event_var = `const $parent=window.bay['${rootNode.host.uniqid}']['proxy'];\n`;
-          parent_uniqid = rootNode.host.uniqid;
+          this.parent_uniqid = rootNode.host.uniqid;
         }
-
-        const local_var = `const ${local_name}=window.bay[bay_uniqid];\n`;
-        const local_evevt_var = `const ${local_name}=window.bay['${this.uniqid}'];\n`;
-        const global_var = `const ${store_name}=window.bay.global;\n`;
-        const route_var = `const ${route_name}=window.bay.route;\n`;
-        const element_var = `const ${element_name}=${local_name}['${element_name}'];\n`;
 
         // add update function ===========================================
         this.update_evt = new CustomEvent(
@@ -1351,27 +1363,23 @@ const bay: any = (settings: any) => {
         );
         let update_func = ``;
         if (this.tmp.indexOf(`/*props updates*/`) > -1) {
-          update_func = `let $props;\nwindow.addEventListener(\`bay_local_update_event_\${bay_uniqid}\`,()=>$props());\n`;
+          update_func = `let $props;\nwindow.addEventListener(\`bay_local_update_event_\${$bay_uniqid}\`,()=>$props());\n`;
         }
 
         // add slotchange function =======================================
         let slotchange_func = ``;
         if (this.tmp.indexOf(`/*slotchange updates*/`) > -1) {
-          update_func = `let $slotchange=()=>{};\nlet $details={'element':'','changed':''};\nwindow.addEventListener(\`bay_slotchange_event_\${bay_uniqid}\`,(e)=>$slotchange(e));\n`;
+          update_func = `let $slotchange=()=>{};\nlet $details={'element':'','changed':''};\nwindow.addEventListener(\`bay_slotchange_event_\${$bay_uniqid}\`,(e)=>$slotchange(e));\n`;
         }
 
         // add decode & encode functions =================================
-        window.bay.decode = decodeHtml;
-        const decode_var = `$bay.decode=window.bay.decode;\n`;
-
-        window.bay.encode = escapeHTML;
-        const encode_var = `$bay.encode=window.bay.encode;\n`;
+        window.bay[this.uniqid].decode = decodeHtml;
+        window.bay[this.uniqid].encode = escapeHTML;
 
         // add update route function =====================================
         window.bay.update_route = update_route;
-        let route_update_var = ``;
         if (has_route) {
-          route_update_var = `$bay.update_route=window.bay.update_route;\n`;
+          window.bay[this.uniqid].update_route=window.bay.update_route;
         }
 
         // add slotchange event ==========================================
@@ -1414,12 +1422,6 @@ const bay: any = (settings: any) => {
           inner_html_fn = `\n$bay.inner_html=()=>{return $bay_inner_html;};`;
         }
 
-        // add select bind ==============================================
-        let select_bind_var = ``;
-        if (has_select_bind) {
-          select_bind_var = `const $bay_select_bind=window.bay.apply_select;\n`;
-        }
-
         // add on ==========================================
         let on_var = ``;
         if (has_on) {
@@ -1427,33 +1429,15 @@ const bay: any = (settings: any) => {
         }
 
         // add emit ==========================================
-        let emit_var = `$bay.emit=window.bay.emit;\n$bay.receive=window.bay.receive;\n${on_var}function bay_receive_fn(e){$bay.receive($bay,$el,e.detail.name,e.detail.data);}\nwindow.removeEventListener('bay_emit',bay_receive_fn);\nwindow.addEventListener('bay_emit',bay_receive_fn);\n`;
+        window.bay[this.uniqid].emit = window.bay.emit;
+        window.bay[this.uniqid].receive = window.bay.receive;
+        let emit_var = `${on_var}function bay_receive_fn(e){$bay.receive($bay,$el,e.detail.name,e.detail.data);}\nwindow.removeEventListener('bay_emit',bay_receive_fn);\nwindow.addEventListener('bay_emit',bay_receive_fn);\n`;
 
         this.prefixes = [
-          local_var,
-          global_var,
-          route_var,
-          element_var,
-          parent_var,
           inner_html_var,
-          encode_var,
-          decode_var,
           update_func,
           slotchange_func,
-          route_update_var,
           emit_var,
-        ];
-
-        this.evt_prefixes = [
-          local_evevt_var,
-          global_var,
-          route_var,
-          element_var,
-          parent_event_var,
-          encode_var,
-          decode_var,
-          route_update_var,
-          select_bind_var,
         ];
 
         const proxy_script =
@@ -1476,7 +1460,7 @@ const bay: any = (settings: any) => {
           revoke_blob,
           element_tagname,
           `${proxy_script}\n${local_name}.template=()=>{${inner_html_reset}return \`${proxy_html}\`;};\n${local_name}.styles=()=>{return \`${proxy_css}\`;};${inner_html_fn}`,
-          parent_uniqid,
+          this.parent_uniqid,
           import_script
         );
 
@@ -1531,12 +1515,19 @@ const bay: any = (settings: any) => {
 
           // Events and Styles
           if (has_inner_html) {
-            add_events(this, [
-              ...$(this.inner_el, "*"),
-              ...$(this.shadowRootHTML, "*"),
-            ], import_script);
+            add_events(
+              this,
+              [...$(this.inner_el, "*"), ...$(this.shadowRootHTML, "*")],
+              import_script,
+              this.parent_uniqid
+            );
           } else {
-            add_events(this, [...$(this.shadowRootHTML, "*")], import_script);
+            add_events(
+              this,
+              [...$(this.shadowRootHTML, "*")],
+              import_script,
+              this.parent_uniqid
+            );
           }
 
           set_styles(this);
