@@ -6,11 +6,8 @@ declare global {
 
 const bay: any = (settings: any) => {
   "use strict";
-  if (window.bay) {
-    return;
-  } else {
-    window.bay = {};
-  }
+  if (window.bay) return;
+  window.bay = {};
   const $ = (el: HTMLElement | Element | Document, selector: string) =>
     el.querySelectorAll(selector);
   const local_name = "$bay";
@@ -374,9 +371,8 @@ const bay: any = (settings: any) => {
    * @param {HTMLElement} template_el template element
    * @param {HTMLElement} bay bay custom element tag
    */
-  function modify_template(template_el: string, bay: Element) {
+  function modify_template(template_el: string, bay: Element, tagname: string) {
     const doc = new DOMParser();
-    const tagname = bay.tagName.toLowerCase();
     const start_split = "export default /*HTML*/`";
     let html: any;
     template_el = template_el.replaceAll(/<!--[\s\S]*?-->/g, "");
@@ -470,12 +466,17 @@ const bay: any = (settings: any) => {
   function fetch_component(bay: Element) {
     try {
       const location: string = bay.getAttribute("bay") || "";
-      if (location.substring(0, 4) === "dsd-") {
+      let tag_name = bay.tagName.toLowerCase();
+      if (tag_name === 'template') {
+        modify_template(decodeHtml(bay.innerHTML), bay, location);
+        bay.remove();
+      } else if (location.substring(0, 4) === "dsd-") {
         file_name = location;
         if (!bay.shadowRoot) {
-          modify_template(decodeHtml($(bay, "template")[0].innerHTML), bay);
+          modify_template(decodeHtml($(bay, "template")[0].innerHTML), bay, tag_name);
+          $(bay, "template")[0].remove();
         } else {
-          modify_template(decodeHtml(bay.shadowRoot.innerHTML), bay);
+          modify_template(decodeHtml(bay.shadowRoot.innerHTML), bay, tag_name);
         }
       } else if (location.substring(0, 1) === "#") {
         file_name = location;
@@ -484,12 +485,13 @@ const bay: any = (settings: any) => {
           console.error(`Bay cannot find "${location}" selector.`);
           return;
         }
-        modify_template(template_el.innerHTML, bay);
+        modify_template(template_el.innerHTML, bay, tag_name);
+        template_el.remove();
       } else {
         fetch(location)
           .then((res) => res.text())
           .then((html) => {
-            modify_template(html, bay);
+            modify_template(html, bay, tag_name);
           })
           .catch((error) => {
             console.error("Error:", error);
@@ -1379,7 +1381,7 @@ const bay: any = (settings: any) => {
         // add update route function =====================================
         window.bay.update_route = update_route;
         if (has_route) {
-          window.bay[this.uniqid].update_route=window.bay.update_route;
+          window.bay[this.uniqid].update_route = window.bay.update_route;
         }
 
         // add slotchange event ==========================================

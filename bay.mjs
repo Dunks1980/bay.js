@@ -9,12 +9,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 const bay = (settings) => {
     "use strict";
-    if (window.bay) {
+    if (window.bay)
         return;
-    }
-    else {
-        window.bay = {};
-    }
+    window.bay = {};
     const $ = (el, selector) => el.querySelectorAll(selector);
     const local_name = "$bay";
     const element_name = "$el";
@@ -355,9 +352,8 @@ const bay = (settings) => {
      * @param {HTMLElement} template_el template element
      * @param {HTMLElement} bay bay custom element tag
      */
-    function modify_template(template_el, bay) {
+    function modify_template(template_el, bay, tagname) {
         const doc = new DOMParser();
-        const tagname = bay.tagName.toLowerCase();
         const start_split = "export default /*HTML*/`";
         let html;
         template_el = template_el.replaceAll(/<!--[\s\S]*?-->/g, "");
@@ -433,13 +429,19 @@ const bay = (settings) => {
     function fetch_component(bay) {
         try {
             const location = bay.getAttribute("bay") || "";
-            if (location.substring(0, 4) === "dsd-") {
+            let tag_name = bay.tagName.toLowerCase();
+            if (tag_name === 'template') {
+                modify_template(decodeHtml(bay.innerHTML), bay, location);
+                bay.remove();
+            }
+            else if (location.substring(0, 4) === "dsd-") {
                 file_name = location;
                 if (!bay.shadowRoot) {
-                    modify_template(decodeHtml($(bay, "template")[0].innerHTML), bay);
+                    modify_template(decodeHtml($(bay, "template")[0].innerHTML), bay, tag_name);
+                    $(bay, "template")[0].remove();
                 }
                 else {
-                    modify_template(decodeHtml(bay.shadowRoot.innerHTML), bay);
+                    modify_template(decodeHtml(bay.shadowRoot.innerHTML), bay, tag_name);
                 }
             }
             else if (location.substring(0, 1) === "#") {
@@ -449,13 +451,14 @@ const bay = (settings) => {
                     console.error(`Bay cannot find "${location}" selector.`);
                     return;
                 }
-                modify_template(template_el.innerHTML, bay);
+                modify_template(template_el.innerHTML, bay, tag_name);
+                template_el.remove();
             }
             else {
                 fetch(location)
                     .then((res) => res.text())
                     .then((html) => {
-                    modify_template(html, bay);
+                    modify_template(html, bay, tag_name);
                 })
                     .catch((error) => {
                     console.error("Error:", error);

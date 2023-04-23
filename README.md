@@ -2,14 +2,20 @@
 [![npm version](https://img.shields.io/npm/v/@dunks1980/bay.js)](https://npmjs.org/package/@dunks1980/bay.js) 
 [![Known Vulnerabilities](https://snyk.io/test/github/dunks1980/bay.js/badge.svg?targetFile=package.json)](https://snyk.io/test/github/dunks1980/bay.js?targetFile=package.json) 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://raw.githubusercontent.com/Dunks1980/bay.js/main/LICENSE)
-<br />
-<hr />
+[![](https://data.jsdelivr.com/v1/package/npm/@dunks1980/bay.js/badge)](https://www.jsdelivr.com/package/npm/@dunks1980/bay.js)
+
+<br/>
+<hr/>
+<br/>
 
 
 ## What is bay.js?
 Bay.js is a frontend library designed to facilitate the creation of reusable web-components, as well as to add state and interactivity to HTML.
 To see it in action, you can visit [Bayjs.org](https://bayjs.org/examples/index.html) and explore its examples.
-<hr />
+
+<br/>
+<hr/>
+<br/>
 
 ## Key features
 
@@ -23,7 +29,10 @@ To see it in action, you can visit [Bayjs.org](https://bayjs.org/examples/index.
 - Utilize `<template>` in the DOM as a template source.
 - Component creation from JavaScript strings for dynamic customization.
 - User-friendly syntax for effortless development.
-<hr />
+  
+<br/>
+<hr/>
+<br/>
 
 ## Installation
 
@@ -34,20 +43,29 @@ Bay.js can be used via a script tag or importing as a module.
 <script src="//cdn.jsdelivr.net/npm/@dunks1980/bay.js/bay.min.js"></script>
 ```
 [Script tag example](https://bayjs.org/examples?tab=installation&item=installation_scripttag)
-<hr />
+
+<br/>
+<hr/>
+<br/>
 
 #### ES Module:
+
 ```html
 <script type="module" src="main.js"></script>
 ```
+
 ```javascript
 // In main.js
 import bay from '//cdn.jsdelivr.net/npm/@dunks1980/bay.js/bay.min.mjs';
 bay();
 ```
+
 You may want to add a version number like this to prevent breaking changes: '//cdn.jsdelivr.net/npm/@dunks1980/bay.js@< VERSION >/bay.min.mjs' the version number is optional and can be acquired from going to the npm package page. Or if using node_modules: './node_modules/@dunks1980/bay.js/bay.min.mjs'; <br>
 [ES Module example](https://bayjs.org/examples?tab=installation&item=installation_esmodule)
-<hr />
+
+<br/>
+<hr/>
+<br/>
 
 #### NPM Module:
 ```javascript
@@ -56,7 +74,10 @@ import bay from '@dunks1980/bay.js';
 bay();
 ```
 [NPM example](https://bayjs.org/examples?tab=installation&item=installation_npm)
-<hr />
+
+<br/>
+<hr/>
+<br/>
 
 #### Settings:
 ```javascript
@@ -75,13 +96,29 @@ bay({
 ```
 Settings can only be set with ES or NPM modules, must be strings, and they can only be set once before creating components. Settings variables can be used anywhere within the templates. <br>
 [Settings example](https://bayjs.org/examples?tab=installation&item=installation_settings)
-<hr />
+
+<br/>
+<hr/>
+<br/>
 
 ## Usage
 
-There are 3 ways to define a component in bay.js:<br> 
+There are a few ways to define a component in bay.js:<br> 
 
-### 1. Template in the DOM. 
+### 1. Template with bay attribute in the DOM. 
+In your html create an inline template and apply bay attribute and any other props:<br>
+```html
+<template bay="my-component-name" message>
+  <h1>${this.message}</h1>
+</template>
+
+<my-component-name message="Hello world!"></my-component-name>
+```
+<br/>
+<hr/>
+<br/>
+
+### 2. Template with id in the DOM. 
 In your html create an inline template and supply bay.js the templates id:<br>
 ```html
 <template id="my-template">
@@ -90,9 +127,11 @@ In your html create an inline template and supply bay.js the templates id:<br>
 
 <my-component bay="#my-template" message="Hello world!"></my-component>
 ```
+<br/>
 <hr/>
+<br/>
 
-### 2. Template in a file.
+### 3. Template in a file.
 Create a file and supply bay.js the url (don't wrap file contents in template). The file extension can be anything you like as long as its contents are in the HTML format:<br>
 
 ```html
@@ -105,9 +144,11 @@ Create a file and supply bay.js the url (don't wrap file contents in template). 
 <!-- in component file -->
 <h1>${this.message}</h1>
 ```
+<br/>
 <hr/>
+<br/>
 
-### 3. Create a template with JS.
+### 4. Create a template with JS.
 Pass bay.js the imported template:<br>
 ```js
 import my_component from "./../component_imports/my_component.html?raw";
@@ -127,6 +168,26 @@ bay.create("my-component", `<h1>\${this.message}</h1>`, ["message"]);
 <!-- Anywhere in the HTML including other components -->
 <my-component message="Hello world!"></my-component>
 ```
+<br/>
+<hr/>
+<br/>
+
+### 5. Using bay-hydrate. 
+In your html create an inline element with a template inside, then add bay-hydrate to the containing element:<br>
+```html
+<div bay-hydrate>
+  <h1>This will be replaced once bay creates the component.</h1>
+  <template>
+    <h1>${this.message}</h1>
+    <script>this.message = 'Hello World!'</script>
+  </template>
+</div>
+```
+Props will not be available using this method, but you can use settings. Content is rendered to the main DOM so styles will not be encapsulated and ```<style>``` tags defined within the template will have no effect.<br>
+
+<br />
+<hr/>
+<br />
 
 A component can be used anywhere in the HTML but inline templates must be in the body of the document. "my-component" can be anything you like but it must have a dash in the name per the custom element spec.<br>
 
@@ -177,11 +238,11 @@ A component can be used anywhere in the HTML but inline templates must be in the
 
 | Syntax | Description | Example |
 |--- |--- |--- |
-| ```bay="#my-template"``` <br> ```bay="/my-template.html"``` <br> ```bay="dsd"``` | The template to use, can be a templates id or a path to a file, dsd is experimental. | [DSD](https://bayjs.org/examples?tab=template&item=example_template_dsd) |
+| ```bay="#my-template"``` <br> ```bay="/my-template.html"``` <br> ```bay="dsd"``` | When defined on the ```<custom-element bay="...">``` tag it will be the template to use, can be a templates id or a path to a file, dsd is experimental. | [Using id](https://bayjs.org/examples?tab=examples&item=example_install) <br> [Using file](https://bayjs.org/examples?tab=template&item=example_template_files) <br> [DSD](https://bayjs.org/examples?tab=template&item=example_template_dsd) |
+| ```bay="my-template-name"``` | When defined on a ```<template bay="custom-element">``` it will be the ```<custom-element>``` tag name. | [Using name](https://bayjs.org/examples?tab=examples&item=example_install) |
 | ```fouc``` | Used to hide the Light DOM within the component until it is fully loaded. | [FOUC](https://bayjs.org/examples?tab=attributes&item=example_attrs_fouc) |
 | ```inner-html="#render-target"``` | Used to tell the component where it should render ```<inner-html>...</inner-html>``` content. | [Inner HTML](https://bayjs.org/examples?tab=tags&item=example_tags_innerhtml_render) |
 | ```xxx="value"``` | Any other attributes are passed into the component and become props that can be accessed via ```this.xxx```, xxx being the attribute name. | [Props](https://bayjs.org/examples?tab=state&item=example_props) |
-
 
 <br />
 <hr />
