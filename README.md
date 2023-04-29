@@ -257,6 +257,8 @@ A component can be used anywhere in the HTML but inline templates must be in the
 | ```:my-event="console.log('my custom event')"``` | Listens for any custom event and triggers code when it detects that event has been triggered from anywhere. | [Custom event](https://bayjs.org/examples?tab=state&item=example_emit) |
 | ```bind="this.xxx"``` | Used for 2-way data binding on ```<inputs>```, ```<selects>``` and ```<textareas>```. | [Bind](https://bayjs.org/examples?tab=state&item=example_bind) |
 | ```slot="slot-name"``` | Used to define a slot as per standard web-component. | [Slots](https://bayjs.org/examples?tab=tags&item=example_tags_slots) |
+| ```ref="xxx"``` | ```$ref('xxx').onclick = (e) => {...``` <br> See Internal Functions below for usage. | [Ref](https://bayjs.org/examples?tab=attributes&item=example_attrs_ref) |
+| ```this-attribute="xxx"``` | Will replace this-attribute="xxx" with whats returned from its attribute value. | [This Attribute](https://bayjs.org/examples?tab=attributes&item=example_attrs_this_attribute) |
 
 
 <br />
@@ -299,6 +301,7 @@ A component can be used anywhere in the HTML but inline templates must be in the
 | ```$bay.decode('string');``` | Decode/un-escape a string. | [Decode](https://bayjs.org/examples?tab=functions&item=example_functions_decode) |
 | ```$bay.emit('custom-event', {key: value});``` | Emit a custom event. (across all components) | [Emit](https://bayjs.org/examples?tab=state&item=example_emit) |
 | ```$bay.on('custom-event', (e) => {console.log(e.detail);});``` | Listen for a custom event. (across all components) | [Emit](https://bayjs.org/examples?tab=state&item=example_emit) |
+| ```$ref('xxx').onclick = (e) => {...``` <br> ```$ref('xxx').forEach((el) => {...``` | Gets elements with the attribute ref="xxx". Can only be used in mounted script. | [Ref](https://bayjs.org/examples?tab=attributes&item=example_attrs_ref) |
 
 <br />
 <hr />
