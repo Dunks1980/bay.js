@@ -13,6 +13,7 @@ const bay: any = (settings: any) => {
   const local_name = "$bay";
   const element_name = "$el";
   const data_attr = `data-bay-`;
+  const replace_attr_name = "this-attribute";
   let file_name = "";
   let to_fetch: string[] = [];
   let already_fetched: string[] = [];
@@ -72,9 +73,9 @@ const bay: any = (settings: any) => {
 
   function receive($bay: any, $el: any, name: string, data: any) {
     const els = [
-      ...$($bay, `[data-bay-${name}]`),
-      ...$($el, `[data-bay-${name}]`),
-      ...$(document, `[data-bay-${name}]`),
+      ...$($bay, `[${data_attr}${name}]`),
+      ...$($el, `[${data_attr}${name}]`),
+      ...$(document, `[${data_attr}${name}]`),
     ];
     els.forEach((el) => {
       el.dispatchEvent(new CustomEvent(name, { detail: { name, data } }));
@@ -467,13 +468,17 @@ const bay: any = (settings: any) => {
     try {
       const location: string = bay.getAttribute("bay") || "";
       let tag_name = bay.tagName.toLowerCase();
-      if (tag_name === 'template') {
+      if (tag_name === "template") {
         modify_template(decodeHtml(bay.innerHTML), bay, location);
         bay.remove();
       } else if (location.substring(0, 4) === "dsd-") {
         file_name = location;
         if (!bay.shadowRoot) {
-          modify_template(decodeHtml($(bay, "template")[0].innerHTML), bay, tag_name);
+          modify_template(
+            decodeHtml($(bay, "template")[0].innerHTML),
+            bay,
+            tag_name
+          );
           $(bay, "template")[0].remove();
         } else {
           modify_template(decodeHtml(bay.shadowRoot.innerHTML), bay, tag_name);
@@ -607,6 +612,13 @@ const bay: any = (settings: any) => {
 
   function apply_events(this_ref: any, attr: any, el: any, i: number) {
     let attr_name = attr.name;
+    if (attr_name.startsWith(`:`)) {
+      let attr_name_split = attr_name.split(":")[1];
+      attr_name = attr_name.replace(
+        `:${attr_name_split}`,
+        `${data_attr}${attr_name_split}`
+      );
+    }
     if (attr_name.indexOf(data_attr) > -1) {
       let custom_event = attr_name.indexOf(`-custom-`) > -1;
       if (custom_event) {
@@ -625,7 +637,10 @@ const bay: any = (settings: any) => {
         }
         this_ref.newEvents += `${local_name}.events.set('${attr_name}-${i}',(e)=>{${attr_data}});\n`;
         const handle = (e: Event) => {
-          if (window.bay[this_ref.uniqid].events)
+          if (
+            window.bay[this_ref.uniqid].events &&
+            window.bay[this_ref.uniqid].events.has(`${attr_name}-${i}`)
+          )
             window.bay[this_ref.uniqid].events.get(`${attr_name}-${i}`)(e);
         };
         const handler_id = `${this_ref.uniqid}${i}${attr_name}`;
@@ -668,7 +683,7 @@ const bay: any = (settings: any) => {
     const blobUrl = URL.createObjectURL(
       new Blob(
         [
-          `${import_script}export default function($bay,$global,$route,$el,$parent,$bay_select_bind){"use strict";\n${text}};`,
+          `${import_script}export default function($bay,$global,$route,$el,$parent,$bay_select_bind,$ref){"use strict";\n${text}};`,
         ],
         {
           type: "text/javascript",
@@ -683,7 +698,8 @@ const bay: any = (settings: any) => {
       window.bay.route, // $route
       window.bay[this_ref.uniqid]["$el"], // $el
       window.bay[parent_uniqid] ? window.bay[parent_uniqid].proxy : null, // $parent
-      window.bay.apply_select // $bay_select_bind
+      window.bay.apply_select, // $bay_select_bind
+      window.bay[this_ref.uniqid].refs // $ref
     );
     URL.revokeObjectURL(blobUrl);
   }
@@ -694,6 +710,7 @@ const bay: any = (settings: any) => {
    * the template function will return the html and the styles function will return the styles
    * this is used by the diff function to compare the old and new html and styles with updated data
    */
+
   async function addBlob(
     this_ref: any,
     revoke_blob: boolean,
@@ -711,7 +728,8 @@ const bay: any = (settings: any) => {
           window.bay.global, // $global
           window.bay.route, // $route
           window.bay[this_ref.uniqid]["$el"], // $el
-          window.bay[parent_uniqid] ? window.bay[parent_uniqid].proxy : null // $parent
+          window.bay[parent_uniqid] ? window.bay[parent_uniqid].proxy : null, // $parent
+          window.bay[this_ref.uniqid].refs // $ref
         );
         after_blob_loaded(this_ref);
       });
@@ -719,7 +737,7 @@ const bay: any = (settings: any) => {
       const blobUrl = URL.createObjectURL(
         new Blob(
           [
-            `${import_script}export default function ($bay_uniqid,$bay,$global,$route,$el,$parent) {"use strict";\n${text}};`,
+            `${import_script}export default function ($bay_uniqid,$bay,$global,$route,$el,$parent,$ref) {"use strict";\n${text}};`,
           ],
           { type: "text/javascript" }
         )
@@ -733,7 +751,8 @@ const bay: any = (settings: any) => {
           window.bay.global, // $global
           window.bay.route, // $route
           window.bay[this_ref.uniqid]["$el"], // $el
-          window.bay[parent_uniqid] ? window.bay[parent_uniqid].proxy : null // $parent
+          window.bay[parent_uniqid] ? window.bay[parent_uniqid].proxy : null, // $parent
+          window.bay[this_ref.uniqid].refs // $ref
         );
         after_blob_loaded(this_ref);
         if (revoke_blob) {
@@ -913,6 +932,7 @@ const bay: any = (settings: any) => {
    * @param {String} element_tagname custom element tagname
    * @param {Array} attrs array of attributes to be added to the custom element
    * @param {String} styles_text css styles
+   * @param {Boolean} revoke_blob revoke blob url
    */
   function create_component(
     html: Element | any,
@@ -931,6 +951,7 @@ const bay: any = (settings: any) => {
     let has_inner_html: Boolean = false;
     let has_select_bind: Boolean = false;
     let has_on: Boolean = false;
+    let replace_attr_array: Array<object> = [];
     try {
       // css ======================================================
       const fouc_styles =
@@ -1191,6 +1212,13 @@ const bay: any = (settings: any) => {
           const custom_event = attr.name.substring(0, 7) === "custom:";
           const input = el.tagName.toLowerCase() === "input";
           const textarea = el.tagName.toLowerCase() === "textarea";
+          if (attr.name === replace_attr_name) {
+            let inline_str = `${replace_attr_name}="${attr.value}"`;
+            replace_attr_array.push({
+              original: inline_str,
+              new: `\${(() => {return ${attr.value} || ''})()}`,
+            });
+          }
           if (attr.name.substring(0, 1) === ":" || custom_event) {
             let custom_name = "";
             if (custom_event) custom_name = `custom-`;
@@ -1201,7 +1229,7 @@ const bay: any = (settings: any) => {
             el.removeAttribute(attr.name);
           } else if (bind && el.tagName.toLowerCase() === "select") {
             el.setAttribute(
-              `data-bay-custom-select-${bay_instance_id}`,
+              `${data_attr}custom-select-${bay_instance_id}`,
               `$bay_select_bind(e, ${attr.value})`
             );
             if (el.hasAttribute("multiple")) {
@@ -1346,6 +1374,19 @@ const bay: any = (settings: any) => {
         window.bay[this.uniqid][element_name] = this;
         this.oldEvents = ``;
 
+        this.shadowDom.refs = (ref: string) => {
+          let query = [...this.shadowDom.querySelectorAll(`[ref="${ref}"]`)];
+          if (query.length > 1) {
+            return query;
+          } else if (query.length === 1) {
+            return query[0];
+          } else {
+            let error = document.createElement("error");
+            error.innerHTML = `$refs("${ref}") not mounted"`;
+            return error;
+          }
+        };
+
         // blob strings setup ============================================
         if (!script) {
           script = "/* No script tag found */";
@@ -1445,7 +1486,12 @@ const bay: any = (settings: any) => {
         const proxy_script =
           this.prefixes.join("") +
           decodeHtml(script).replace(/(^[ \t]*\n)/gm, "");
-        const proxy_html = decodeHtml(this.tmp).replace(/(^[ \t]*\n)/gm, "");
+
+        let proxy_html = decodeHtml(this.tmp).replace(/(^[ \t]*\n)/gm, "");
+        replace_attr_array.forEach((inline: any) => {
+          proxy_html = proxy_html.replaceAll(inline.original, inline.new);
+        });
+
         let proxy_css = "";
         if (styles_text) {
           proxy_css = decodeHtml(styles_text)
@@ -1535,7 +1581,7 @@ const bay: any = (settings: any) => {
           set_styles(this);
 
           if (has_select_bind) {
-            const attr_name = `[data-bay-custom-select-${bay_instance_id}]`;
+            const attr_name = `[${data_attr}custom-select-${bay_instance_id}]`;
             let els = [];
             if (has_inner_html) {
               els = [
@@ -1552,13 +1598,26 @@ const bay: any = (settings: any) => {
 
           if (this.mounted === false && window.bay[this.uniqid]["$mounted"]) {
             this.mounted = true;
-            setTimeout(() => {
+            requestAnimationFrame(() => {
               window.bay[this.uniqid]["$mounted"]();
-            }, 14);
+            });
           }
 
           if ($(this.shadowDom, "[bay]")[0]) {
             get_all_bays(this.shadowDom);
+          }
+
+          if ($(this.shadowDom, "[bay-hydrate]")[0]) {
+            get_all_bays(this.shadowDom);
+          }
+
+          if (has_inner_html) {
+            if ($(this.inner_el, "[bay]")[0]) {
+              get_all_bays(this.inner_el);
+            }
+            if ($(this.inner_el, "[bay-hydrate]")[0]) {
+              get_all_bays(this.inner_el);
+            }
           }
 
           if (this.hasAttribute("fouc")) {

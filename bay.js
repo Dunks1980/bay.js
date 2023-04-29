@@ -16,6 +16,7 @@ const bay = (settings) => {
   const local_name = "$bay";
   const element_name = "$el";
   const data_attr = `data-bay-`;
+  const replace_attr_name = "this-attribute";
   let file_name = "";
   let to_fetch = [];
   let already_fetched = [];
@@ -67,9 +68,9 @@ const bay = (settings) => {
   window.bay.emit = emit;
   function receive($bay, $el, name, data) {
       const els = [
-          ...$($bay, `[data-bay-${name}]`),
-          ...$($el, `[data-bay-${name}]`),
-          ...$(document, `[data-bay-${name}]`),
+          ...$($bay, `[${data_attr}${name}]`),
+          ...$($el, `[${data_attr}${name}]`),
+          ...$(document, `[${data_attr}${name}]`),
       ];
       els.forEach((el) => {
           el.dispatchEvent(new CustomEvent(name, { detail: { name, data } }));
@@ -430,7 +431,7 @@ const bay = (settings) => {
       try {
           const location = bay.getAttribute("bay") || "";
           let tag_name = bay.tagName.toLowerCase();
-          if (tag_name === 'template') {
+          if (tag_name === "template") {
               modify_template(decodeHtml(bay.innerHTML), bay, location);
               bay.remove();
           }
@@ -563,6 +564,10 @@ const bay = (settings) => {
   }
   function apply_events(this_ref, attr, el, i) {
       let attr_name = attr.name;
+      if (attr_name.startsWith(`:`)) {
+          let attr_name_split = attr_name.split(":")[1];
+          attr_name = attr_name.replace(`:${attr_name_split}`, `${data_attr}${attr_name_split}`);
+      }
       if (attr_name.indexOf(data_attr) > -1) {
           let custom_event = attr_name.indexOf(`-custom-`) > -1;
           if (custom_event) {
@@ -580,7 +585,8 @@ const bay = (settings) => {
               }
               this_ref.newEvents += `${local_name}.events.set('${attr_name}-${i}',(e)=>{${attr_data}});\n`;
               const handle = (e) => {
-                  if (window.bay[this_ref.uniqid].events)
+                  if (window.bay[this_ref.uniqid].events &&
+                      window.bay[this_ref.uniqid].events.has(`${attr_name}-${i}`))
                       window.bay[this_ref.uniqid].events.get(`${attr_name}-${i}`)(e);
               };
               const handler_id = `${this_ref.uniqid}${i}${attr_name}`;
@@ -609,7 +615,7 @@ const bay = (settings) => {
   function addBlob_event(this_ref, text, import_script, parent_uniqid) {
       return __awaiter(this, void 0, void 0, function* () {
           const blobUrl = URL.createObjectURL(new Blob([
-              `${import_script}export default function($bay,$global,$route,$el,$parent,$bay_select_bind){"use strict";\n${text}};`,
+              `${import_script}export default function($bay,$global,$route,$el,$parent,$bay_select_bind,$ref){"use strict";\n${text}};`,
           ], {
               type: "text/javascript",
           }));
@@ -620,7 +626,8 @@ const bay = (settings) => {
           window.bay.route, // $route
           window.bay[this_ref.uniqid]["$el"], // $el
           window.bay[parent_uniqid] ? window.bay[parent_uniqid].proxy : null, // $parent
-          window.bay.apply_select // $bay_select_bind
+          window.bay.apply_select, // $bay_select_bind
+          window.bay[this_ref.uniqid].refs // $ref
           );
           URL.revokeObjectURL(blobUrl);
       });
@@ -641,14 +648,15 @@ const bay = (settings) => {
                   window.bay.global, // $global
                   window.bay.route, // $route
                   window.bay[this_ref.uniqid]["$el"], // $el
-                  window.bay[parent_uniqid] ? window.bay[parent_uniqid].proxy : null // $parent
+                  window.bay[parent_uniqid] ? window.bay[parent_uniqid].proxy : null, // $parent
+                  window.bay[this_ref.uniqid].refs // $ref
                   );
                   after_blob_loaded(this_ref);
               });
           }
           else {
               const blobUrl = URL.createObjectURL(new Blob([
-                  `${import_script}export default function ($bay_uniqid,$bay,$global,$route,$el,$parent) {"use strict";\n${text}};`,
+                  `${import_script}export default function ($bay_uniqid,$bay,$global,$route,$el,$parent,$ref) {"use strict";\n${text}};`,
               ], { type: "text/javascript" }));
               blobs.set(element_tagname, blobUrl);
               yield import(blobUrl).then((code) => {
@@ -658,7 +666,8 @@ const bay = (settings) => {
                   window.bay.global, // $global
                   window.bay.route, // $route
                   window.bay[this_ref.uniqid]["$el"], // $el
-                  window.bay[parent_uniqid] ? window.bay[parent_uniqid].proxy : null // $parent
+                  window.bay[parent_uniqid] ? window.bay[parent_uniqid].proxy : null, // $parent
+                  window.bay[this_ref.uniqid].refs // $ref
                   );
                   after_blob_loaded(this_ref);
                   if (revoke_blob) {
@@ -821,6 +830,7 @@ const bay = (settings) => {
    * @param {String} element_tagname custom element tagname
    * @param {Array} attrs array of attributes to be added to the custom element
    * @param {String} styles_text css styles
+   * @param {Boolean} revoke_blob revoke blob url
    */
   function create_component(html, element_tagname, attrs, styles_text, revoke_blob) {
       let tag = "";
@@ -833,6 +843,7 @@ const bay = (settings) => {
       let has_inner_html = false;
       let has_select_bind = false;
       let has_on = false;
+      let replace_attr_array = [];
       try {
           // css ======================================================
           const fouc_styles = "*:not(:defined){opacity:0;max-width:0px;max-height:0px}" +
@@ -1042,6 +1053,13 @@ const bay = (settings) => {
                   const custom_event = attr.name.substring(0, 7) === "custom:";
                   const input = el.tagName.toLowerCase() === "input";
                   const textarea = el.tagName.toLowerCase() === "textarea";
+                  if (attr.name === replace_attr_name) {
+                      let inline_str = `${replace_attr_name}="${attr.value}"`;
+                      replace_attr_array.push({
+                          original: inline_str,
+                          new: `\${(() => {return ${attr.value} || ''})()}`,
+                      });
+                  }
                   if (attr.name.substring(0, 1) === ":" || custom_event) {
                       let custom_name = "";
                       if (custom_event)
@@ -1050,7 +1068,7 @@ const bay = (settings) => {
                       el.removeAttribute(attr.name);
                   }
                   else if (bind && el.tagName.toLowerCase() === "select") {
-                      el.setAttribute(`data-bay-custom-select-${bay_instance_id}`, `$bay_select_bind(e, ${attr.value})`);
+                      el.setAttribute(`${data_attr}custom-select-${bay_instance_id}`, `$bay_select_bind(e, ${attr.value})`);
                       if (el.hasAttribute("multiple")) {
                           el.setAttribute(`multiple`, "true");
                       }
@@ -1168,6 +1186,20 @@ const bay = (settings) => {
               });
               window.bay[this.uniqid][element_name] = this;
               this.oldEvents = ``;
+              this.shadowDom.refs = (ref) => {
+                  let query = [...this.shadowDom.querySelectorAll(`[ref="${ref}"]`)];
+                  if (query.length > 1) {
+                      return query;
+                  }
+                  else if (query.length === 1) {
+                      return query[0];
+                  }
+                  else {
+                      let error = document.createElement("error");
+                      error.innerHTML = `$refs("${ref}") not mounted"`;
+                      return error;
+                  }
+              };
               // blob strings setup ============================================
               if (!script) {
                   script = "/* No script tag found */";
@@ -1245,7 +1277,10 @@ const bay = (settings) => {
               ];
               const proxy_script = this.prefixes.join("") +
                   decodeHtml(script).replace(/(^[ \t]*\n)/gm, "");
-              const proxy_html = decodeHtml(this.tmp).replace(/(^[ \t]*\n)/gm, "");
+              let proxy_html = decodeHtml(this.tmp).replace(/(^[ \t]*\n)/gm, "");
+              replace_attr_array.forEach((inline) => {
+                  proxy_html = proxy_html.replaceAll(inline.original, inline.new);
+              });
               let proxy_css = "";
               if (styles_text) {
                   proxy_css = decodeHtml(styles_text)
@@ -1313,7 +1348,7 @@ const bay = (settings) => {
                   }
                   set_styles(this);
                   if (has_select_bind) {
-                      const attr_name = `[data-bay-custom-select-${bay_instance_id}]`;
+                      const attr_name = `[${data_attr}custom-select-${bay_instance_id}]`;
                       let els = [];
                       if (has_inner_html) {
                           els = [
@@ -1330,12 +1365,23 @@ const bay = (settings) => {
                   }
                   if (this.mounted === false && window.bay[this.uniqid]["$mounted"]) {
                       this.mounted = true;
-                      setTimeout(() => {
+                      requestAnimationFrame(() => {
                           window.bay[this.uniqid]["$mounted"]();
-                      }, 14);
+                      });
                   }
                   if ($(this.shadowDom, "[bay]")[0]) {
                       get_all_bays(this.shadowDom);
+                  }
+                  if ($(this.shadowDom, "[bay-hydrate]")[0]) {
+                      get_all_bays(this.shadowDom);
+                  }
+                  if (has_inner_html) {
+                      if ($(this.inner_el, "[bay]")[0]) {
+                          get_all_bays(this.inner_el);
+                      }
+                      if ($(this.inner_el, "[bay-hydrate]")[0]) {
+                          get_all_bays(this.inner_el);
+                      }
                   }
                   if (this.hasAttribute("fouc")) {
                       this.removeAttribute("fouc");
