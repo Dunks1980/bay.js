@@ -787,6 +787,12 @@ const bay = (settings) => {
       }
       return false;
   }
+  function isBooleanAttribute(elementType, attributeName) {
+      const tempElement = document.createElement(elementType);
+      tempElement.setAttribute(attributeName, 'test_value');
+      // Check if the element's property is a boolean type
+      return typeof tempElement[attributeName] === 'boolean';
+  }
   /**
    * copy attributes from template to shadow
    * @param {HTMLElement} template
@@ -1053,6 +1059,9 @@ const bay = (settings) => {
                   const custom_event = attr.name.substring(0, 7) === "custom:";
                   const input = el.tagName.toLowerCase() === "input";
                   const textarea = el.tagName.toLowerCase() === "textarea";
+                  if (isBooleanAttribute(el.tagName.toLowerCase(), attr.name)) {
+                      el.setAttribute(attr.name, "true");
+                  }
                   if (attr.name === replace_attr_name) {
                       let inline_str = `${replace_attr_name}="${attr.value}"`;
                       replace_attr_array.push({
@@ -1069,9 +1078,6 @@ const bay = (settings) => {
                   }
                   else if (bind && el.tagName.toLowerCase() === "select") {
                       el.setAttribute(`${data_attr}custom-select-${bay_instance_id}`, `$bay_select_bind(e, ${attr.value})`);
-                      if (el.hasAttribute("multiple")) {
-                          el.setAttribute(`multiple`, "true");
-                      }
                       el.removeAttribute(attr.name);
                       el.innerHTML = `\${${attr.value}.map((item)=>{return \`&lt;option \${(()=>{return Object.entries(item).map((o)=> \`\${o[0]}="\${o[1]}"\` ).join(' ')})()}>\${item.text}&lt;/option>\`}).join('')}`;
                       has_select_bind = true;
