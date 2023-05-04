@@ -1193,7 +1193,12 @@ const bay = (settings) => {
                 window.bay[this.uniqid][element_name] = this;
                 this.oldEvents = ``;
                 this.shadowDom.refs = (ref) => {
-                    let query = [...this.shadowDom.querySelectorAll(`[ref="${ref}"]`)];
+                    let query = [
+                        ...this.shadowDom.querySelectorAll(`[ref="${ref}"]`),
+                        ...document.querySelectorAll(`${element_tagname} [ref="${ref}"]`),
+                        ...document.querySelectorAll(`#${element_tagname} [ref="${ref}"]`),
+                        ...this.inner_el.querySelectorAll(`[ref="${ref}"]`)
+                    ];
                     if (query.length > 1) {
                         return query;
                     }
