@@ -515,6 +515,18 @@ const bay = (settings) => {
             }
         });
     }
+    function add_no_diff(template, elem) {
+        [...$(template, "*")].map((el) => {
+            if (el.tagName.indexOf("-") > -1 && !el.textContent.trim()) {
+                el.setAttribute('no-diff', true);
+            }
+        });
+        [...$(template, "[no-diff]")].map((el, i) => {
+            if ([...$(elem, "[no-diff]")][i]) {
+                el.innerHTML = [...$(elem, "[no-diff]")][i].innerHTML;
+            }
+        });
+    }
     function render_innerHTML(uuid, html_target) {
         if (!html_target)
             return;
@@ -522,11 +534,13 @@ const bay = (settings) => {
             return;
         window.bay[uuid].template();
         const new_inner_html = stringToHTML(window.bay[uuid].inner_html());
+        add_no_diff(new_inner_html, html_target);
         dom_diff(new_inner_html, html_target);
         isEqual_fn([...$(new_inner_html, "*")], [...$(html_target, "*")]);
     }
     function render_shadowDOM(uuid, shadow_html) {
         const templateHTML = stringToHTML(window.bay[uuid].template());
+        add_no_diff(templateHTML, shadow_html);
         dom_diff(templateHTML, shadow_html);
         isEqual_fn([...$(templateHTML, "*")], [...$(shadow_html, "*")]);
     }
