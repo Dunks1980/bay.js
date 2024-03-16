@@ -559,9 +559,10 @@ const bay: any = (settings: any) => {
   }
 
   function add_no_diff(template: Element, elem: Element) {
-    [...$(template, "*")].map((el: any) => {
-      if (el.tagName.indexOf("-") > -1 && !el.textContent.trim()) {
-        el.setAttribute('no-diff', true);
+    [...$(template, "*")].map((el: any, i) => {
+      if (el.tagName.indexOf("-") > -1) {
+        let has_content = "" + el.textContent.trim() + el.innerHTML.trim();
+        !has_content ? el.setAttribute('no-diff', true) : null;
       }
     });
     [...$(template, "[no-diff]")].map((el, i) => {

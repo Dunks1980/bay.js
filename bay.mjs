@@ -516,9 +516,10 @@ const bay = (settings) => {
         });
     }
     function add_no_diff(template, elem) {
-        [...$(template, "*")].map((el) => {
-            if (el.tagName.indexOf("-") > -1 && !el.textContent.trim()) {
-                el.setAttribute('no-diff', true);
+        [...$(template, "*")].map((el, i) => {
+            if (el.tagName.indexOf("-") > -1) {
+                let has_content = "" + el.textContent.trim() + el.innerHTML.trim();
+                !has_content ? el.setAttribute('no-diff', true) : null;
             }
         });
         [...$(template, "[no-diff]")].map((el, i) => {
