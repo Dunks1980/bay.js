@@ -15,6 +15,7 @@ const bay = (settings) => {
   const $ = (el, selector) => el.querySelectorAll(selector);
   const local_name = "$bay";
   const element_name = "$el";
+  const prop_name = "$prop";
   const data_attr = `data-bay-`;
   const replace_attr_name = "this-attribute";
   let file_name = "";
@@ -861,6 +862,7 @@ const bay = (settings) => {
       let observedAttributes_from_element = [];
       let has_globals = false;
       let has_route = false;
+      let has_props = false;
       let has_inner_html = false;
       let has_select_bind = false;
       let has_on = false;
@@ -894,6 +896,10 @@ const bay = (settings) => {
               styles_text =
                   (styles_text || "") + "[bay-route]>*{pointer-events:none}";
           }
+          // detect if has props ==================================
+          if (c_html.innerHTML.indexOf("$prop") > -1) {
+              has_props = true;
+          }
           // detect if has on ===================================
           if (c_html.innerHTML.indexOf("$bay.on(") > -1) {
               has_on = true;
@@ -920,7 +926,7 @@ const bay = (settings) => {
                   const next_el = tag_el.nextElementSibling
                       ? tag_el.nextElementSibling.tagName.toLowerCase()
                       : "";
-                  let close_func = `\`}return ''})()}`;
+                  let close_func = "`}return ''})()}";
                   const break_prop = tag_el.hasAttribute("break") ? "break;" : "";
                   const shared_case = tag_el.innerHTML.length === 0;
                   const script_type = tag_el.attributes.length
@@ -1109,6 +1115,20 @@ const bay = (settings) => {
                       el.setAttribute(`value`, `\${${attr.value}}`);
                   }
               });
+              // modify props attributes ===================================
+              if (el.tagName.indexOf("-") > -1) {
+                  [...el.attributes].forEach((attr) => {
+                      let attr_value = attr.value;
+                      if (attr_value.indexOf("${") > -1) {
+                          attr_value = attr_value
+                              .replace("${", "${$bay.encode(JSON.stringify(");
+                          attr_value = [...attr_value].reverse().join("");
+                          attr_value = attr_value.replace("}", "}))");
+                          attr_value = [...attr_value].reverse().join("");
+                      }
+                      el.setAttribute(attr.name, attr_value);
+                  });
+              }
           });
           if (has_select_bind) {
               window.bay.apply_select = (e, array) => {
@@ -1256,6 +1276,11 @@ const bay = (settings) => {
               if (has_route) {
                   window.bay[this.uniqid].update_route = window.bay.update_route;
               }
+              // add props function ============================================
+              let props_function = ``;
+              if (has_props) {
+                  props_function = `const $prop = prop => JSON.parse($bay.decode(prop));\n`;
+              }
               // add slotchange event ==========================================
               window.bay[this.uniqid].addEventListener("slotchange", (e) => {
                   this.local_evt = new CustomEvent(`bay_slotchange_event_${this.uniqid}`, { detail: { element: e.target, changed: "slotchange" } });
@@ -1299,6 +1324,7 @@ const bay = (settings) => {
                   inner_html_var,
                   update_func,
                   slotchange_func,
+                  props_function,
                   emit_var,
               ];
               const proxy_script = this.prefixes.join("") +
