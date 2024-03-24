@@ -563,7 +563,7 @@ const bay: any = (settings: any) => {
     [...$(template, "*")].map((el: any, i) => {
       if (el.tagName.indexOf("-") > -1) {
         let has_content = "" + el.textContent.trim() + el.innerHTML.trim();
-        !has_content ? el.setAttribute('no-diff', true) : null;
+        !has_content ? el.setAttribute("no-diff", true) : null;
       }
     });
     [...$(template, "[no-diff]")].map((el, i) => {
@@ -903,11 +903,11 @@ const bay: any = (settings: any) => {
     return false;
   }
 
-  function isBooleanAttribute(elementType:string, attributeName:string) {
-    const tempElement:any = document.createElement(elementType);
-    tempElement.setAttribute(attributeName, 'test_value');
+  function isBooleanAttribute(elementType: string, attributeName: string) {
+    const tempElement: any = document.createElement(elementType);
+    tempElement.setAttribute(attributeName, "test_value");
     // Check if the element's property is a boolean type
-    return typeof tempElement[attributeName] === 'boolean';
+    return typeof tempElement[attributeName] === "boolean";
   }
 
   /**
@@ -1237,12 +1237,54 @@ const bay: any = (settings: any) => {
       });
 
       [...$(c_html, "*")].forEach((el) => {
+        if (el.hasAttribute("bay-map") || el.hasAttribute("bay-for")) {
+          let tag = el.hasAttribute("bay-map") ? "map" : "for";
+          let this_attr = el.getAttribute("this") || "";
+          let params = el.getAttribute("params") || "";
+          let array =
+            el.getAttribute("bay-map") ||
+            el.getAttribute("bay-for") ||
+            el.getAttribute("array") ||
+            "[]";
+          let join = el.getAttribute("join") || "";
+          el.removeAttribute("params");
+          el.removeAttribute("bay-map");
+          el.removeAttribute("bay-for");
+          el.removeAttribute("this");
+          el.removeAttribute("array");
+          el.removeAttribute("join");
+          let current_html = el.outerHTML;
+          let newhtml = ``;
+          if (tag === "map") {
+            newhtml =
+              "<!--iteration" +
+              `\${ ${array}.map((${params})=>{return \`${current_html}\`}).join('${join}') }` +
+              "iteration-->";
+          } else {
+            const this_for = `bay_for_${makeid(8)}`;
+            if (!this_attr) {
+              newhtml =
+                "<!--iteration" +
+                `\${(()=>{let ${this_for}='';${array}.forEach((${params})=>{${this_for}+=\`${current_html}\`});return ${this_for};})()}` +
+                "iteration-->";
+            } else {
+              newhtml =
+                "<!--iteration" +
+                `\${ (()=>{let ${this_for}=''; for (${this_attr}) { ${this_for} += \`${current_html}\`};return ${this_for};})()}` +
+                "iteration-->";
+            }
+          }
+          el.outerHTML = newhtml;
+        }
+      });
+
+      [...$(c_html, "*")].forEach((el) => {
         [...el.attributes].forEach((attr) => {
           const bind = attr.name === "bind";
           const custom_event = attr.name.substring(0, 7) === "custom:";
           const input = el.tagName.toLowerCase() === "input";
           const textarea = el.tagName.toLowerCase() === "textarea";
-          if(isBooleanAttribute(el.tagName.toLowerCase(), attr.name)) {
+          if (isBooleanAttribute(el.tagName.toLowerCase(), attr.name)) {
             el.setAttribute(attr.name, "true");
           }
           if (attr.name === replace_attr_name) {
@@ -1293,16 +1335,15 @@ const bay: any = (settings: any) => {
           [...el.attributes].forEach((attr) => {
             let attr_value = attr.value;
             if (attr_value.indexOf("${") > -1) {
-              attr_value = attr_value
-                .replace("${", "${$bay.encode(JSON.stringify(");
+              attr_value = attr_value.replace(
+                "${",
+                "${$bay.encode(JSON.stringify("
+              );
               attr_value = [...attr_value].reverse().join("");
               attr_value = attr_value.replace("}", "}))");
               attr_value = [...attr_value].reverse().join("");
             }
-            el.setAttribute(
-              attr.name,
-              attr_value
-            );
+            el.setAttribute(attr.name, attr_value);
           });
         }
       });
@@ -1427,8 +1468,8 @@ const bay: any = (settings: any) => {
             ...this.shadowDom.querySelectorAll(`[ref="${ref}"]`),
             ...document.querySelectorAll(`${element_tagname} [ref="${ref}"]`),
             ...document.querySelectorAll(`#${element_tagname} [ref="${ref}"]`),
-            ...this.inner_el.querySelectorAll(`[ref="${ref}"]`)
-            ];
+            ...this.inner_el.querySelectorAll(`[ref="${ref}"]`),
+          ];
           if (query.length > 1) {
             return query;
           } else if (query.length === 1) {
@@ -1551,6 +1592,10 @@ const bay: any = (settings: any) => {
         replace_attr_array.forEach((inline: any) => {
           proxy_html = proxy_html.replaceAll(inline.original, inline.new);
         });
+
+        proxy_html = proxy_html
+          .replaceAll("<!--iteration", "")
+          .replaceAll("iteration-->", "");
 
         let proxy_css = "";
         if (styles_text) {
