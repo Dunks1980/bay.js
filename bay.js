@@ -1075,48 +1075,6 @@ const bay = (settings) => {
               }
           });
           [...$(c_html, "*")].forEach((el) => {
-              if (el.hasAttribute("bay-map") || el.hasAttribute("bay-for")) {
-                  let tag = el.hasAttribute("bay-map") ? "map" : "for";
-                  let this_attr = el.getAttribute("this") || "";
-                  let params = el.getAttribute("params") || "";
-                  let array = el.getAttribute("bay-map") ||
-                      el.getAttribute("bay-for") ||
-                      el.getAttribute("array") ||
-                      "[]";
-                  let join = el.getAttribute("join") || "";
-                  el.removeAttribute("params");
-                  el.removeAttribute("bay-map");
-                  el.removeAttribute("bay-for");
-                  el.removeAttribute("this");
-                  el.removeAttribute("array");
-                  el.removeAttribute("join");
-                  let current_html = el.outerHTML;
-                  let newhtml = ``;
-                  if (tag === "map") {
-                      newhtml =
-                          "<!--iteration" +
-                              `\${ ${array}.map((${params})=>{return \`${current_html}\`}).join('${join}') }` +
-                              "iteration-->";
-                  }
-                  else {
-                      const this_for = `bay_for_${makeid(8)}`;
-                      if (!this_attr) {
-                          newhtml =
-                              "<!--iteration" +
-                                  `\${(()=>{let ${this_for}='';${array}.forEach((${params})=>{${this_for}+=\`${current_html}\`});return ${this_for};})()}` +
-                                  "iteration-->";
-                      }
-                      else {
-                          newhtml =
-                              "<!--iteration" +
-                                  `\${ (()=>{let ${this_for}=''; for (${this_attr}) { ${this_for} += \`${current_html}\`};return ${this_for};})()}` +
-                                  "iteration-->";
-                      }
-                  }
-                  el.outerHTML = newhtml;
-              }
-          });
-          [...$(c_html, "*")].forEach((el) => {
               [...el.attributes].forEach((attr) => {
                   const bind = attr.name === "bind";
                   const custom_event = attr.name.substring(0, 7) === "custom:";
@@ -1195,6 +1153,48 @@ const bay = (settings) => {
                   };
               };
           }
+          [...$(c_html, "*")].forEach((el) => {
+              if (el.hasAttribute("bay-map") || el.hasAttribute("bay-for")) {
+                  let tag = el.hasAttribute("bay-map") ? "map" : "for";
+                  let this_attr = el.getAttribute("this") || "";
+                  let params = el.getAttribute("params") || "";
+                  let array = el.getAttribute("bay-map") ||
+                      el.getAttribute("bay-for") ||
+                      el.getAttribute("array") ||
+                      "[]";
+                  let join = el.getAttribute("join") || "";
+                  el.removeAttribute("params");
+                  el.removeAttribute("bay-map");
+                  el.removeAttribute("bay-for");
+                  el.removeAttribute("this");
+                  el.removeAttribute("array");
+                  el.removeAttribute("join");
+                  let current_html = el.outerHTML;
+                  let newhtml = ``;
+                  if (tag === "map") {
+                      newhtml =
+                          "<!--iteration" +
+                              `\${ ${array}.map((${params})=>{return \`${current_html}\`}).join('${join}') }` +
+                              "iteration-->";
+                  }
+                  else {
+                      const this_for = `bay_for_${makeid(8)}`;
+                      if (!this_attr) {
+                          newhtml =
+                              "<!--iteration" +
+                                  `\${(()=>{let ${this_for}='';${array}.forEach((${params})=>{${this_for}+=\`${current_html}\`});return ${this_for};})()}` +
+                                  "iteration-->";
+                      }
+                      else {
+                          newhtml =
+                              "<!--iteration" +
+                                  `\${ (()=>{let ${this_for}=''; for (${this_attr}) { ${this_for} += \`${current_html}\`};return ${this_for};})()}` +
+                                  "iteration-->";
+                      }
+                  }
+                  el.outerHTML = newhtml;
+              }
+          });
           script = script_text;
           // apply passed attributes =========================================
           observedAttributes_from_element = attrs;
