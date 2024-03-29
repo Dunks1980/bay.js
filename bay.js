@@ -580,39 +580,57 @@ const bay = (settings) => {
   }
   function apply_events(this_ref, attr, el, i) {
       let attr_name = attr.name;
-      if (attr_name.startsWith(`:`)) {
+      let event_options = {};
+      attr_name.indexOf(".passive") > -1 ? (event_options.passive = true) : null;
+      attr_name.indexOf(".capture") > -1 ? (event_options.capture = true) : null;
+      attr_name.indexOf(".once") > -1 ? (event_options.once = true) : null;
+      let stop = attr_name.indexOf(".stop") > -1;
+      let prevent = attr_name.indexOf(".prevent") > -1;
+      let self = attr_name.indexOf(".self") > -1;
+      attr_name = attr_name
+          .replace(".passive", "")
+          .replace(".capture", "")
+          .replace(".once", "")
+          .replace(".stop", "")
+          .replace(".prevent", "")
+          .replace(".self", "");
+      if (attr_name.startsWith(":")) {
           let attr_name_split = attr_name.split(":")[1];
           attr_name = attr_name.replace(`:${attr_name_split}`, `${data_attr}${attr_name_split}`);
       }
       if (attr_name.indexOf(data_attr) > -1) {
-          let custom_event = attr_name.indexOf(`-custom-`) > -1;
+          let custom_event = attr_name.indexOf("-custom-") > -1;
           if (custom_event) {
-              attr_name = attr_name.replace(`custom-`, "");
+              attr_name = attr_name.replace("custom-", "");
           }
-          if (attr_name.indexOf(`${data_attr}style`) > -1) {
+          if (attr_name.indexOf(data_attr + "style") > -1) {
               if (el.style !== attr.value) {
                   el.style = attr.value;
               }
           }
           else {
               const attr_data = attr.value.replaceAll("window.bay", `${local_name}`);
-              if (this_ref.newEvents.indexOf(`${local_name}.events=new Map();\n`) === -1) {
-                  this_ref.newEvents += `${local_name}.events=new Map();\n`;
+              if (this_ref.newEvents.indexOf(local_name + ".events=new Map();\n") === -1) {
+                  this_ref.newEvents += local_name + ".events=new Map();\n";
               }
               this_ref.newEvents += `${local_name}.events.set('${attr_name}-${i}',(e)=>{${attr_data}});\n`;
-              const handle = (e) => {
-                  if (window.bay[this_ref.uniqid].events &&
-                      window.bay[this_ref.uniqid].events.has(`${attr_name}-${i}`))
-                      window.bay[this_ref.uniqid].events.get(`${attr_name}-${i}`)(e);
-              };
               const handler_id = `${this_ref.uniqid}${i}${attr_name}`;
               const handler_event = attr_name.split(data_attr)[1];
               if (this_ref.eventHandlers.has(handler_id)) {
-                  el.removeEventListener(handler_event, this_ref.eventHandlers.get(handler_id));
+                  el.removeEventListener(handler_event, this_ref.eventHandlers.get(handler_id), event_options);
                   this_ref.eventHandlers.delete(handler_id);
               }
-              this_ref.eventHandlers.set(handler_id, handle);
-              el.addEventListener(handler_event, this_ref.eventHandlers.get(handler_id));
+              this_ref.eventHandlers.set(handler_id, (e) => {
+                  if (self && e.target !== el)
+                      return;
+                  stop ? e.stopPropagation() : null;
+                  prevent ? e.preventDefault() : null;
+                  window.bay[this_ref.uniqid].events &&
+                      window.bay[this_ref.uniqid].events.has(`${attr_name}-${i}`)
+                      ? window.bay[this_ref.uniqid].events.get(`${attr_name}-${i}`)(e)
+                      : null;
+              });
+              el.addEventListener(handler_event, this_ref.eventHandlers.get(handler_id), event_options);
           }
       }
   }

@@ -259,6 +259,7 @@ A component can be used anywhere in the HTML but inline templates must be in the
 | ```slot="slot-name"``` | Used to define a slot as per standard web-component. | [Slots](https://bayjs.org/examples?tab=tags&item=example_tags_slots) |
 | ```ref="xxx"``` | ```$ref('xxx').onclick = (e) => {...``` <br> See Internal Functions below for usage. | [Ref](https://bayjs.org/examples?tab=attributes&item=example_attrs_ref) |
 | ```this-attribute="xxx"``` | Will replace this-attribute="xxx" with whats returned from its attribute value. | [This Attribute](https://bayjs.org/examples?tab=attributes&item=example_attrs_this_attribute) |
+| ```:click.prevent="xxx"``` | Event modifiers .passive, .capture, .once, .stop, .prevent, .self | [Event Modifiers](https://bayjs.org/examples?tab=attributes&item=example_attrs_event_modifiers) |
 
 
 <br />
