@@ -20,6 +20,31 @@ const bay: any = (settings: any) => {
   let already_fetched: string[] = [];
   let blobs = new Map();
   let styles_string = "";
+  const modifiers_array = [
+    ".passive",
+    ".capture",
+    ".once",
+    ".left",
+    ".middle",
+    ".right",
+    ".enter",
+    ".tab",
+    ".delete",
+    ".backspace",
+    ".esc",
+    ".space",
+    ".arrow-up",
+    ".arrow-down",
+    ".arrow-left",
+    ".arrow-right",
+    ".ctrl",
+    ".alt",
+    ".shift",
+    ".meta",
+    ".stop",
+    ".prevent",
+    ".self",
+  ];
 
   /**
    * Used to attach shadow roots to templates with the shadowroot or shadowrootmode attribute
@@ -630,21 +655,6 @@ const bay: any = (settings: any) => {
   function apply_events(this_ref: any, attr: any, el: any, i: number) {
     let attr_name = attr.name;
 
-    let event_options: any = {};
-    attr_name.indexOf(".passive") > -1 ? (event_options.passive = true) : null;
-    attr_name.indexOf(".capture") > -1 ? (event_options.capture = true) : null;
-    attr_name.indexOf(".once") > -1 ? (event_options.once = true) : null;
-    let stop = attr_name.indexOf(".stop") > -1;
-    let prevent = attr_name.indexOf(".prevent") > -1;
-    let self = attr_name.indexOf(".self") > -1;
-    attr_name = attr_name
-      .replace(".passive", "")
-      .replace(".capture", "")
-      .replace(".once", "")
-      .replace(".stop", "")
-      .replace(".prevent", "")
-      .replace(".self", "");
-
     if (attr_name.startsWith(":")) {
       let attr_name_split = attr_name.split(":")[1];
       attr_name = attr_name.replace(
@@ -662,16 +672,102 @@ const bay: any = (settings: any) => {
           el.style = attr.value;
         }
       } else {
-        const attr_data = attr.value.replaceAll("window.bay", `${local_name}`);
+        let attr_data = attr.value.replaceAll("window.bay", `${local_name}`);
         if (
           this_ref.newEvents.indexOf(local_name + ".events=new Map();\n") === -1
         ) {
           this_ref.newEvents += local_name + ".events=new Map();\n";
         }
+
+        let event_options: any = {};
+
+        modifiers_array.forEach((modifier) => {
+          if (attr_name.indexOf(modifier) === -1) return;
+          switch (modifier) {
+            case ".passive":
+              event_options.passive = true;
+              break;
+            case ".capture":
+              event_options.capture = true;
+              break;
+            case ".once":
+              event_options.once = true;
+              break;
+            case ".enter":
+              attr_data = "if (e.key !== 'Enter') return;" + attr_data;
+              break;
+            case ".tab":
+              attr_data = "if (e.key !== 'Tab') return;" + attr_data;
+              break;
+            case ".delete":
+              attr_data = "if (e.key !== 'Delete') return;" + attr_data;
+              break;
+            case ".backspace":
+              attr_data = "if (e.key !== 'Backspace') return;" + attr_data;
+              break;
+            case ".esc":
+              attr_data =
+                "if (e.key !== 'Escape' && e.key !== 'Esc') return;" +
+                attr_data;
+              break;
+            case ".space":
+              attr_data =
+                "if (e.key !== ' ' && e.key !== 'Spacebar') return;" +
+                attr_data;
+              break;
+            case ".arrow-up":
+              attr_data = "if (e.key !== 'ArrowUp') return;" + attr_data;
+              break;
+            case ".arrow-down":
+              attr_data = "if (e.key !== 'ArrowDown') return;" + attr_data;
+              break;
+            case ".arrow-left":
+              attr_data = "if (e.key !== 'ArrowLeft') return;" + attr_data;
+              break;
+            case ".arrow-right":
+              attr_data = "if (e.key !== 'ArrowRight') return;" + attr_data;
+              break;
+            case ".ctrl":
+              attr_data = "if (!e.ctrlKey) return;" + attr_data;
+              break;
+            case ".alt":
+              attr_data = "if (!e.altKey) return;" + attr_data;
+              break;
+            case ".shift":
+              attr_data = "if (!e.shiftKey) return;" + attr_data;
+              break;
+            case ".meta":
+              attr_data = "if (!e.metaKey) return;" + attr_data;
+              break;
+            case ".self":
+              attr_data =
+                "if (e.target !== e.currentTarget) return;" + attr_data;
+              break;
+            case ".left":
+              attr_data = "if (e.button !== 0) return;" + attr_data;
+              break;
+            case ".middle":
+              attr_data = "if (e.button !== 1) return;" + attr_data;
+              break;
+            case ".right":
+              attr_data = "if (e.button !== 2) return;" + attr_data;
+              break;
+            case ".stop":
+              attr_data = "e.stopPropagation();" + attr_data;
+              break;
+            case ".prevent":
+              attr_data = "e.preventDefault();" + attr_data;
+              break;
+          }
+        });
+
         this_ref.newEvents += `${local_name}.events.set('${attr_name}-${i}',(e)=>{${attr_data}});\n`;
 
         const handler_id = `${this_ref.uniqid}${i}${attr_name}`;
-        const handler_event = attr_name.split(data_attr)[1];
+        let handler_event = attr_name.split(data_attr)[1];
+        modifiers_array.forEach((modifier) => {
+          handler_event = handler_event.replace(modifier, "");
+        });
 
         if (this_ref.eventHandlers.has(handler_id)) {
           el.removeEventListener(
@@ -682,9 +778,6 @@ const bay: any = (settings: any) => {
           this_ref.eventHandlers.delete(handler_id);
         }
         this_ref.eventHandlers.set(handler_id, (e: Event) => {
-          if (self && e.target !== el) return;
-          stop ? e.stopPropagation() : null;
-          prevent ? e.preventDefault() : null;
           window.bay[this_ref.uniqid].events &&
           window.bay[this_ref.uniqid].events.has(`${attr_name}-${i}`)
             ? window.bay[this_ref.uniqid].events.get(`${attr_name}-${i}`)(e)
