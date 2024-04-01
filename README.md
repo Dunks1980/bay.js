@@ -8,7 +8,6 @@
 <hr/>
 <br/>
 
-
 ## What is bay.js?
 Bay.js is a frontend library designed to facilitate the creation of reusable web-components, as well as to add state and interactivity to HTML.
 To see it in action, you can visit [Bayjs.org](https://bayjs.org/examples?tab=installation&item=installation_esmodule) and explore its examples.
