@@ -571,13 +571,13 @@ const bay = (settings) => {
         dom_diff(templateHTML, shadow_html);
         isEqual_fn([...$(templateHTML, "*")], [...$(shadow_html, "*")]);
     }
-    function add_events(this_ref, elements, import_script, parent_uniqid) {
+    function add_events(this_ref, elements, import_script, parent_uniqid, bay_id) {
         if (!elements)
             return;
         this_ref.newEvents = ``;
         elements.forEach((el, i) => {
             // elements are the elements that have been added to the DOM
-            [...el.attributes].forEach((attr) => apply_events(this_ref, attr, el, i));
+            [...el.attributes].forEach((attr) => apply_events(this_ref, attr, el, i, bay_id));
         });
         if (this_ref.newEvents && this_ref.oldEvents !== this_ref.newEvents) {
             this_ref.oldEvents = this_ref.newEvents;
@@ -603,7 +603,9 @@ const bay = (settings) => {
             }
         }
     }
-    function apply_events(this_ref, attr, el, i) {
+    function apply_events(this_ref, attr, el, i, bay_id) {
+        if (!el.closest(`[${bay_id}]`))
+            return;
         let attr_name = attr.name;
         if (attr_name.startsWith(":")) {
             let attr_name_split = attr_name.split(":")[1];
@@ -965,6 +967,7 @@ const bay = (settings) => {
      */
     function create_component(html, element_tagname, attrs, styles_text, revoke_blob) {
         let tag = "";
+        let bay_id = `data-${makeid(8)}`;
         let c_html = null;
         let script = "";
         let import_script = "";
@@ -1198,6 +1201,7 @@ const bay = (settings) => {
                             original: inline_str,
                             new: `\${(() => {return ${attr.value} || ''})()}`,
                         });
+                        el.setAttribute(bay_id, '');
                     }
                     if (attr.name.substring(0, 1) === ":" || custom_event) {
                         let custom_name = "";
@@ -1205,23 +1209,27 @@ const bay = (settings) => {
                             custom_name = `custom-`;
                         el.setAttribute(`${data_attr}${custom_name}${attr.name.split(":")[1]}`, attr.value);
                         el.removeAttribute(attr.name);
+                        el.setAttribute(bay_id, '');
                     }
                     else if (bind && el.tagName.toLowerCase() === "select") {
                         el.setAttribute(`${data_attr}custom-select-${bay_instance_id}`, `$bay_select_bind(e, ${attr.value})`);
                         el.removeAttribute(attr.name);
                         el.innerHTML = `\${${attr.value}.map((item)=>{return \`&lt;option \${(()=>{return Object.entries(item).map((o)=> \`\${o[0]}="\${o[1]}"\` ).join(' ')})()}>\${item.text}&lt;/option>\`}).join('')}`;
                         has_select_bind = true;
+                        el.setAttribute(bay_id, '');
                     }
                     else if (bind && (input || textarea)) {
                         el.setAttribute(`${data_attr}input`, `${attr.value} = e.target.value`);
                         el.removeAttribute(attr.name);
                         el.setAttribute(`value`, `\${${attr.value}}`);
+                        el.setAttribute(bay_id, '');
                     }
                     else if (attr.name.substring(0, 5) === "bind:" &&
                         (input || textarea)) {
                         el.setAttribute(`${data_attr}${attr.name.split(":")[1]}`, `${attr.value} = e.target.value`);
                         el.removeAttribute(attr.name);
                         el.setAttribute(`value`, `\${${attr.value}}`);
+                        el.setAttribute(bay_id, '');
                     }
                 });
                 // modify props attributes ===================================
@@ -1546,10 +1554,10 @@ const bay = (settings) => {
                     render_shadowDOM(this.uniqid, this.shadowRootHTML);
                     // Events and Styles
                     if (has_inner_html) {
-                        add_events(this, [...$(this.inner_el, "*"), ...$(this.shadowRootHTML, "*")], import_script, this.parent_uniqid);
+                        add_events(this, [...$(this.inner_el, "*"), ...$(this.shadowRootHTML, "*")], import_script, this.parent_uniqid, bay_id);
                     }
                     else {
-                        add_events(this, [...$(this.shadowRootHTML, "*")], import_script, this.parent_uniqid);
+                        add_events(this, [...$(this.shadowRootHTML, "*")], import_script, this.parent_uniqid, bay_id);
                     }
                     set_styles(this);
                     if (has_select_bind) {
