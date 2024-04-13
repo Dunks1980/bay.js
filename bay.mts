@@ -626,7 +626,9 @@ const bay: any = (settings: any) => {
     this_ref.newEvents = ``;
     elements.forEach((el: Element, i: number) => {
       // elements are the elements that have been added to the DOM
-      [...el.attributes].forEach((attr) => apply_events(this_ref, attr, el, i, bay_id));
+      [...el.attributes].forEach((attr) =>
+        apply_events(this_ref, attr, el, i, bay_id)
+      );
     });
     if (this_ref.newEvents && this_ref.oldEvents !== this_ref.newEvents) {
       this_ref.oldEvents = this_ref.newEvents;
@@ -653,7 +655,13 @@ const bay: any = (settings: any) => {
     }
   }
 
-  function apply_events(this_ref: any, attr: any, el: any, i: number, bay_id: string) {
+  function apply_events(
+    this_ref: any,
+    attr: any,
+    el: any,
+    i: number,
+    bay_id: string
+  ) {
     if (!el.closest(`[${bay_id}]`)) return;
     let attr_name = attr.name;
 
@@ -1066,6 +1074,24 @@ const bay: any = (settings: any) => {
 
   const show_element = /*HTML*/ `<div id="show" :style="\${this.style()}"><slot></slot></div><script update>$bay.getElementById('show').ontransitionend=()=>this.end();</script><script props>this.slide(this.open);</script><script mounted>this.slide(this.open);</script><script>this.opacity=0;this.display='none';this.slide=(open)=>{let opacity=0;if(open==='true'){opacity=1;this.display='block';};requestAnimationFrame(()=>{this.opacity=opacity;});};this.end=()=>{if(this.open==='false'){this.display='none';}};this.style=()=>{return \`display:\${this.display};opacity:\${this.opacity};transition:opacity \${this.transition || '0s'};\`;};</script>`;
 
+  function create_defined(html: Element | any) {
+    [...html.querySelectorAll("define")].forEach((define) => {
+      const tagname = define.getAttribute("this");
+      const define_html = define.outerHTML;
+      define.remove();
+      const defined_tags = [...html.querySelectorAll(tagname)];
+      defined_tags.forEach((tag) => {
+        tag.outerHTML = define_html;
+      });
+    });
+  }
+
+  function cleanup_defined(html: Element | any) {
+    [...html.querySelectorAll("define")].forEach((define) => {
+      define.outerHTML = define.innerHTML;
+    });
+  }
+
   /**
    * Create a custom element from a template.
    * @param {HTMLElement} html html element
@@ -1104,6 +1130,7 @@ const bay: any = (settings: any) => {
 
       // html ====================================================
       c_html = html.body;
+      create_defined(c_html);
       tag = element_tagname;
 
       // Add update element ======================================
@@ -1368,7 +1395,7 @@ const bay: any = (settings: any) => {
               original: inline_str,
               new: `\${(() => {return ${attr.value} || ''})()}`,
             });
-            el.setAttribute(bay_id, '');
+            el.setAttribute(bay_id, "");
           }
           if (attr.name.substring(0, 1) === ":" || custom_event) {
             let custom_name = "";
@@ -1378,7 +1405,7 @@ const bay: any = (settings: any) => {
               attr.value
             );
             el.removeAttribute(attr.name);
-            el.setAttribute(bay_id, '');
+            el.setAttribute(bay_id, "");
           } else if (bind && el.tagName.toLowerCase() === "select") {
             el.setAttribute(
               `${data_attr}custom-select-${bay_instance_id}`,
@@ -1387,7 +1414,7 @@ const bay: any = (settings: any) => {
             el.removeAttribute(attr.name);
             el.innerHTML = `\${${attr.value}.map((item)=>{return \`&lt;option \${(()=>{return Object.entries(item).map((o)=> \`\${o[0]}="\${o[1]}"\` ).join(' ')})()}>\${item.text}&lt;/option>\`}).join('')}`;
             has_select_bind = true;
-            el.setAttribute(bay_id, '');
+            el.setAttribute(bay_id, "");
           } else if (bind && (input || textarea)) {
             el.setAttribute(
               `${data_attr}input`,
@@ -1395,7 +1422,7 @@ const bay: any = (settings: any) => {
             );
             el.removeAttribute(attr.name);
             el.setAttribute(`value`, `\${${attr.value}}`);
-            el.setAttribute(bay_id, '');
+            el.setAttribute(bay_id, "");
           } else if (
             attr.name.substring(0, 5) === "bind:" &&
             (input || textarea)
@@ -1406,7 +1433,7 @@ const bay: any = (settings: any) => {
             );
             el.removeAttribute(attr.name);
             el.setAttribute(`value`, `\${${attr.value}}`);
-            el.setAttribute(bay_id, '');
+            el.setAttribute(bay_id, "");
           }
         });
 
@@ -1414,7 +1441,11 @@ const bay: any = (settings: any) => {
         if (el.tagName.indexOf("-") > -1) {
           [...el.attributes].forEach((attr) => {
             let attr_value = attr.value;
-            if (attr_value.indexOf("${") > -1) {
+            if (
+              attr_value.indexOf("${") === 0 &&
+              attr_value.lastIndexOf("${") === 0 &&
+              attr_value.endsWith("}")
+            ) {
               attr_value = attr_value.replace(
                 "${",
                 "${$bay.encode(JSON.stringify("
@@ -1493,6 +1524,7 @@ const bay: any = (settings: any) => {
         }
       });
 
+      cleanup_defined(c_html);
       script = script_text;
 
       // apply passed attributes =========================================
@@ -1677,6 +1709,8 @@ const bay: any = (settings: any) => {
           slot_observer.observe(slot, { attributes: true, childList: true });
         });
 
+        let bay_name = `// ${element_tagname};\n`;
+
         // add inner-html vars ==========================================
         let inner_html_var = ``;
         let inner_html_reset = ``;
@@ -1699,6 +1733,7 @@ const bay: any = (settings: any) => {
         let emit_var = `${on_var}function bay_receive_fn(e){$bay.receive($bay,$el,e.detail.name,e.detail.data);}\nwindow.removeEventListener('bay_emit',bay_receive_fn);\nwindow.addEventListener('bay_emit',bay_receive_fn);\n`;
 
         this.prefixes = [
+          bay_name,
           inner_html_var,
           update_func,
           slotchange_func,

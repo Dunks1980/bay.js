@@ -957,6 +957,22 @@ const bay = (settings) => {
           el.removeAttribute(el.attributes[0].name);
   }
   const show_element = /*HTML*/ `<div id="show" :style="\${this.style()}"><slot></slot></div><script update>$bay.getElementById('show').ontransitionend=()=>this.end();</script><script props>this.slide(this.open);</script><script mounted>this.slide(this.open);</script><script>this.opacity=0;this.display='none';this.slide=(open)=>{let opacity=0;if(open==='true'){opacity=1;this.display='block';};requestAnimationFrame(()=>{this.opacity=opacity;});};this.end=()=>{if(this.open==='false'){this.display='none';}};this.style=()=>{return \`display:\${this.display};opacity:\${this.opacity};transition:opacity \${this.transition || '0s'};\`;};</script>`;
+  function create_defined(html) {
+      [...html.querySelectorAll("define")].forEach((define) => {
+          const tagname = define.getAttribute("this");
+          const define_html = define.outerHTML;
+          define.remove();
+          const defined_tags = [...html.querySelectorAll(tagname)];
+          defined_tags.forEach((tag) => {
+              tag.outerHTML = define_html;
+          });
+      });
+  }
+  function cleanup_defined(html) {
+      [...html.querySelectorAll("define")].forEach((define) => {
+          define.outerHTML = define.innerHTML;
+      });
+  }
   /**
    * Create a custom element from a template.
    * @param {HTMLElement} html html element
@@ -987,6 +1003,7 @@ const bay = (settings) => {
           styles_text = fouc_styles + (styles_text || "");
           // html ====================================================
           c_html = html.body;
+          create_defined(c_html);
           tag = element_tagname;
           // Add update element ======================================
           const update_el = document.createElement(`${element_tagname}-update`);
@@ -1201,7 +1218,7 @@ const bay = (settings) => {
                           original: inline_str,
                           new: `\${(() => {return ${attr.value} || ''})()}`,
                       });
-                      el.setAttribute(bay_id, '');
+                      el.setAttribute(bay_id, "");
                   }
                   if (attr.name.substring(0, 1) === ":" || custom_event) {
                       let custom_name = "";
@@ -1209,34 +1226,36 @@ const bay = (settings) => {
                           custom_name = `custom-`;
                       el.setAttribute(`${data_attr}${custom_name}${attr.name.split(":")[1]}`, attr.value);
                       el.removeAttribute(attr.name);
-                      el.setAttribute(bay_id, '');
+                      el.setAttribute(bay_id, "");
                   }
                   else if (bind && el.tagName.toLowerCase() === "select") {
                       el.setAttribute(`${data_attr}custom-select-${bay_instance_id}`, `$bay_select_bind(e, ${attr.value})`);
                       el.removeAttribute(attr.name);
                       el.innerHTML = `\${${attr.value}.map((item)=>{return \`&lt;option \${(()=>{return Object.entries(item).map((o)=> \`\${o[0]}="\${o[1]}"\` ).join(' ')})()}>\${item.text}&lt;/option>\`}).join('')}`;
                       has_select_bind = true;
-                      el.setAttribute(bay_id, '');
+                      el.setAttribute(bay_id, "");
                   }
                   else if (bind && (input || textarea)) {
                       el.setAttribute(`${data_attr}input`, `${attr.value} = e.target.value`);
                       el.removeAttribute(attr.name);
                       el.setAttribute(`value`, `\${${attr.value}}`);
-                      el.setAttribute(bay_id, '');
+                      el.setAttribute(bay_id, "");
                   }
                   else if (attr.name.substring(0, 5) === "bind:" &&
                       (input || textarea)) {
                       el.setAttribute(`${data_attr}${attr.name.split(":")[1]}`, `${attr.value} = e.target.value`);
                       el.removeAttribute(attr.name);
                       el.setAttribute(`value`, `\${${attr.value}}`);
-                      el.setAttribute(bay_id, '');
+                      el.setAttribute(bay_id, "");
                   }
               });
               // modify props attributes ===================================
               if (el.tagName.indexOf("-") > -1) {
                   [...el.attributes].forEach((attr) => {
                       let attr_value = attr.value;
-                      if (attr_value.indexOf("${") > -1) {
+                      if (attr_value.indexOf("${") === 0 &&
+                          attr_value.lastIndexOf("${") === 0 &&
+                          attr_value.endsWith("}")) {
                           attr_value = attr_value.replace("${", "${$bay.encode(JSON.stringify(");
                           attr_value = [...attr_value].reverse().join("");
                           attr_value = attr_value.replace("}", "}))");
@@ -1312,6 +1331,7 @@ const bay = (settings) => {
                   el.outerHTML = newhtml;
               }
           });
+          cleanup_defined(c_html);
           script = script_text;
           // apply passed attributes =========================================
           observedAttributes_from_element = attrs;
@@ -1460,6 +1480,7 @@ const bay = (settings) => {
                   });
                   slot_observer.observe(slot, { attributes: true, childList: true });
               });
+              let bay_name = `// ${element_tagname};\n`;
               // add inner-html vars ==========================================
               let inner_html_var = ``;
               let inner_html_reset = ``;
@@ -1479,6 +1500,7 @@ const bay = (settings) => {
               window.bay[this.uniqid].receive = window.bay.receive;
               let emit_var = `${on_var}function bay_receive_fn(e){$bay.receive($bay,$el,e.detail.name,e.detail.data);}\nwindow.removeEventListener('bay_emit',bay_receive_fn);\nwindow.addEventListener('bay_emit',bay_receive_fn);\n`;
               this.prefixes = [
+                  bay_name,
                   inner_html_var,
                   update_func,
                   slotchange_func,

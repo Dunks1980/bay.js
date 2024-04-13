@@ -210,6 +210,7 @@ A component can be used anywhere in the HTML but inline templates must be in the
 | ```<slot name="slot1">...</slot>``` | Used to define a slot as per standard web-component. | [Slots](https://bayjs.org/examples?tab=tags&item=example_tags_slots) |
 | ```<route href="/xxx/var">...</route>``` | Route creates the route for the router tag, is intended for a single page application (SPA). | [Route](https://bayjs.org/examples?tab=router&item=component_route) |
 | ```<router this="/xxx/:xxx">...</router>``` | Router matches the current url, ```:xxx``` are used for variables. | [Route](https://bayjs.org/examples?tab=router&item=component_route) |
+| ```<define this="myEl">...</define> <myEl></myEl>``` | Define a block of code to be reused. | [Define](https://bayjs.org/examples?tab=tags&item=example_tags_define) |
 | ```<include this="https://..."></include>``` | Include code into template from a URL. | [Include](https://bayjs.org/examples?tab=tags&item=example_tags_include) |
 
 <br />
