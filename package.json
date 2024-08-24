@@ -1,13 +1,14 @@
 {
   "name": "@dunks1980/bay.js",
-  "version": "3.3.7",
+  "version": "3.3.8",
   "description": "Web component library",
   "logo": "favicon.svg",
   "main": "bay.js",
   "module": "bay.mjs",
   "scripts": {
     "build": "node ./build.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "tsc": "npx tsc --watch"
   },
   "repository": {
     "type": "git",
@@ -26,5 +27,8 @@
   "bugs": {
     "url": "https://github.com/Dunks1980/bay.js/issues"
   },
-  "homepage": "https://bayjs.org"
+  "homepage": "https://bayjs.org",
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
 }

@@ -1028,6 +1028,9 @@ const bay: any = (settings: any) => {
   }
 
   function isBooleanAttribute(elementType: string, attributeName: string) {
+    if (attributeName === "src" || attributeName === "href") {
+      return false;
+    }
     const tempElement: any = document.createElement(elementType);
     tempElement.setAttribute(attributeName, "test_value");
     // Check if the element's property is a boolean type
