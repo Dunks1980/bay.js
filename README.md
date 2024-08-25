@@ -188,6 +188,31 @@ Props will not be available using this method, but you can use settings. Content
 <hr/>
 <br />
 
+### 6. Using DSD (Declarative Shadow DOM). 
+In your html create an inline element with a template inside, then add bay="dsd" to the element and shadowrootmode="open" to the template element:<br>
+```html
+<my-component bay="dsd">
+  <template shadowrootmode="open">
+    <dsd>
+      <h1 id="title">loading...</h1>
+    </dsd>
+    <noscript>
+      <h1 id="title">${this.header_text}</h1>
+    </noscript>
+    <script mounted>
+      this.header_text = "Hello World";
+    </script>
+  </template>
+</my-component>
+```
+Elements will be visible while Bay is loading but not if they are wrapped in noscript tags. 
+DSD elements and their children will be removed once the component is created and noscript elements will be removed but their content will remain and their content will be parsed and diffed.
+Props will not be available using this method, but you can use settings. Content is rendered to the main DOM so styles will not be encapsulated.<br>
+
+<br />
+<hr/>
+<br />
+
 A component can be used anywhere in the HTML but inline templates must be in the body of the document. "my-component" can be anything you like but it must have a dash in the name per the custom element spec.<br>
 
 <br />
