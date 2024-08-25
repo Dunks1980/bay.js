@@ -346,6 +346,10 @@ const bay = (settings) => {
       }
       return template_el;
   }
+  function remove_template_tags(template_el) {
+      template_el = template_el.replace(/<template(.*?)>/g, "<!--<template$1>-->").replace(/<\/template>/g, "<!--</template>-->");
+      return template_el;
+  }
   function fetch_includes(html, callback) {
       const incudes = [...html.querySelectorAll("include")];
       incudes.forEach((include) => {
@@ -359,6 +363,7 @@ const bay = (settings) => {
                   return res.text();
               })
                   .then((text) => {
+                  text = remove_template_tags(text);
                   while (text.indexOf("<style>") > -1) {
                       const styles_text = text.split("<style>")[1].split("</style>")[0];
                       text = text.replaceAll(`<style>${styles_text}</style>`, "");
@@ -422,6 +427,7 @@ const bay = (settings) => {
   function create_template_fn(element_tagname, template_el, attributes_array) {
       const doc = new DOMParser();
       const passed_attributes = attributes_array || [];
+      template_el = remove_template_tags(template_el);
       template_el = template_el.replaceAll(/<!--[\s\S]*?-->/g, "");
       template_el = apply_settings(template_el);
       styles_string = "";
@@ -485,6 +491,7 @@ const bay = (settings) => {
               fetch(location)
                   .then((res) => res.text())
                   .then((html) => {
+                  html = remove_template_tags(html);
                   modify_template(html, bay, tag_name);
               })
                   .catch((error) => {
