@@ -1232,16 +1232,16 @@ const bay: any = (settings: any) => {
               break;
             case "map":
               rep(
-                `\${ ${tag_array}.${tagname_str}((${tag_params})=>{return \``,
-                `\`}).join('${tag_join}')}`
+                `\${ Array.isArray(${tag_array}) ? ${tag_array}.${tagname_str}((${tag_params})=>{return \``,
+                `\`}).join('${tag_join}') : ''}`
               );
               break;
             case "for":
               const this_for = `bay_${tagname_str}_${makeid(8)}`;
               if (tag_array.length) {
                 rep(
-                  `\${(()=>{let ${this_for}='';${tag_array}.forEach((${tag_params})=>{${this_for}+=\``,
-                  `\`});return ${this_for};})()}`
+                  `\${(()=>{let ${this_for}=''; Array.isArray(${tag_array}) ? ${tag_array}.forEach((${tag_params})=>{${this_for}+=\``,
+                  `\`}) : '';return ${this_for};})()}`
                 );
               } else {
                 rep(
@@ -1515,14 +1515,14 @@ const bay: any = (settings: any) => {
           if (tag === "map") {
             newhtml =
               "<!--iteration" +
-              `\${ ${array}.map((${params})=>{return \`${current_html}\`}).join('${join}') }` +
+              `\${ Array.isArray(${array}) ? ${array}.map((${params})=>{return \`${current_html}\`}).join('${join}') : ''}` +
               "iteration-->";
           } else {
             const this_for = `bay_for_${makeid(8)}`;
             if (!this_attr) {
               newhtml =
                 "<!--iteration" +
-                `\${(()=>{let ${this_for}='';${array}.forEach((${params})=>{${this_for}+=\`${current_html}\`});return ${this_for};})()}` +
+                `\${(()=>{let ${this_for}=''; Array.isArray(${array}) ? ${array}.forEach((${params})=>{${this_for}+=\`${current_html}\`}) : '';return ${this_for};})()}` +
                 "iteration-->";
             } else {
               newhtml =
@@ -1953,5 +1953,4 @@ const bay: any = (settings: any) => {
   window.bay.create = bay.create;
 };
 
-//bay();
 export default bay;

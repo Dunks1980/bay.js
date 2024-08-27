@@ -1091,12 +1091,12 @@ const bay = (settings) => {
                                 .replaceAll(close_tag, "");
                             break;
                         case "map":
-                            rep(`\${ ${tag_array}.${tagname_str}((${tag_params})=>{return \``, `\`}).join('${tag_join}')}`);
+                            rep(`\${ Array.isArray(${tag_array}) ? ${tag_array}.${tagname_str}((${tag_params})=>{return \``, `\`}).join('${tag_join}') : ''}`);
                             break;
                         case "for":
                             const this_for = `bay_${tagname_str}_${makeid(8)}`;
                             if (tag_array.length) {
-                                rep(`\${(()=>{let ${this_for}='';${tag_array}.forEach((${tag_params})=>{${this_for}+=\``, `\`});return ${this_for};})()}`);
+                                rep(`\${(()=>{let ${this_for}=''; Array.isArray(${tag_array}) ? ${tag_array}.forEach((${tag_params})=>{${this_for}+=\``, `\`}) : '';return ${this_for};})()}`);
                             }
                             else {
                                 rep(`\${(()=>{let ${this_for}=''; ${tagname_str} (${tag_statement}) { ${this_for} += \``, `\`};return ${this_for};})() }`);
@@ -1320,7 +1320,7 @@ const bay = (settings) => {
                     if (tag === "map") {
                         newhtml =
                             "<!--iteration" +
-                                `\${ ${array}.map((${params})=>{return \`${current_html}\`}).join('${join}') }` +
+                                `\${ Array.isArray(${array}) ? ${array}.map((${params})=>{return \`${current_html}\`}).join('${join}') : ''}` +
                                 "iteration-->";
                     }
                     else {
@@ -1328,7 +1328,7 @@ const bay = (settings) => {
                         if (!this_attr) {
                             newhtml =
                                 "<!--iteration" +
-                                    `\${(()=>{let ${this_for}='';${array}.forEach((${params})=>{${this_for}+=\`${current_html}\`});return ${this_for};})()}` +
+                                    `\${(()=>{let ${this_for}=''; Array.isArray(${array}) ? ${array}.forEach((${params})=>{${this_for}+=\`${current_html}\`}) : '';return ${this_for};})()}` +
                                     "iteration-->";
                         }
                         else {
@@ -1678,5 +1678,4 @@ const bay = (settings) => {
     bay.create = create_template_fn;
     window.bay.create = bay.create;
 };
-//bay();
 export default bay;
