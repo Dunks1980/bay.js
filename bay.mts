@@ -365,7 +365,9 @@ const bay: any = (settings: any) => {
   }
 
   function remove_template_tags(template_el: string) {
-    template_el = template_el.replace(/<template(.*?)>/g, "<!--<template$1>-->").replace(/<\/template>/g, "<!--</template>-->");
+    template_el = template_el
+      .replace(/<template(.*?)>/g, "<!--<template$1>-->")
+      .replace(/<\/template>/g, "<!--</template>-->");
     return template_el;
   }
 
@@ -1493,47 +1495,59 @@ const bay: any = (settings: any) => {
         };
       }
 
-      [...$(c_html, "*")].forEach((el) => {
-        if (el.hasAttribute("bay-map") || el.hasAttribute("bay-for")) {
-          let tag = el.hasAttribute("bay-map") ? "map" : "for";
-          let this_attr = el.getAttribute("this") || "";
-          let params = el.getAttribute("params") || "";
-          let array =
-            el.getAttribute("bay-map") ||
-            el.getAttribute("bay-for") ||
-            el.getAttribute("array") ||
-            "[]";
-          let join = el.getAttribute("join") || "";
-          el.removeAttribute("params");
-          el.removeAttribute("bay-map");
-          el.removeAttribute("bay-for");
-          el.removeAttribute("this");
-          el.removeAttribute("array");
-          el.removeAttribute("join");
-          let current_html = el.outerHTML;
-          let newhtml = ``;
-          if (tag === "map") {
-            newhtml =
-              "<!--iteration" +
-              `\${ Array.isArray(${array}) ? ${array}.map((${params})=>{return \`${current_html}\`}).join('${join}') : ''}` +
-              "iteration-->";
-          } else {
-            const this_for = `bay_for_${makeid(8)}`;
-            if (!this_attr) {
-              newhtml =
-                "<!--iteration" +
-                `\${(()=>{let ${this_for}=''; Array.isArray(${array}) ? ${array}.forEach((${params})=>{${this_for}+=\`${current_html}\`}) : '';return ${this_for};})()}` +
-                "iteration-->";
-            } else {
-              newhtml =
-                "<!--iteration" +
-                `\${ (()=>{let ${this_for}=''; for (${this_attr}) { ${this_for} += \`${current_html}\`};return ${this_for};})()}` +
-                "iteration-->";
-            }
+      function process_map_for(elements: any) {
+        elements.forEach((el: any) => {
+          if (el.children.length > 0) {
+            // Process child elements first
+            process_map_for([...el.children]);
           }
-          el.outerHTML = newhtml;
-        }
-      });
+
+          if (el.hasAttribute("bay-map") || el.hasAttribute("bay-for")) {
+            let tag = el.hasAttribute("bay-map") ? "map" : "for";
+            let this_attr = el.getAttribute("this") || "";
+            let params = el.getAttribute("params") || "";
+            let array =
+              el.getAttribute("bay-map") ||
+              el.getAttribute("bay-for") ||
+              el.getAttribute("array") ||
+              "[]";
+            let join = el.getAttribute("join") || "";
+            el.removeAttribute("params");
+            el.removeAttribute("bay-map");
+            el.removeAttribute("bay-for");
+            el.removeAttribute("this");
+            el.removeAttribute("array");
+            el.removeAttribute("join");
+            let current_html = el.outerHTML;
+            let newhtml = ``;
+            if (tag === "map") {
+              newhtml =
+                "&lt;!--iteration" +
+                `\${ Array.isArray(${array}) ? ${array}.map((${params})=>{return \`${current_html}\`}).join('${join}') : ''}` +
+                "iteration--&gt;";
+            } else {
+              const this_for = `bay_for_${makeid(8)}`;
+              if (!this_attr) {
+                newhtml =
+                  "&lt;!--iteration" +
+                  `\${(()=>{let ${this_for}=''; Array.isArray(${array}) ? ${array}.forEach((${params})=>{${this_for}+=\`${current_html}\`}) : '';return ${this_for};})()}` +
+                  "iteration--&gt;";
+              } else {
+                newhtml =
+                  "&lt;!--iteration" +
+                  `\${ (()=>{let ${this_for}=''; for (${this_attr}) { ${this_for} += \`${current_html}\`};return ${this_for};})()}` +
+                  "iteration--&gt;";
+              }
+            }
+            el.outerHTML = newhtml;
+          }
+        });
+      }
+
+      process_map_for([...$(c_html, "[bay-map], [bay-for]")]);
+      c_html.outerHTML = c_html.outerHTML
+        .replaceAll("&lt;!--iteration", "<!--iteration")
+        .replaceAll("iteration--&gt;", "iteration-->");
 
       cleanup_defined(c_html);
       script = script_text;
