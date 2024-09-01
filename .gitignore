@@ -3,3 +3,4 @@ dist/
 public/
 dev/
 package-lock.json
+.vscode/
