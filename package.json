@@ -26,7 +26,7 @@
   "bugs": {
     "url": "https://github.com/Dunks1980/bay.js/issues"
   },
-  "homepage": "https://bayjs.org",
+  "homepage": "https://bayjs.dunkerley.dev",
   "devDependencies": {
     "terser": "^5.31.6",
     "typescript": "^5.5.4"
