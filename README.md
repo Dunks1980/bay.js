@@ -53,6 +53,10 @@ migration, compatibility changes and remaining limitations. Website previews
 and bundled components have been migrated.
 Published CDN/npm releases remain unchanged until a release is published.
 
+<br/>
+<hr/>
+<br/>
+
 ## Installation
 
 Bay.js can be used via a script tag or importing as a module.
