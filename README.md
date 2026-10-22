@@ -33,6 +33,26 @@ To see it in action, you can visit [bayjs.dunkerley.dev](https://bayjs.dunkerley
 <hr/>
 <br/>
 
+## Bay.js 4.0.0 security migration
+
+The current source and regenerated local distributions store state as raw values
+and encode ordinary `${...}` text/attribute output, including nested values.
+These changes have not been published. Existing applications need these migrations:
+
+- Use `${$bay.html(trustedMarkup)}` for intentionally trusted HTML. `decode`
+  alone now produces text; the trust helper does not sanitize its input.
+- Replace `:click="this.pick('${this.name}')"` with
+  `:click="this.pick(this.name)"`. Dynamic handler source is rejected.
+- Use data attributes to carry loop values into static handlers. Attribute
+  fragments from `this-attribute` require explicit trusted HTML.
+- Stop pre-encoding state for normal output. URL values and executable HTML
+  contexts have separate restrictions.
+
+See [the release and security migration notes](RELEASE_NOTES.md) for template
+migration, compatibility changes and remaining limitations. Website previews
+and bundled components have been migrated.
+Published CDN/npm releases remain unchanged until a release is published.
+
 ## Installation
 
 Bay.js can be used via a script tag or importing as a module.
@@ -73,6 +93,17 @@ import bay from '@dunks1980/bay.js';
 bay();
 ```
 [NPM example](https://bayjs.dunkerley.dev/examples?tab=installation&item=installation_npm)
+
+The npm entry point resolves to `bay.mjs` for both `main` and `module`.
+Explicit file imports, including `bay.js` and `components/*.mjs`, remain available.
+Use `bay.js` or `bay.min.js` as classic browser scripts; those files initialize
+Bay automatically. ES module imports export the `bay` initializer shown above.
+
+No CommonJS build is provided. CommonJS code can load the initializer with
+`const { default: bay } = await import('@dunks1980/bay.js')` inside an async
+function. Synchronous `require()` is not a portable, supported entry point;
+on Node 24 it returns a module namespace with `.default`, rather than a callable
+Bay function. Calling the initializer still requires a browser DOM.
 
 <br/>
 <hr/>
@@ -321,10 +352,20 @@ A component can be used anywhere in the HTML but inline templates must be in the
 
 ## Internal Functions:
 
+Native state values: `Map` and `Set` use stable wrappers that preserve native
+method results and chaining. Their keys and values keep their original identities.
+Existing `Map.set()` and `Set.add()` calls trigger updates; `delete()` and `clear()`
+do not. `Date` retains its original identity and native methods, but date mutations
+do not trigger updates. Reassign the state property after a non-reactive mutation
+(for example, `this.date = this.date`) to request an update. Mutating an object
+stored inside a collection is not automatically reactive. Plain objects and arrays
+continue to be reactive.
+
 | Syntax | Description | Example |
 |--- |--- |--- |
 | ```$bay.encode('string');``` | Encode/escape a string. | [Encode](https://bayjs.dunkerley.dev/examples?tab=functions&item=example_functions_encode) |
 | ```$bay.decode('string');``` | Decode/un-escape a string. | [Decode](https://bayjs.dunkerley.dev/examples?tab=functions&item=example_functions_decode) |
+| ```$bay.html(trustedMarkup);``` | Explicitly render trusted application-authored HTML. This is not sanitization; never trust user/API input. | [Security](https://bayjs.dunkerley.dev/examples?tab=template&item=example_template_security) |
 | ```$bay.emit('custom-event', {key: value});``` | Emit a custom event. (across all components) | [Emit](https://bayjs.dunkerley.dev/examples?tab=state&item=example_emit) |
 | ```$bay.on('custom-event', (e) => {console.log(e.detail);});``` | Listen for a custom event. (across all components) | [Emit](https://bayjs.dunkerley.dev/examples?tab=state&item=example_emit) |
 | ```$ref('xxx').onclick = (e) => {...``` <br> ```$ref('xxx').forEach((el) => {...``` | Gets elements with the attribute ref="xxx". Can only be used in mounted script. | [Ref](https://bayjs.dunkerley.dev/examples?tab=attributes&item=example_attrs_ref) |

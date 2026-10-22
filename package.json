@@ -1,10 +1,23 @@
 {
   "name": "@dunks1980/bay.js",
-  "version": "3.4.3",
+  "version": "4.0.0",
   "description": "Web component library",
   "logo": "favicon.svg",
-  "main": "bay.js",
+  "main": "bay.mjs",
   "module": "bay.mjs",
+  "files": [
+    "bay.mjs",
+    "bay.js",
+    "bay.min.mjs",
+    "bay.min.js",
+    "components/modal.mjs",
+    "components/route.mjs",
+    "components/slide.mjs",
+    "favicon.svg",
+    "README.md",
+    "LICENSE",
+    "RELEASE_NOTES.md"
+  ],
   "scripts": {
     "tsc": "npx tsc --watch",
     "min": "node ./minify.js"
@@ -29,6 +42,6 @@
   "homepage": "https://bayjs.dunkerley.dev",
   "devDependencies": {
     "terser": "^5.31.6",
-    "typescript": "^5.5.4"
+    "typescript": "^5.9.3"
   }
 }

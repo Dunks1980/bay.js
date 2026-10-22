@@ -18,11 +18,11 @@ const bay = (settings) => {
     const prop_name = "$prop";
     const data_attr = `data-bay-`;
     const replace_attr_name = "this-attribute";
-    let file_name = "";
     let to_fetch = [];
-    let already_fetched = [];
+    const template_fetches = new Map();
+    const pending_registrations = new Set();
+    const include_fetches = new Map();
     let blobs = new Map();
-    let styles_string = "";
     const modifiers_array = [
         ".passive",
         ".capture",
@@ -62,7 +62,7 @@ const bay = (settings) => {
         });
     })(document);
     /**
-     * Escapes HTML characters in a string to prevent XSS attacks when added data to proxys.
+     * Encodes a string for HTML output; reactive state itself remains unencoded.
      * @param {any} input string to be escaped
      */
     const escape = document.createElement("textarea");
@@ -85,6 +85,252 @@ const bay = (settings) => {
         txt.innerHTML = html;
         return txt.value;
     }
+    // Only this module can brand trusted markup. Decoding entities never grants trust.
+    const trusted_html = new WeakSet();
+    function trustHTML(value) {
+        const text = String(value !== null && value !== void 0 ? value : "");
+        const result = Object.freeze({ toString: () => text });
+        trusted_html.add(result);
+        return result;
+    }
+    window.bay.html = trustHTML;
+    /** A native template tag keeps expression values separate from trusted source.
+     * Compiler-generated structural fragments use this same tag before being branded.
+     * This is output encoding, not an HTML, CSS, or URL-origin sanitizer.
+     */
+    function render_template(strings, ...values) {
+        let output = "";
+        let mode = "text";
+        let tag = "";
+        let attribute = "";
+        let attribute_value = "";
+        let quote = "";
+        let closing = false;
+        let dynamic_attribute = false;
+        let attribute_start = 0;
+        let boolean_absent = false;
+        const omitted_attributes = [];
+        const fail = (message) => {
+            throw new Error(`Bay template security: ${message}`);
+        };
+        const finish_attribute = (end) => {
+            if (boolean_absent && attribute_value === "")
+                omitted_attributes.push({ start: attribute_start, end });
+            if (dynamic_attribute && /^(?:href|xlink:href|src|action|formaction|poster|cite|background|data|codebase)$/i.test(attribute)) {
+                const url = decodeHtml(attribute_value).replace(/[\u0000-\u0020\u007f]/g, "");
+                const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(url);
+                if (scheme && !/^(?:https?|mailto|tel|ftp)$/i.test(scheme[1])) {
+                    fail(`unsafe URL scheme in ${attribute}`);
+                }
+            }
+            attribute_value = "";
+            dynamic_attribute = false;
+            boolean_absent = false;
+        };
+        const finish_tag = () => {
+            mode = !closing && /^(?:script|style|textarea|title)$/i.test(tag) ? "raw" : "text";
+        };
+        // Scan HTML syntax, never JavaScript expressions. The JS engine handles those
+        // through tagged template arguments, including nested literals and regexes.
+        const scan = (text) => {
+            const offset = output.length - text.length;
+            for (let i = 0; i < text.length; i++) {
+                const ch = text[i];
+                if (mode === "comment") {
+                    if (text.startsWith("-->", i)) {
+                        mode = "text";
+                        i += 2;
+                    }
+                }
+                else if (mode === "raw") {
+                    const end = `</${tag.toLowerCase()}`;
+                    if (text.slice(i, i + end.length).toLowerCase() === end &&
+                        /[\t\n\f\r />]/.test(text[i + end.length] || "")) {
+                        mode = "tagOpen";
+                    }
+                    else {
+                        continue;
+                    }
+                }
+                if (mode === "text") {
+                    if (text.startsWith("<!--", i)) {
+                        mode = "comment";
+                        i += 3;
+                    }
+                    else if (ch === "<") {
+                        mode = "tagOpen";
+                        tag = "";
+                        closing = false;
+                    }
+                }
+                else if (mode === "tagOpen") {
+                    if (ch === "<") {
+                        tag = "";
+                        closing = false;
+                    }
+                    else if (ch === "/") {
+                        closing = true;
+                    }
+                    else if (/[a-z!]/i.test(ch)) {
+                        tag = ch;
+                        mode = "tagName";
+                    }
+                    else {
+                        mode = "text";
+                    }
+                }
+                else if (mode === "tagName") {
+                    if (ch === ">") {
+                        finish_tag();
+                    }
+                    else if (/[\t\n\f\r /]/.test(ch)) {
+                        mode = "beforeAttribute";
+                    }
+                    else {
+                        tag += ch;
+                    }
+                }
+                else if (mode === "beforeAttribute") {
+                    if (ch === ">") {
+                        finish_tag();
+                    }
+                    else if (!/[\t\n\f\r /]/.test(ch)) {
+                        attribute_start = offset + i;
+                        attribute = ch;
+                        mode = "attributeName";
+                    }
+                }
+                else if (mode === "attributeName") {
+                    if (ch === "=") {
+                        mode = "beforeValue";
+                    }
+                    else if (ch === ">") {
+                        finish_tag();
+                    }
+                    else if (/[\t\n\f\r ]/.test(ch)) {
+                        mode = "afterAttribute";
+                    }
+                    else {
+                        attribute += ch;
+                    }
+                }
+                else if (mode === "afterAttribute") {
+                    if (ch === "=") {
+                        mode = "beforeValue";
+                    }
+                    else if (ch === ">") {
+                        finish_tag();
+                    }
+                    else if (!/[\t\n\f\r ]/.test(ch)) {
+                        attribute_start = offset + i;
+                        attribute = ch;
+                        mode = "attributeName";
+                    }
+                }
+                else if (mode === "beforeValue") {
+                    if (ch === '"' || ch === "'") {
+                        quote = ch;
+                        mode = "quotedValue";
+                    }
+                    else if (!/[\t\n\f\r ]/.test(ch)) {
+                        mode = "unquotedValue";
+                        attribute_value += ch;
+                    }
+                }
+                else if (mode === "quotedValue") {
+                    if (ch === quote) {
+                        finish_attribute(offset + i + 1);
+                        mode = "beforeAttribute";
+                    }
+                    else {
+                        attribute_value += ch;
+                    }
+                }
+                else if (mode === "unquotedValue") {
+                    if (ch === ">" || /[\t\n\f\r ]/.test(ch)) {
+                        finish_attribute(offset + i);
+                        mode = "beforeAttribute";
+                        if (ch === ">") {
+                            finish_tag();
+                        }
+                    }
+                    else {
+                        attribute_value += ch;
+                    }
+                }
+            }
+        };
+        for (let i = 0; i < strings.length; i++) {
+            const literal = strings[i];
+            if (literal === undefined)
+                fail("invalid template escape");
+            output += literal;
+            scan(literal);
+            if (i === values.length)
+                break;
+            const value = values[i];
+            const trusted = typeof value === "object" && value !== null && trusted_html.has(value);
+            let encoded = "";
+            if (mode === "text") {
+                encoded = trusted ? String(value) : escapeHTML(String(value !== null && value !== void 0 ? value : ""));
+            }
+            else if (mode === "quotedValue" || mode === "beforeValue" || mode === "unquotedValue") {
+                const name = attribute.toLowerCase();
+                if (/^on/.test(name) || (/^(?::|custom:)/.test(name) && name !== ":style") ||
+                    (name.startsWith(data_attr) && name !== `${data_attr}style`) ||
+                    /^(?:srcdoc|srcset|imagesrcset|this-attribute)$/.test(name)) {
+                    fail(`dynamic ${attribute} is not allowed; read state directly in event handlers`);
+                }
+                if (/^(?:script|object|embed|base)$/i.test(tag)) {
+                    fail(`dynamic resource attributes on ${tag} require explicit trusted HTML`);
+                }
+                dynamic_attribute = true;
+                encoded = escapeHTML(String(value !== null && value !== void 0 ? value : "")).replace(/[\s=`]/g, (ch) => `&#${ch.charCodeAt(0)};`);
+                if ((value === false || value == null) && booleanAttributeProperty(tag.toLowerCase(), name)) {
+                    boolean_absent = true;
+                    encoded = "";
+                }
+                if (mode === "beforeValue" && encoded === "")
+                    mode = "unquotedValue";
+            }
+            else if ((mode === "beforeAttribute" || mode === "afterAttribute") &&
+                (trusted || value === "" || value == null)) {
+                // this-attribute retains explicit trusted attribute fragments only.
+                encoded = String(value !== null && value !== void 0 ? value : "");
+            }
+            else if (mode === "raw" && /^(?:textarea|title)$/i.test(tag)) {
+                encoded = escapeHTML(String(value !== null && value !== void 0 ? value : ""));
+            }
+            else {
+                fail("dynamic HTML syntax or script/style content requires migration; use quoted attributes and explicit trusted HTML");
+            }
+            output += encoded;
+            scan(encoded);
+        }
+        if (dynamic_attribute)
+            finish_attribute(output.length);
+        omitted_attributes.reverse().forEach(({ start, end }) => {
+            output = output.slice(0, start) + output.slice(end);
+        });
+        return output;
+    }
+    function render_option(item) {
+        var _a;
+        const option = document.createElement("option");
+        for (const [name, value] of Object.entries(item)) {
+            if (name === "text")
+                continue;
+            if (!/^[a-z][a-z0-9_-]*$/i.test(name) || /^on/i.test(name) ||
+                name.toLowerCase().startsWith(data_attr)) {
+                throw new Error(`Bay template security: unsafe option attribute ${name}`);
+            }
+            if ((name === "selected" || name === "disabled") && !value)
+                continue;
+            option.setAttribute(name, String(value));
+        }
+        option.textContent = String((_a = item.text) !== null && _a !== void 0 ? _a : "");
+        return option.outerHTML;
+    }
     // ------------------------------
     function emit(name, data) {
         const detail = { detail: { name, data } };
@@ -92,45 +338,55 @@ const bay = (settings) => {
         window.dispatchEvent(new CustomEvent(name, detail));
     }
     window.bay.emit = emit;
-    function receive($bay, $el, name, data) {
-        const els = [
-            ...$($bay, `[${data_attr}${name}]`),
-            ...$($el, `[${data_attr}${name}]`),
-            ...$(document, `[${data_attr}${name}]`),
-        ];
+    function dispatch_emitted(roots, name, data) {
+        const els = new Set();
+        roots.forEach((root) => {
+            $(root, `[${data_attr}${name}]`).forEach((el) => els.add(el));
+        });
         els.forEach((el) => {
             el.dispatchEvent(new CustomEvent(name, { detail: { name, data } }));
         });
     }
+    function receive($bay, $el, name, data) {
+        dispatch_emitted([$bay, $el, document], name, data);
+    }
     window.bay.receive = receive;
+    // One relay for this runtime; component roots already live in window.bay.
+    // Inspect connected roots at delivery time so removal needs no relay cleanup.
+    window.addEventListener("bay_emit", (event) => {
+        const { name, data } = event.detail;
+        const roots = [document];
+        Object.values(window.bay).forEach((root) => {
+            if (root instanceof ShadowRoot && root.host.isConnected)
+                roots.push(root);
+        });
+        dispatch_emitted(roots, name, data);
+    });
     function make_map_proxy(map, callback) {
-        return new Proxy(map, {
+        const proxy = new Proxy(map, {
             get(target, key) {
+                if (key === "isProxy")
+                    return true;
                 if (key === "set") {
                     return function (k, v) {
-                        target.set(k, escapeHTML(v));
+                        target.set(k, v);
                         if (callback)
                             callback();
-                        return target;
+                        return proxy;
                     };
                 }
-                else if (["get", "has", "delete", "clear"].includes(key)) {
-                    return function (...args) {
-                        return target[key].apply(target, args);
-                    };
-                }
-                else {
-                    return target[key];
-                }
+                const value = Reflect.get(target, key, target);
+                return typeof value === "function" && key !== "constructor" ? value.bind(target) : value;
             },
         });
+        return proxy;
     }
     function make_weakmap_proxy(map, callback) {
         return new Proxy(map, {
             get(target, key) {
                 if (key === "set") {
                     return function (k, v) {
-                        target.set(k, escapeHTML(v));
+                        target.set(k, v);
                         if (callback)
                             callback();
                         return target;
@@ -148,33 +404,30 @@ const bay = (settings) => {
         });
     }
     function make_set_proxy(set, callback) {
-        return new Proxy(set, {
+        const proxy = new Proxy(set, {
             get(target, key) {
+                if (key === "isProxy")
+                    return true;
                 if (key === "add") {
                     return function (v) {
-                        target.add(escapeHTML(v));
+                        target.add(v);
                         if (callback)
                             callback();
-                        return target;
+                        return proxy;
                     };
                 }
-                else if (["has", "delete", "clear"].includes(key)) {
-                    return function (...args) {
-                        return target[key].apply(target, args);
-                    };
-                }
-                else {
-                    return target[key];
-                }
+                const value = Reflect.get(target, key, target);
+                return typeof value === "function" && key !== "constructor" ? value.bind(target) : value;
             },
         });
+        return proxy;
     }
     function make_weakset_proxy(set, callback) {
         return new Proxy(set, {
             get(target, key) {
                 if (key === "add") {
                     return function (v) {
-                        target.add(escapeHTML(v));
+                        target.add(v);
                         if (callback)
                             callback();
                         return target;
@@ -202,9 +455,12 @@ const bay = (settings) => {
                     return "";
                 }
                 if (prop === null) {
-                    return;
+                    return null;
                 }
-                if (!prop.isProxy && typeof prop === "object") {
+                // Date methods require the original receiver's native internal slots.
+                if (prop instanceof Date)
+                    return prop;
+                if (!prop.isProxy && typeof prop === "object" && !trusted_html.has(prop)) {
                     if (prop instanceof Map) {
                         target[key] = make_map_proxy(prop, callback);
                     }
@@ -224,7 +480,7 @@ const bay = (settings) => {
                 return target[key];
             },
             set: (target, key, value) => {
-                target[key] = escapeHTML(value);
+                target[key] = value;
                 if (callback)
                     callback();
                 return true;
@@ -302,34 +558,49 @@ const bay = (settings) => {
     }
     const bay_instance_id = makeid(8);
     // ------------------------------
+    const hydrated_targets = new WeakSet();
+    const hydration_targets = new WeakMap();
+    let hydration_index = 0;
     /**
      * Finds all custom elements on the page with the attribute "bay"
      * adds them to an array and then fires fetch_component on non dupes.
      * @param {HTMLElement} element root element
      */
     function get_all_bays(element) {
-        [...document.querySelectorAll("[bay-hydrate]")].forEach((el, i) => {
-            el.id = "bay-hydrate-" + i;
-            let html_content = el.querySelector("template").innerHTML;
-            let component = document.createElement("bay-hydrate-" + i);
-            component.setAttribute("inner-html", "#bay-hydrate-" + i);
-            document.body.appendChild(component);
-            window.bay.create("bay-hydrate-" + i, "<inner-html>" + html_content + "</inner-html>");
+        const targets = [...element.querySelectorAll("[bay-hydrate]")];
+        if (element instanceof Element && element.hasAttribute("bay-hydrate")) {
+            targets.unshift(element);
+        }
+        targets.forEach((el) => {
+            if (hydrated_targets.has(el))
+                return;
+            const template = el.querySelector("template");
+            if (!template)
+                return;
+            const root = el.getRootNode();
+            let name;
+            do {
+                name = "bay-hydrate-" + hydration_index++;
+            } while (customElements.get(name) || root.querySelector("#" + name));
+            el.id = name;
+            const html_content = template.innerHTML;
+            const component = document.createElement(name);
+            component.setAttribute("inner-html", "#" + name);
+            // Reserve the target before registration can trigger nested discovery.
+            hydrated_targets.add(el);
+            hydration_targets.set(component, el);
+            (root.nodeType === 9 ? root.body : root).appendChild(component);
+            window.bay.create(name, "<inner-html>" + html_content + "</inner-html>");
         });
         [...$(element, "[bay]")].forEach((el, i) => {
             if (el.getAttribute("bay") === "dsd") {
                 el.setAttribute("bay", `dsd-${i}`);
             }
-            if (to_fetch.indexOf(el.getAttribute("bay") || "") === -1) {
+            if (to_fetch.indexOf(el) === -1) {
                 to_fetch.push(el);
             }
         });
-        to_fetch.forEach((el) => {
-            if (already_fetched.indexOf(el.getAttribute("bay")) === -1) {
-                fetch_component(el);
-            }
-            already_fetched.push(el.getAttribute("bay"));
-        });
+        to_fetch.splice(0).forEach((el) => fetch_component(el));
     }
     // ------------------------------
     function apply_settings(template_el) {
@@ -353,33 +624,64 @@ const bay = (settings) => {
         return template_el;
     }
     function fetch_includes(html, callback) {
-        const incudes = [...html.querySelectorAll("include")];
-        incudes.forEach((include) => {
-            const src = include.attributes[0];
-            if (src && src.value) {
-                fetch(src.value)
-                    .then((res) => {
-                    if (!res.ok) {
-                        throw new Error(`HTTP error ${res.status}: ${res.statusText}`);
+        const requests = new Map();
+        const top_level = (includes) => includes.filter((include) => { var _a; return !((_a = include.parentElement) === null || _a === void 0 ? void 0 : _a.closest("include")); });
+        function resolve_include(include, ancestors) {
+            return __awaiter(this, void 0, void 0, function* () {
+                var _a;
+                try {
+                    const src = (_a = include.attributes[0]) === null || _a === void 0 ? void 0 : _a.value;
+                    if (!src)
+                        throw new Error("Bay include is missing a source.");
+                    // Keep fetch's page-relative resolution, including the page's <base>.
+                    const key = new URL(src, document.baseURI).href.split("#")[0];
+                    if (ancestors.includes(key))
+                        throw new Error(`Circular Bay include: ${key}`);
+                    let request = requests.get(key) || include_fetches.get(key);
+                    if (!request) {
+                        request = fetch(src)
+                            .then((res) => {
+                            if (!res.ok)
+                                throw new Error(`HTTP error ${res.status}: ${res.statusText}`);
+                            return res.text();
+                        })
+                            .finally(() => {
+                            include_fetches.delete(key);
+                        });
+                        include_fetches.set(key, request);
                     }
-                    return res.text();
-                })
-                    .then((text) => {
-                    text = remove_template_tags(text);
+                    requests.set(key, request);
+                    let text = remove_template_tags(yield request);
+                    let styles = "";
                     while (text.indexOf("<style>") > -1) {
+                        if (text.indexOf("</style>", text.indexOf("<style>")) === -1)
+                            break;
                         const styles_text = text.split("<style>")[1].split("</style>")[0];
                         text = text.replaceAll(`<style>${styles_text}</style>`, "");
-                        styles_string += styles_text;
+                        styles += styles_text;
                     }
                     text = text.replaceAll(/<!--[\s\S]*?-->/g, "");
+                    const previous = new Set(html.querySelectorAll("include"));
                     include.outerHTML = text;
-                    callback();
-                })
-                    .catch((error) => {
+                    const nested = top_level([...html.querySelectorAll("include")].filter((child) => !previous.has(child)));
+                    const nested_styles = yield Promise.all(nested.map((child) => resolve_include(child, [...ancestors, key])));
+                    return styles + nested_styles.join("");
+                }
+                catch (error) {
                     console.error("Error fetching:", error);
-                });
-            }
-        });
+                    include.remove();
+                    return "";
+                }
+            });
+        }
+        const includes = top_level([...html.querySelectorAll("include")]);
+        if (!includes.length) {
+            callback("");
+            return;
+        }
+        Promise.all(includes.map((include) => resolve_include(include, [])))
+            .then((styles) => callback(styles.join("")))
+            .catch((error) => console.error("Error compiling includes:", error));
     }
     /**
      * makes changes to the template before its passed to create_component.
@@ -392,7 +694,7 @@ const bay = (settings) => {
         let html;
         template_el = template_el.replaceAll(/<!--[\s\S]*?-->/g, "");
         template_el = apply_settings(template_el);
-        styles_string = "";
+        let styles_string = "";
         if (template_el.startsWith(start_split)) {
             template_el = template_el.trim();
             template_el = template_el.split(start_split)[1];
@@ -409,15 +711,14 @@ const bay = (settings) => {
         html = doc.parseFromString(template_el, "text/html");
         html.getElementById("bay-temporary-compile-element").remove();
         //console.log(html);
-        function continue_to_create() {
+        function continue_to_create(include_styles) {
             if (html && [...html.querySelectorAll("include")].length === 0) {
                 if (!customElements.get(tagname)) {
-                    create_component(html, tagname, getAttributes(bay), styles_string, false);
+                    create_component(html, tagname, getAttributes(bay), styles_string + include_styles, false);
                 }
             }
         }
         fetch_includes(html, continue_to_create);
-        continue_to_create();
     }
     // ------------------------------
     /**
@@ -432,7 +733,7 @@ const bay = (settings) => {
         template_el = remove_template_tags(template_el);
         template_el = template_el.replaceAll(/<!--[\s\S]*?-->/g, "");
         template_el = apply_settings(template_el);
-        styles_string = "";
+        let styles_string = "";
         while (template_el.indexOf("<style>") > -1) {
             const styles_text = template_el.split("<style>")[1].split("</style>")[0];
             template_el = template_el.replaceAll(`<style>${styles_text}</style>`, "");
@@ -442,15 +743,14 @@ const bay = (settings) => {
             '<div id="bay-temporary-compile-element"></div>' + template_el;
         let html = doc.parseFromString(template_el, "text/html");
         html.getElementById("bay-temporary-compile-element").remove();
-        function continue_to_create() {
+        function continue_to_create(include_styles) {
             if (html && [...html.querySelectorAll("include")].length === 0) {
                 if (!customElements.get(element_tagname.toLowerCase())) {
-                    create_component(html, element_tagname.toLowerCase(), passed_attributes, styles_string, true);
+                    create_component(html, element_tagname.toLowerCase(), passed_attributes, styles_string + include_styles, true);
                 }
             }
         }
         fetch_includes(html, continue_to_create);
-        continue_to_create();
     }
     // ------------------------------
     /**
@@ -465,12 +765,14 @@ const bay = (settings) => {
         try {
             const location = bay.getAttribute("bay") || "";
             let tag_name = bay.tagName.toLowerCase();
+            const registration_name = tag_name === "template" ? location : tag_name;
+            if (customElements.get(registration_name) || pending_registrations.has(registration_name))
+                return;
             if (tag_name === "template") {
                 modify_template(decodeHtml(bay.innerHTML), bay, location);
                 bay.remove();
             }
             else if (location.substring(0, 4) === "dsd-") {
-                file_name = location;
                 if (!bay.shadowRoot) {
                     modify_template(decodeHtml($(bay, "template")[0].innerHTML), bay, tag_name);
                     $(bay, "template")[0].remove();
@@ -480,7 +782,6 @@ const bay = (settings) => {
                 }
             }
             else if (location.substring(0, 1) === "#") {
-                file_name = location;
                 const template_el = $(document, location)[0];
                 if (!template_el) {
                     console.error(`Bay cannot find "${location}" selector.`);
@@ -490,14 +791,31 @@ const bay = (settings) => {
                 template_el.remove();
             }
             else {
-                fetch(location)
-                    .then((res) => res.text())
+                let request = template_fetches.get(location);
+                if (!request) {
+                    request = fetch(location)
+                        .then((res) => {
+                        if (!res.ok)
+                            throw new Error(`Bay cannot fetch "${location}": HTTP ${res.status}`);
+                        return res.text();
+                    })
+                        .then(remove_template_tags)
+                        .catch((error) => {
+                        template_fetches.delete(location);
+                        throw error;
+                    });
+                    template_fetches.set(location, request);
+                }
+                pending_registrations.add(registration_name);
+                request
                     .then((html) => {
-                    html = remove_template_tags(html);
                     modify_template(html, bay, tag_name);
                 })
                     .catch((error) => {
                     console.error("Error:", error);
+                })
+                    .finally(() => {
+                    pending_registrations.delete(registration_name);
                 });
             }
         }
@@ -581,8 +899,10 @@ const bay = (settings) => {
         isEqual_fn([...$(templateHTML, "*")], [...$(shadow_html, "*")]);
     }
     function add_events(this_ref, elements, import_script, parent_uniqid, bay_id) {
+        var _a;
         if (!elements)
             return;
+        (_a = this_ref.clearEventBindings) === null || _a === void 0 ? void 0 : _a.call(this_ref);
         this_ref.newEvents = ``;
         elements.forEach((el, i) => {
             // elements are the elements that have been added to the DOM
@@ -613,6 +933,7 @@ const bay = (settings) => {
         }
     }
     function apply_events(this_ref, attr, el, i, bay_id) {
+        var _a;
         if (!el.closest(`[${bay_id}]`))
             return;
         let attr_name = attr.name;
@@ -726,17 +1047,48 @@ const bay = (settings) => {
                     el.removeEventListener(handler_event, this_ref.eventHandlers.get(handler_id), event_options);
                     this_ref.eventHandlers.delete(handler_id);
                 }
+                let once_state;
+                if (event_options.once) {
+                    // Attribute identity survives value updates, but changes when a
+                    // directive is removed and recreated. Weak keys do not retain nodes.
+                    const once_listeners = this_ref.onceListeners || (this_ref.onceListeners = new WeakMap());
+                    let directives = once_listeners.get(el);
+                    if (!directives) {
+                        directives = new WeakMap();
+                        once_listeners.set(el, directives);
+                    }
+                    once_state = directives.get(attr);
+                    if (!once_state) {
+                        once_state = { consumed: false };
+                        directives.set(attr, once_state);
+                    }
+                    if (once_state.listener) {
+                        el.removeEventListener(handler_event, once_state.listener, event_options);
+                    }
+                    if (once_state.consumed)
+                        return;
+                }
                 this_ref.eventHandlers.set(handler_id, (e) => {
+                    if (once_state) {
+                        if (once_state.consumed)
+                            return;
+                        once_state.consumed = true;
+                    }
                     window.bay[this_ref.uniqid].events &&
                         window.bay[this_ref.uniqid].events.has(`${attr_name}-${i}`)
                         ? window.bay[this_ref.uniqid].events.get(`${attr_name}-${i}`)(e)
                         : null;
                 });
+                if (once_state)
+                    once_state.listener = this_ref.eventHandlers.get(handler_id);
                 el.addEventListener(handler_event, this_ref.eventHandlers.get(handler_id), event_options);
+                (_a = this_ref.eventBindings) === null || _a === void 0 ? void 0 : _a.push({ el, event: handler_event, listener: this_ref.eventHandlers.get(handler_id), options: event_options });
             }
         }
     }
     function render_debouncer(this_ref) {
+        if (this_ref.lifecycleSuspended)
+            return;
         if (this_ref.debouncer) {
             window.cancelAnimationFrame(this_ref.debouncer);
         }
@@ -750,20 +1102,21 @@ const bay = (settings) => {
      */
     function addBlob_event(this_ref, text, import_script, parent_uniqid) {
         return __awaiter(this, void 0, void 0, function* () {
+            const controller = this_ref.shadowDom;
             const blobUrl = URL.createObjectURL(new Blob([
                 `${import_script}export default function($bay,$global,$route,$el,$parent,$bay_select_bind,$ref){"use strict";\n${text}};`,
             ], {
                 type: "text/javascript",
             }));
             const code = yield import(blobUrl);
-            code.default.call(window.bay[this_ref.uniqid].proxy, // this
-            window.bay[this_ref.uniqid], // $bay
+            code.default.call(controller.proxy, // this
+            controller, // $bay
             window.bay.global, // $global
             window.bay.route, // $route
-            window.bay[this_ref.uniqid]["$el"], // $el
+            controller["$el"], // $el
             window.bay[parent_uniqid] ? window.bay[parent_uniqid].proxy : null, // $parent
             window.bay.apply_select, // $bay_select_bind
-            window.bay[this_ref.uniqid].refs // $ref
+            controller.refs // $ref
             );
             URL.revokeObjectURL(blobUrl);
         });
@@ -776,16 +1129,17 @@ const bay = (settings) => {
      */
     function addBlob(this_ref, revoke_blob, element_tagname, text, parent_uniqid, import_script) {
         return __awaiter(this, void 0, void 0, function* () {
+            const controller = this_ref.shadowDom;
             if (blobs.has(element_tagname)) {
                 yield import(blobs.get(element_tagname)).then((code) => {
-                    code.default.call(window.bay[this_ref.uniqid].proxy, // this
+                    code.default.call(controller.proxy, // this
                     this_ref.uniqid, // $bay_uniqid
-                    window.bay[this_ref.uniqid], // $bay
+                    controller, // $bay
                     window.bay.global, // $global
                     window.bay.route, // $route
-                    window.bay[this_ref.uniqid]["$el"], // $el
+                    controller["$el"], // $el
                     window.bay[parent_uniqid] ? window.bay[parent_uniqid].proxy : null, // $parent
-                    window.bay[this_ref.uniqid].refs // $ref
+                    controller.refs // $ref
                     );
                     after_blob_loaded(this_ref);
                 });
@@ -796,14 +1150,14 @@ const bay = (settings) => {
                 ], { type: "text/javascript" }));
                 blobs.set(element_tagname, blobUrl);
                 yield import(blobUrl).then((code) => {
-                    code.default.call(window.bay[this_ref.uniqid].proxy, // this
+                    code.default.call(controller.proxy, // this
                     this_ref.uniqid, // $bay_uniqid
-                    window.bay[this_ref.uniqid], // $bay
+                    controller, // $bay
                     window.bay.global, // $global
                     window.bay.route, // $route
-                    window.bay[this_ref.uniqid]["$el"], // $el
+                    controller["$el"], // $el
                     window.bay[parent_uniqid] ? window.bay[parent_uniqid].proxy : null, // $parent
-                    window.bay[this_ref.uniqid].refs // $ref
+                    controller.refs // $ref
                     );
                     after_blob_loaded(this_ref);
                     if (revoke_blob) {
@@ -814,8 +1168,12 @@ const bay = (settings) => {
         });
     }
     function after_blob_loaded(this_ref) {
+        if (this_ref.lifecycleSuspended) {
+            this_ref.pendingBlobRender = true;
+            return;
+        }
         if (!this_ref.dsd) {
-            this_ref.tmp = window.bay[this_ref.uniqid].template();
+            this_ref.tmp = this_ref.shadowDom.template();
             this_ref.shadowDom.getElementById("bay").innerHTML = this_ref.tmp;
         }
         render_debouncer(this_ref);
@@ -923,14 +1281,16 @@ const bay = (settings) => {
         }
         return false;
     }
-    function isBooleanAttribute(elementType, attributeName) {
-        if (attributeName === "src" || attributeName === "href") {
-            return false;
-        }
-        const tempElement = document.createElement(elementType);
-        tempElement.setAttribute(attributeName, "test_value");
+    function booleanAttributeProperty(elementType, attributeName) {
+        // Boolean DOM properties such as draggable and spellcheck are enumerated
+        // HTML attributes, so property type alone cannot identify boolean attributes.
+        if (!/^(?:allowfullscreen|async|autofocus|autoplay|checked|controls|default|defer|disabled|formnovalidate|hidden|inert|ismap|itemscope|loop|multiple|muted|nomodule|novalidate|open|playsinline|readonly|required|reversed|selected)$/.test(attributeName))
+            return "";
+        const property = { allowfullscreen: "allowFullscreen", formnovalidate: "formNoValidate", ismap: "isMap", itemscope: "itemScope", nomodule: "noModule", novalidate: "noValidate", playsinline: "playsInline", readonly: "readOnly" }[attributeName] || attributeName;
+        // Do not construct/upgrade a user component just to inspect a native property.
+        const tempElement = document.createElement(elementType.includes("-") ? "div" : elementType);
         // Check if the element's property is a boolean type
-        return typeof tempElement[attributeName] === "boolean";
+        return typeof tempElement[property] === "boolean" ? property : "";
     }
     /**
      * copy attributes from template to shadow
@@ -943,7 +1303,11 @@ const bay = (settings) => {
                 return; // handled by isEqual_fn
             if (!template.hasAttribute(attribute.name)) {
                 shadow.removeAttribute(attribute.nodeName);
-                if (canSetAttribute(shadow, attribute.nodeName)) {
+                const boolean_property = booleanAttributeProperty(shadow.tagName.toLowerCase(), attribute.nodeName);
+                if (boolean_property) {
+                    shadow[boolean_property] = false;
+                }
+                else if (canSetAttribute(shadow, attribute.nodeName)) {
                     delete shadow[attribute.nodeName];
                 }
             }
@@ -953,7 +1317,13 @@ const bay = (settings) => {
                 shadow.getAttribute(attribute.nodeName) !== attribute.value) {
                 shadow.setAttribute(attribute.nodeName, attribute.value);
             }
-            if (canSetAttribute(shadow, attribute.nodeName)) {
+            const boolean_property = booleanAttributeProperty(shadow.tagName.toLowerCase(), attribute.nodeName);
+            if (boolean_property) {
+                shadow[boolean_property] = attribute.nodeName === "hidden" && attribute.value === "until-found" ? "until-found" : true;
+            }
+            else if (canSetAttribute(shadow, attribute.nodeName) && typeof shadow[attribute.nodeName] !== "boolean") {
+                // Enumerated attributes such as draggable="false" must not be coerced
+                // through a boolean property setter (Boolean("false") is true).
                 if (shadow[attribute.nodeName] !== attribute.value) {
                     shadow[attribute.nodeName] = attribute.value;
                 }
@@ -1067,7 +1437,7 @@ const bay = (settings) => {
                     const next_el = tag_el.nextElementSibling
                         ? tag_el.nextElementSibling.tagName.toLowerCase()
                         : "";
-                    let close_func = "`}return ''})()}";
+                    let close_func = "`}return ''})())}";
                     const break_prop = tag_el.hasAttribute("break") ? "break;" : "";
                     const shared_case = tag_el.innerHTML.length === 0;
                     const script_type = tag_el.attributes.length
@@ -1093,31 +1463,31 @@ const bay = (settings) => {
                                 .replaceAll(close_tag, "");
                             break;
                         case "map":
-                            rep(`\${ Array.isArray(${tag_array}) ? ${tag_array}.${tagname_str}((${tag_params})=>{return \``, `\`}).join('${tag_join}') : ''}`);
+                            rep(`\${$bay.html(Array.isArray(${tag_array}) ? ${tag_array}.${tagname_str}((${tag_params})=>{return $bay.render\``, `\`}).join('${tag_join}') : '')}`);
                             break;
                         case "for":
                             const this_for = `bay_${tagname_str}_${makeid(8)}`;
                             if (tag_array.length) {
-                                rep(`\${(()=>{let ${this_for}=''; Array.isArray(${tag_array}) ? ${tag_array}.forEach((${tag_params})=>{${this_for}+=\``, `\`}) : '';return ${this_for};})()}`);
+                                rep(`\${$bay.html((()=>{let ${this_for}=''; Array.isArray(${tag_array}) ? ${tag_array}.forEach((${tag_params})=>{${this_for}+=$bay.render\``, `\`}) : '';return ${this_for};})())}`);
                             }
                             else {
-                                rep(`\${(()=>{let ${this_for}=''; ${tagname_str} (${tag_statement}) { ${this_for} += \``, `\`};return ${this_for};})() }`);
+                                rep(`\${$bay.html((()=>{let ${this_for}=''; ${tagname_str} (${tag_statement}) { ${this_for} += $bay.render\``, `\`};return ${this_for};})())}`);
                             }
                             break;
                         case "if":
                             if (next_el === "else-if" || next_el === "else") {
                                 close_func = `\`}`;
                             }
-                            rep(`\${(()=>{ ${tagname_str} (${tag_statement}) {return \``, close_func);
+                            rep(`\${$bay.html((()=>{ ${tagname_str} (${tag_statement}) {return $bay.render\``, close_func);
                             break;
                         case "else-if":
                             if (next_el === "else-if" || next_el === "else") {
                                 close_func = `\`}`;
                             }
-                            rep(`\ else if (${tag_statement}) {return \``, close_func);
+                            rep(`\ else if (${tag_statement}) {return $bay.render\``, close_func);
                             break;
                         case "else":
-                            rep(`\ ${tagname_str} {return \``, close_func);
+                            rep(`\ ${tagname_str} {return $bay.render\``, close_func);
                             break;
                         case "show":
                             if (!tag_duration) {
@@ -1128,22 +1498,22 @@ const bay = (settings) => {
                             }
                             break;
                         case "switch":
-                            rep(`\${(()=>{let bay_switch=''; ${tagname_str} (${tag_statement}) { `, ` };return bay_switch;})() }`);
+                            rep(`\${$bay.html((()=>{let bay_switch=''; ${tagname_str} (${tag_statement}) { `, ` };return bay_switch;})())}`);
                             break;
                         case "case":
                             if (shared_case) {
                                 rep(`${tagname_str} ${tag_statement}:`, ` ` + break_prop);
                             }
                             else {
-                                rep(`${tagname_str} ${tag_statement}: bay_switch += \``, `\`; ` + break_prop);
+                                rep(`${tagname_str} ${tag_statement}: bay_switch += $bay.render\``, `\`; ` + break_prop);
                             }
                             break;
                         case "default":
-                            rep(`${tagname_str}: bay_switch += \``, `\`;`);
+                            rep(`${tagname_str}: bay_switch += $bay.render\``, `\`;`);
                             break;
                         case "inner-html":
                             has_inner_html = true;
-                            rep("${ (()=>{$bay_inner_html+=`", "`;return ''})()}");
+                            rep("${ (()=>{$bay_inner_html+=$bay.render`", "`;return ''})()}");
                             tag_el.remove();
                             break;
                         case "route":
@@ -1154,7 +1524,7 @@ const bay = (settings) => {
                             rep(`<a bay-route :click="e.preventDefault();history.pushState({},'',e.target.getAttribute('href'));window.bay.update_route();"${attrs_str}>`, `</a>`);
                             break;
                         case "router":
-                            rep(`\${(()=>{let $path=window.bay.router(window.bay.route.path,'${tag_statement}');if($path){return \``, close_func);
+                            rep(`\${$bay.html((()=>{let $path=window.bay.router(window.bay.route.path,'${tag_statement}');if($path){return $bay.render\``, close_func);
                             break;
                         case "script":
                             // ------------------ SCRIPT TAGS ------------------
@@ -1221,9 +1591,6 @@ const bay = (settings) => {
                     const custom_event = attr.name.substring(0, 7) === "custom:";
                     const input = el.tagName.toLowerCase() === "input";
                     const textarea = el.tagName.toLowerCase() === "textarea";
-                    if (isBooleanAttribute(el.tagName.toLowerCase(), attr.name)) {
-                        el.setAttribute(attr.name, "true");
-                    }
                     if (attr.name === replace_attr_name) {
                         let inline_str = `${replace_attr_name}="${attr.value}"`;
                         replace_attr_array.push({
@@ -1243,7 +1610,7 @@ const bay = (settings) => {
                     else if (bind && el.tagName.toLowerCase() === "select") {
                         el.setAttribute(`${data_attr}custom-select-${bay_instance_id}`, `$bay_select_bind(e, ${attr.value})`);
                         el.removeAttribute(attr.name);
-                        el.innerHTML = `\${${attr.value}.map((item)=>{return \`&lt;option \${(()=>{return Object.entries(item).map((o)=> \`\${o[0]}="\${o[1]}"\` ).join(' ')})()}>\${item.text}&lt;/option>\`}).join('')}`;
+                        el.innerHTML = `\${$bay.html(${attr.value}.map((item)=>$bay.option(item)).join(''))}`;
                         has_select_bind = true;
                         el.setAttribute(bay_id, "");
                     }
@@ -1268,9 +1635,9 @@ const bay = (settings) => {
                         if (attr_value.indexOf("${") === 0 &&
                             attr_value.lastIndexOf("${") === 0 &&
                             attr_value.endsWith("}")) {
-                            attr_value = attr_value.replace("${", "${$bay.encode(JSON.stringify(");
+                            attr_value = attr_value.replace("${", "${JSON.stringify(");
                             attr_value = [...attr_value].reverse().join("");
-                            attr_value = attr_value.replace("}", "}))");
+                            attr_value = attr_value.replace("}", "})");
                             attr_value = [...attr_value].reverse().join("");
                         }
                         el.setAttribute(attr.name, attr_value);
@@ -1327,7 +1694,7 @@ const bay = (settings) => {
                         if (tag === "map") {
                             newhtml =
                                 "&lt;!--iteration" +
-                                    `\${ Array.isArray(${array}) ? ${array}.map((${params})=>{return \`${current_html}\`}).join('${join}') : ''}` +
+                                    `\${$bay.html(Array.isArray(${array}) ? ${array}.map((${params})=>{return $bay.render\`${current_html}\`}).join('${join}') : '')}` +
                                     "iteration--&gt;";
                         }
                         else {
@@ -1335,13 +1702,13 @@ const bay = (settings) => {
                             if (!this_attr) {
                                 newhtml =
                                     "&lt;!--iteration" +
-                                        `\${(()=>{let ${this_for}=''; Array.isArray(${array}) ? ${array}.forEach((${params})=>{${this_for}+=\`${current_html}\`}) : '';return ${this_for};})()}` +
+                                        `\${$bay.html((()=>{let ${this_for}=''; Array.isArray(${array}) ? ${array}.forEach((${params})=>{${this_for}+=$bay.render\`${current_html}\`}) : '';return ${this_for};})())}` +
                                         "iteration--&gt;";
                             }
                             else {
                                 newhtml =
                                     "&lt;!--iteration" +
-                                        `\${ (()=>{let ${this_for}=''; for (${this_attr}) { ${this_for} += \`${current_html}\`};return ${this_for};})()}` +
+                                        `\${$bay.html((()=>{let ${this_for}=''; for (${this_attr}) { ${this_for} += $bay.render\`${current_html}\`};return ${this_for};})())}` +
                                         "iteration--&gt;";
                             }
                         }
@@ -1362,10 +1729,26 @@ const bay = (settings) => {
             console.error(error);
         }
         if (!tag) {
-            console.error("Something went wrong loading file " + file_name + ".");
+            console.error("Something went wrong loading component " + element_tagname + ".");
             return;
         }
         class BAY extends HTMLElement {
+            addManagedListener(target, name, listener) {
+                if (this.managedListeners.some((entry) => entry.target === target && entry.name === name && entry.listener === listener))
+                    return;
+                this.managedListeners.push({ target, name, listener });
+                if (!this.lifecycleSuspended)
+                    target.addEventListener(name, listener);
+            }
+            clearEventBindings() {
+                this.eventBindings.forEach(({ el, event, listener, options }) => el.removeEventListener(event, listener, options));
+                this.eventBindings = [];
+                this.eventHandlers.clear();
+            }
+            observeSlots() {
+                this.slotObserver.disconnect();
+                $(this, "*").forEach((slot) => this.slotObserver.observe(slot, { attributes: true, childList: true }));
+            }
             constructor() {
                 super();
                 this.mounted = false;
@@ -1376,8 +1759,18 @@ const bay = (settings) => {
                 this.debouncer = false;
                 this.prefixes = [];
                 this.eventHandlers = new Map();
+                this.eventBindings = [];
+                this.managedListeners = [];
+                this.lifecycleSuspended = false;
+                this.pendingBlobRender = false;
+                this.connectionListenersAdded = false;
+                this.mountedFrame = 0;
                 const inner_el = this.getAttribute("inner-html");
-                if (inner_el) {
+                const hydration_target = hydration_targets.get(this);
+                if (hydration_target) {
+                    this.inner_el = hydration_target;
+                }
+                else if (inner_el) {
                     if ($(document, inner_el)[0]) {
                         this.inner_el = $(document, inner_el)[0];
                     }
@@ -1388,7 +1781,8 @@ const bay = (settings) => {
                 else {
                     this.inner_el = this;
                 }
-                document.addEventListener("securitypolicyviolation", (e) => {
+                this.addManagedListener(document, "securitypolicyviolation", (event) => {
+                    const e = event;
                     e.preventDefault();
                     if (e.violatedDirective.indexOf("script-src") > -1 ||
                         e.violatedDirective.indexOf("style-src") > -1) {
@@ -1428,12 +1822,23 @@ const bay = (settings) => {
                 window.bay[this.uniqid][element_name] = this;
                 this.oldEvents = ``;
                 this.shadowDom.refs = (ref) => {
-                    let query = [
-                        ...this.shadowDom.querySelectorAll(`[ref="${ref}"]`),
-                        ...document.querySelectorAll(`${element_tagname} [ref="${ref}"]`),
-                        ...document.querySelectorAll(`#${element_tagname} [ref="${ref}"]`),
-                        ...this.inner_el.querySelectorAll(`[ref="${ref}"]`),
-                    ];
+                    const matches = new Set();
+                    new Set([this.shadowDom, this, this.inner_el]).forEach((root) => {
+                        root.querySelectorAll("[ref]").forEach((el) => {
+                            var _a;
+                            if (el.getAttribute("ref") !== ref)
+                                return;
+                            let parent = el.parentElement;
+                            while (parent && parent !== root) {
+                                // A child component's host can be our ref; its contents cannot.
+                                if (parent !== this && ((_a = parent.shadowDom) === null || _a === void 0 ? void 0 : _a[element_name]) === parent)
+                                    return;
+                                parent = parent.parentElement;
+                            }
+                            matches.add(el);
+                        });
+                    });
+                    const query = [...matches];
                     if (query.length > 1) {
                         return query;
                     }
@@ -1461,16 +1866,19 @@ const bay = (settings) => {
                 this.update_evt = new CustomEvent(`bay_local_update_event_${this.uniqid}`);
                 let update_func = ``;
                 if (this.tmp.indexOf(`/*props updates*/`) > -1) {
-                    update_func = `let $props;\nwindow.addEventListener(\`bay_local_update_event_\${$bay_uniqid}\`,()=>$props());\n`;
+                    update_func = `let $props;\n$el.addManagedListener(window,\`bay_local_update_event_\${$bay_uniqid}\`,()=>$props());\n`;
                 }
                 // add slotchange function =======================================
                 let slotchange_func = ``;
                 if (this.tmp.indexOf(`/*slotchange updates*/`) > -1) {
-                    update_func = `let $slotchange=()=>{};\nlet $details={'element':'','changed':''};\nwindow.addEventListener(\`bay_slotchange_event_\${$bay_uniqid}\`,(e)=>$slotchange(e));\n`;
+                    slotchange_func = `let $slotchange=()=>{};\nlet $details={'element':'','changed':''};\n$el.addManagedListener(window,\`bay_slotchange_event_\${$bay_uniqid}\`,(e)=>$slotchange(e));\n`;
                 }
                 // add decode & encode functions =================================
                 window.bay[this.uniqid].decode = decodeHtml;
                 window.bay[this.uniqid].encode = escapeHTML;
+                window.bay[this.uniqid].html = trustHTML;
+                window.bay[this.uniqid].render = render_template;
+                window.bay[this.uniqid].option = render_option;
                 // add update route function =====================================
                 window.bay.update_route = update_route;
                 if (has_route) {
@@ -1479,29 +1887,26 @@ const bay = (settings) => {
                 // add props function ============================================
                 let props_function = ``;
                 if (has_props) {
-                    props_function = `const $prop = prop => JSON.parse($bay.decode(prop));\n`;
+                    props_function = `const $prop = prop => JSON.parse(prop);\n`;
                 }
                 // add slotchange event ==========================================
-                window.bay[this.uniqid].addEventListener("slotchange", (e) => {
+                this.addManagedListener(this.shadowDom, "slotchange", (e) => {
                     this.local_evt = new CustomEvent(`bay_slotchange_event_${this.uniqid}`, { detail: { element: e.target, changed: "slotchange" } });
                     window.dispatchEvent(this.local_evt);
                 });
-                let bay_slots = $(this, "*");
-                bay_slots.forEach((slot) => {
-                    const slot_observer = new MutationObserver((mutations) => {
-                        mutations.forEach((mutation) => {
-                            if (mutation.type === "attributes") {
-                                this.local_evt = new CustomEvent(`bay_slotchange_event_${this.uniqid}`, { detail: { element: slot, changed: "attributes" } });
-                                window.dispatchEvent(this.local_evt);
-                            }
-                            else if (mutation.type === "childList") {
-                                this.local_evt = new CustomEvent(`bay_slotchange_event_${this.uniqid}`, { detail: { element: slot, changed: "childList" } });
-                                window.dispatchEvent(this.local_evt);
-                            }
-                        });
+                this.slotObserver = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        if (mutation.type === "attributes") {
+                            this.local_evt = new CustomEvent(`bay_slotchange_event_${this.uniqid}`, { detail: { element: mutation.target, changed: "attributes" } });
+                            window.dispatchEvent(this.local_evt);
+                        }
+                        else if (mutation.type === "childList") {
+                            this.local_evt = new CustomEvent(`bay_slotchange_event_${this.uniqid}`, { detail: { element: mutation.target, changed: "childList" } });
+                            window.dispatchEvent(this.local_evt);
+                        }
                     });
-                    slot_observer.observe(slot, { attributes: true, childList: true });
                 });
+                this.observeSlots();
                 let bay_name = `// ${element_tagname};\n`;
                 // add inner-html vars ==========================================
                 let inner_html_var = ``;
@@ -1515,12 +1920,12 @@ const bay = (settings) => {
                 // add on ==========================================
                 let on_var = ``;
                 if (has_on) {
-                    on_var = `$bay.on=(name,callback)=>{window.addEventListener(name,e=>callback(e));};\n`;
+                    on_var = `$bay.on=(name,callback)=>{$el.addManagedListener(window,name,e=>callback(e));};\n`;
                 }
                 // add emit ==========================================
                 window.bay[this.uniqid].emit = window.bay.emit;
                 window.bay[this.uniqid].receive = window.bay.receive;
-                let emit_var = `${on_var}function bay_receive_fn(e){$bay.receive($bay,$el,e.detail.name,e.detail.data);}\nwindow.removeEventListener('bay_emit',bay_receive_fn);\nwindow.addEventListener('bay_emit',bay_receive_fn);\n`;
+                let emit_var = on_var;
                 this.prefixes = [
                     bay_name,
                     inner_html_var,
@@ -1548,7 +1953,7 @@ const bay = (settings) => {
                         .replaceAll(`  `, ``)
                         .replaceAll("\n", ``);
                 }
-                addBlob(this, revoke_blob, element_tagname, `${proxy_script}\n${local_name}.template=()=>{${inner_html_reset}return \`${proxy_html}\`;};\n${local_name}.styles=()=>{return \`${proxy_css}\`;};${inner_html_fn}`, this.parent_uniqid, import_script);
+                addBlob(this, revoke_blob, element_tagname, `${proxy_script}\n${local_name}.template=()=>{${inner_html_reset}return $bay.render\`${proxy_html}\`;};\n${local_name}.styles=()=>{return \`${proxy_css}\`;};${inner_html_fn}`, this.parent_uniqid, import_script);
                 this.hasAdopted = false;
                 if ("adoptedStyleSheets" in document) {
                     this.hasAdopted = true;
@@ -1575,11 +1980,16 @@ const bay = (settings) => {
                     this.shadowDom.appendChild(styleLinkUpdate);
                     this.styleLinkUpdate = styleLinkUpdate;
                 }
+                // A constructed instance may never be attached. The same deferred
+                // check also permits building and inserting a component in one turn.
+                this.disconnectedCallback();
             }
             /**
              * Renders the component from proxy data changes
              */
             render() {
+                if (this.lifecycleSuspended)
+                    return;
                 if (this.CSP) {
                     this.shadowDom.innerHTML = "";
                     return;
@@ -1622,8 +2032,9 @@ const bay = (settings) => {
                     }
                     if (this.mounted === false && window.bay[this.uniqid]["$mounted"]) {
                         this.mounted = true;
-                        requestAnimationFrame(() => {
-                            window.bay[this.uniqid]["$mounted"]();
+                        this.mountedFrame = window.requestAnimationFrame(() => {
+                            this.mountedFrame = 0;
+                            this.shadowDom["$mounted"]();
                         });
                     }
                     if ($(this.shadowDom, "[bay]")[0]) {
@@ -1650,20 +2061,54 @@ const bay = (settings) => {
             }
             connectedCallback() {
                 try {
-                    if (has_globals) {
-                        window.addEventListener("bay_global_event", (e) => {
-                            render_debouncer(this);
-                        });
+                    if (this.lifecycleSuspended) {
+                        this.lifecycleSuspended = false;
+                        window.bay[this.uniqid] = this.shadowDom;
+                        this.managedListeners.forEach(({ target, name, listener }) => target.addEventListener(name, listener));
+                        this.observeSlots();
                     }
-                    if (has_route) {
-                        window.addEventListener("bay_route_event", (e) => {
-                            render_debouncer(this);
-                        });
+                    if (!this.connectionListenersAdded) {
+                        this.connectionListenersAdded = true;
+                        if (has_globals) {
+                            this.addManagedListener(window, "bay_global_event", (e) => {
+                                render_debouncer(this);
+                            });
+                        }
+                        if (has_route) {
+                            this.addManagedListener(window, "bay_route_event", (e) => {
+                                render_debouncer(this);
+                            });
+                        }
                     }
+                    if (this.pendingBlobRender) {
+                        this.pendingBlobRender = false;
+                        after_blob_loaded(this);
+                    }
+                    render_debouncer(this);
                 }
                 catch (error) {
                     console.error(error);
                 }
+            }
+            disconnectedCallback() {
+                // Moving a node within the document fires disconnect/connect together.
+                queueMicrotask(() => {
+                    if (this.isConnected || this.lifecycleSuspended)
+                        return;
+                    this.lifecycleSuspended = true;
+                    this.managedListeners.forEach(({ target, name, listener }) => target.removeEventListener(name, listener));
+                    this.slotObserver.disconnect();
+                    this.clearEventBindings();
+                    window.cancelAnimationFrame(this.debouncer);
+                    this.debouncer = false;
+                    if (this.mountedFrame) {
+                        window.cancelAnimationFrame(this.mountedFrame);
+                        this.mountedFrame = 0;
+                        this.mounted = false;
+                    }
+                    if (window.bay[this.uniqid] === this.shadowDom)
+                        delete window.bay[this.uniqid];
+                });
             }
             static get observedAttributes() {
                 return observedAttributes_from_element;
@@ -1680,14 +2125,19 @@ const bay = (settings) => {
         customElements.define(tag, BAY);
     }
     // ------------------------------
-    window.addEventListener("load", () => {
-        get_all_bays(document);
-    });
     bay.refresh = () => {
         get_all_bays(document);
     };
     window.bay.refresh = bay.refresh;
     bay.create = create_template_fn;
     window.bay.create = bay.create;
+    if (document.readyState === "complete") {
+        get_all_bays(document);
+    }
+    else {
+        window.addEventListener("load", () => {
+            get_all_bays(document);
+        });
+    }
 };
 bay();
